@@ -35,7 +35,7 @@ use super::backup::{backup, restore, BackupView};
 use super::message::*;
 use super::network;
 use super::params::TimeGapParams;
-use super::stake::CUSTOM_ACTION_HANDLER_ID;
+use super::stake::{CurrentValidators, CUSTOM_ACTION_HANDLER_ID};
 use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::vote_collector::{DoubleVote, VoteCollector};
 use super::vote_regression_checker::VoteRegressionChecker;
@@ -1244,13 +1244,19 @@ impl Worker {
         };
 
         let mut voted_validators = BitSet::new();
-        let grand_parent_hash = self
-            .client()
-            .block_header(&(*header.parent_hash()).into())
-            .expect("The parent block must exist")
-            .parent_hash();
+        let parent = self.client().block_header(&(*header.parent_hash()).into()).expect("The parent block must exist");
+        let grand_parent_hash = parent.parent_hash();
         for (bitset_index, signature) in seal_view.signatures()? {
-            let public = self.validators.get(&grand_parent_hash, bitset_index);
+            let public = {
+                let state = self.client().state_at(parent.hash().into()).expect("The parent state must exist");
+                let validators = CurrentValidators::load_from_state(&state)?;
+                // This happens when era == 0
+                if validators.is_empty() {
+                    self.validators.get(&grand_parent_hash, bitset_index)
+                } else {
+                    *validators.get_validator(bitset_index).pubkey()
+                }
+            };
             if !verify_schnorr(&public, &signature, &precommit_vote_on.hash())? {
                 let address = public_to_address(&public);
                 return Err(EngineError::BlockNotAuthorized(address.to_owned()).into())
@@ -1263,7 +1269,7 @@ impl Worker {
         if header.number() == 1 {
             return Ok(())
         }
-        self.validators.check_enough_votes(&grand_parent_hash, &voted_validators)?;
+        self.validators.check_enough_votes_with_header(&parent.decode(), &voted_validators)?;
         Ok(())
     }
 
@@ -1471,7 +1477,7 @@ impl Worker {
     }
 
     fn report_double_vote(&self, double: &DoubleVote) {
-        let network_id = self.client().common_params(BlockId::Latest).unwrap().network_id();
+        let network_id = self.client().network_id();
         let seq = match self.signer.address() {
             Some(address) => self.client().latest_seq(address),
             None => {

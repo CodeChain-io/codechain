@@ -59,7 +59,7 @@ use crate::client::{
     AccountData, BlockChainClient, BlockChainTrait, BlockProducer, BlockStatus, ConsensusClient, EngineInfo,
     ImportBlock, ImportResult, MiningBlockChainClient, StateInfo, StateOrBlock, TermInfo,
 };
-use crate::consensus::stake::{Validator, Validators};
+use crate::consensus::stake::{NextValidators, Validator};
 use crate::consensus::EngineError;
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
@@ -106,7 +106,7 @@ pub struct TestBlockChainClient {
     /// Fixed validator keys
     pub validator_keys: RwLock<HashMap<Public, Private>>,
     /// Fixed validators
-    pub validators: Validators,
+    pub validators: NextValidators,
 }
 
 impl Default for TestBlockChainClient {
@@ -160,7 +160,7 @@ impl TestBlockChainClient {
             history: RwLock::new(None),
             term_id: Some(1),
             validator_keys: RwLock::new(HashMap::new()),
-            validators: Validators::from_vector_to_test(vec![]),
+            validators: NextValidators::from_vector_to_test(vec![]),
         };
 
         // insert genesis hash.
@@ -325,14 +325,14 @@ impl TestBlockChainClient {
             self.validator_keys.write().insert(*key_pair.public(), *key_pair.private());
             pubkeys.push(*key_pair.public());
         }
-        let fixed_validators: Validators = Validators::from_vector_to_test(
+        let fixed_validators: NextValidators = NextValidators::from_vector_to_test(
             pubkeys.into_iter().map(|pubkey| Validator::new_for_test(0, 0, pubkey)).collect(),
         );
 
         self.validators = fixed_validators;
     }
 
-    pub fn get_validators(&self) -> &Validators {
+    pub fn get_validators(&self) -> &NextValidators {
         &self.validators
     }
 }
@@ -380,10 +380,6 @@ impl MiningBlockChainClient for TestBlockChainClient {
 
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
         self.miner.register_immune_users(immune_user_vec)
-    }
-
-    fn get_network_id(&self) -> NetworkId {
-        NetworkId::default()
     }
 }
 
@@ -657,6 +653,10 @@ impl super::EngineClient for TestBlockChainClient {
 }
 
 impl EngineInfo for TestBlockChainClient {
+    fn network_id(&self) -> NetworkId {
+        self.scheme.engine.machine().genesis_common_params().network_id()
+    }
+
     fn common_params(&self, _block_id: BlockId) -> Option<CommonParams> {
         Some(*self.scheme.engine.machine().genesis_common_params())
     }

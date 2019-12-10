@@ -128,10 +128,11 @@ where
             return Ok(None)
         }
         let block_id = block_number.map(BlockId::from).unwrap_or(BlockId::Latest);
-        Ok(self.client.get_text(transaction_hash, block_id).map_err(errors::transaction_state)?.map(|text| {
-            let parent_block_id = block_number.map(|n| (n - 1).into()).unwrap_or(BlockId::ParentOfLatest);
-            Text::from_core(text, self.client.common_params(parent_block_id).unwrap().network_id())
-        }))
+        Ok(self
+            .client
+            .get_text(transaction_hash, block_id)
+            .map_err(errors::transaction_state)?
+            .map(|text| Text::from_core(text, self.client.network_id())))
     }
 
     fn get_asset(
@@ -178,8 +179,7 @@ where
     fn get_regular_key_owner(&self, public: Public, block_number: Option<u64>) -> Result<Option<PlatformAddress>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.regular_key_owner(&public_to_address(&public), block_id.into()).and_then(|address| {
-            let parent_block_id = block_number.map(|n| (n - 1).into()).unwrap_or(BlockId::ParentOfLatest);
-            let network_id = self.client.common_params(parent_block_id).unwrap().network_id();
+            let network_id = self.client.network_id();
             Some(PlatformAddress::new_v1(network_id, address))
         }))
     }
@@ -206,8 +206,7 @@ where
     fn get_shard_owners(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_owners(shard_id, block_id.into()).map(|owners| {
-            let parent_block_id = block_number.map(|n| (n - 1).into()).unwrap_or(BlockId::ParentOfLatest);
-            let network_id = self.client.common_params(parent_block_id).unwrap().network_id();
+            let network_id = self.client.network_id();
             owners.into_iter().map(|owner| PlatformAddress::new_v1(network_id, owner)).collect()
         }))
     }
@@ -215,8 +214,7 @@ where
     fn get_shard_users(&self, shard_id: ShardId, block_number: Option<u64>) -> Result<Option<Vec<PlatformAddress>>> {
         let block_id = block_number.map(BlockId::Number).unwrap_or(BlockId::Latest);
         Ok(self.client.shard_users(shard_id, block_id.into()).map(|users| {
-            let parent_block_id = block_number.map(|n| (n - 1).into()).unwrap_or(BlockId::ParentOfLatest);
-            let network_id = self.client.common_params(parent_block_id).unwrap().network_id();
+            let network_id = self.client.network_id();
             users.into_iter().map(|user| PlatformAddress::new_v1(network_id, user)).collect()
         }))
     }
@@ -239,26 +237,14 @@ where
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {
         let id = BlockId::Number(block_number);
-        Ok(self.client.block(&id).map(|block| {
-            let block_id_to_read_params = if block_number == 0 {
-                0.into()
-            } else {
-                (block_number - 1).into()
-            };
-            Block::from_core(block.decode(), self.client.common_params(block_id_to_read_params).unwrap().network_id())
-        }))
+        Ok(self.client.block(&id).map(|block| Block::from_core(block.decode(), self.client.network_id())))
     }
 
     fn get_block_by_hash(&self, block_hash: BlockHash) -> Result<Option<Block>> {
         let id = BlockId::Hash(block_hash);
         Ok(self.client.block(&id).map(|block| {
             let block = block.decode();
-            let block_id_to_read_params = if block.header.number() == 0 {
-                0.into()
-            } else {
-                (*block.header.parent_hash()).into()
-            };
-            Block::from_core(block, self.client.common_params(block_id_to_read_params).unwrap().network_id())
+            Block::from_core(block, self.client.network_id())
         }))
     }
 
@@ -301,7 +287,7 @@ where
     }
 
     fn get_network_id(&self) -> Result<NetworkId> {
-        Ok(self.client.common_params(BlockId::Latest).unwrap().network_id())
+        Ok(self.client.network_id())
     }
 
     fn get_common_params(&self, block_number: Option<u64>) -> Result<Option<Params>> {

@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use ccore::{BlockChainClient, MiningBlockChainClient, SignedTransaction};
+use ccore::{BlockChainClient, EngineInfo, MiningBlockChainClient, SignedTransaction};
 use cjson::bytes::Bytes;
 use ckey::{Address, PlatformAddress};
 use ctypes::{Tracker, TxHash};
@@ -42,7 +42,7 @@ impl<C> MempoolClient<C> {
 
 impl<C> Mempool for MempoolClient<C>
 where
-    C: BlockChainClient + MiningBlockChainClient + 'static,
+    C: BlockChainClient + MiningBlockChainClient + EngineInfo + 'static,
 {
     fn send_signed_transaction(&self, raw: Bytes) -> Result<TxHash> {
         Rlp::new(&raw.into_vec())
@@ -82,7 +82,7 @@ where
 
     fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>> {
         let malicious_user_vec = self.client.get_malicious_users();
-        let network_id = self.client.get_network_id();
+        let network_id = self.client.network_id();
         Ok(malicious_user_vec.into_iter().map(|address| PlatformAddress::new_v1(network_id, address)).collect())
     }
 
@@ -102,7 +102,7 @@ where
 
     fn get_immune_accounts(&self) -> Result<Vec<PlatformAddress>> {
         let immune_user_vec = self.client.get_immune_users();
-        let network_id = self.client.get_network_id();
+        let network_id = self.client.network_id();
         Ok(immune_user_vec.into_iter().map(|address| PlatformAddress::new_v1(network_id, address)).collect())
     }
 
