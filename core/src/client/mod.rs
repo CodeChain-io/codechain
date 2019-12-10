@@ -87,6 +87,7 @@ pub trait BlockChainTrait {
 }
 
 pub trait EngineInfo: Send + Sync {
+    fn network_id(&self) -> NetworkId;
     fn common_params(&self, block_id: BlockId) -> Option<CommonParams>;
     fn metadata_seq(&self, block_id: BlockId) -> Option<u64>;
     fn block_reward(&self, block_number: u64) -> u64;
@@ -287,9 +288,6 @@ pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + FindActionH
 
     /// Append designated users to the immune user list.
     fn register_immune_users(&self, immune_user_vec: Vec<Address>);
-
-    /// Returns network id.
-    fn get_network_id(&self) -> NetworkId;
 }
 
 /// Provides methods to access database.

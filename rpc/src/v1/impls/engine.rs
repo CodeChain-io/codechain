@@ -62,7 +62,7 @@ where
             Ok(None)
         } else {
             // XXX: What should we do if the network id has been changed
-            let network_id = self.client.common_params(BlockId::Latest).unwrap().network_id();
+            let network_id = self.client.network_id();
             Ok(Some(PlatformAddress::new_v1(network_id, author)))
         }
     }

@@ -1446,7 +1446,7 @@ impl Worker {
     }
 
     fn report_double_vote(&self, double: &DoubleVote) {
-        let network_id = self.client().common_params(BlockId::Latest).unwrap().network_id();
+        let network_id = self.client().network_id();
         let seq = match self.signer.address() {
             Some(address) => self.client().latest_seq(address),
             None => {
