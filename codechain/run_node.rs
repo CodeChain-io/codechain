@@ -21,8 +21,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use ccore::snapshot_notify;
 use ccore::{
-    AccountProvider, AccountProviderError, BlockId, ChainNotify, Client, ClientConfig, ClientService, EngineInfo,
-    EngineType, Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
+    AccountProvider, AccountProviderError, ChainNotify, Client, ClientConfig, ClientService, EngineInfo, EngineType,
+    Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
 };
 use cdiscovery::{Config, Discovery};
 use ckey::{Address, NetworkId, PlatformAddress};
@@ -286,7 +286,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             let network_config = config.network_config()?;
             // XXX: What should we do if the network id has been changed.
             let c = client.client();
-            let network_id = c.common_params(BlockId::Number(0)).unwrap().network_id();
+            let network_id = c.network_id();
             let routing_table = RoutingTable::new();
             let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
 
