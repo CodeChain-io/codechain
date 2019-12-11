@@ -47,6 +47,13 @@ use crate::views::HeaderView;
 use crate::BlockId;
 use rlp::Encodable;
 
+#[derive(Default)]
+struct WorkInfo {
+    proposed: usize,
+    missed: usize,
+    signed: u64,
+}
+
 impl ConsensusEngine for Tendermint {
     fn name(&self) -> &str {
         "Tendermint"
@@ -193,14 +200,6 @@ impl ConsensusEngine for Tendermint {
                 let start_of_the_current_term = metadata.last_term_finished_block_num() + 1;
 
                 if term > 1 {
-                    let start_of_the_previous_term = {
-                        let end_of_the_two_level_previous_term = client
-                            .last_term_finished_block_num((metadata.last_term_finished_block_num() - 1).into())
-                            .unwrap();
-
-                        end_of_the_two_level_previous_term + 1
-                    };
-
                     let banned = stake::Banned::load_from_state(block.state())?;
                     let start_of_the_current_term_header = if block_number == start_of_the_current_term {
                         encoded::Header::new(block.header().clone().rlp_bytes().to_vec())
@@ -208,13 +207,11 @@ impl ConsensusEngine for Tendermint {
                         client.block_header(&start_of_the_current_term.into()).unwrap()
                     };
 
-                    let pending_rewards = calculate_pending_rewards_of_the_previous_term(
+                    let pending_rewards = calculate_pending_rewards_of_the_term(
                         &*client,
                         &*self.validators,
                         rewards,
-                        start_of_the_current_term,
                         start_of_the_current_term_header,
-                        start_of_the_previous_term,
                         &banned,
                     )?;
 
@@ -356,64 +353,79 @@ fn inactive_validators(
     validators.into_iter().collect()
 }
 
-fn calculate_pending_rewards_of_the_previous_term(
+// Aggregate the validators' work info of a term
+fn aggregate_work_info(
     chain: &dyn ConsensusClient,
     validators: &dyn ValidatorSet,
-    rewards: BTreeMap<Address, u64>,
-    start_of_the_current_term: u64,
-    start_of_the_current_term_header: encoded::Header,
-    start_of_the_previous_term: u64,
-    banned: &stake::Banned,
-) -> Result<HashMap<Address, u64>, Error> {
-    // XXX: It's okay because we don't have a plan to increasing the maximum number of validators.
-    //      However, it's better to use the correct number.
-    const MAX_NUM_OF_VALIDATORS: usize = 30;
-    let mut pending_rewards = HashMap::<Address, u64>::with_capacity(MAX_NUM_OF_VALIDATORS);
-    let mut missed_signatures = HashMap::<Address, (usize, usize)>::with_capacity(MAX_NUM_OF_VALIDATORS);
-    let mut signed_blocks = HashMap::<Address, usize>::with_capacity(MAX_NUM_OF_VALIDATORS);
+    start_of_the_next_term_header: encoded::Header,
+) -> Result<HashMap<Address, WorkInfo>, Error> {
+    let mut work_info = HashMap::<Address, WorkInfo>::new();
 
-    let mut header = start_of_the_current_term_header;
-    let mut parent_validators = {
-        let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
-        validators.addresses(&grand_parent_header.parent_hash())
+    let start_of_the_current_term = {
+        let end_of_the_last_term =
+            chain.last_term_finished_block_num((start_of_the_next_term_header.number() - 2).into()).unwrap();
+
+        end_of_the_last_term + 1
     };
-    while start_of_the_previous_term != header.number() {
+    let mut header = start_of_the_next_term_header;
+    let mut parent_validators = {
+        let parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+        validators.addresses(&parent_header.parent_hash())
+    };
+    while start_of_the_current_term != header.number() {
         for index in TendermintSealView::new(&header.seal()).bitset()?.true_index_iter() {
             let signer = *parent_validators.get(index).expect("The seal must be the signature of the validator");
-            *signed_blocks.entry(signer).or_default() += 1;
+            work_info.entry(signer).or_default().signed += 1;
         }
 
         header = chain.block_header(&header.parent_hash().into()).unwrap();
         parent_validators = {
             // The seal of the current block has the signatures of the parent block.
             // It needs the hash of the grand parent block to find the validators of the parent block.
-            let grand_parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
-            validators.addresses(&grand_parent_header.parent_hash())
+            let parent_header = chain.block_header(&header.parent_hash().into()).unwrap();
+            validators.addresses(&parent_header.parent_hash())
         };
 
         let author = header.author();
-        let (proposed, missed) = missed_signatures.entry(author).or_default();
-        *proposed += 1;
-        *missed += parent_validators.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
+        let info = work_info.entry(author).or_default();
+        info.proposed += 1;
+        info.missed += parent_validators.len() - TendermintSealView::new(&header.seal()).bitset()?.count();
     }
+
+    Ok(work_info)
+}
+
+fn calculate_pending_rewards_of_the_term(
+    chain: &dyn ConsensusClient,
+    validators: &dyn ValidatorSet,
+    rewards: BTreeMap<Address, u64>,
+    start_of_the_next_term_header: encoded::Header,
+    banned: &stake::Banned,
+) -> Result<HashMap<Address, u64>, Error> {
+    // XXX: It's okay because we don't have a plan to increasing the maximum number of validators.
+    //      However, it's better to use the correct number.
+    const MAX_NUM_OF_VALIDATORS: usize = 30;
+    let work_info = aggregate_work_info(chain, validators, start_of_the_next_term_header)?;
+    let mut pending_rewards = HashMap::<Address, u64>::with_capacity(MAX_NUM_OF_VALIDATORS);
 
     let mut reduced_rewards = 0;
 
     // Penalty disloyal validators
-    let number_of_blocks_in_term = start_of_the_current_term - start_of_the_previous_term;
+    let number_of_blocks_in_term: usize = work_info.values().map(|info| info.proposed).sum();
     for (address, intermediate_reward) in rewards {
         if banned.is_banned(&address) {
             reduced_rewards += intermediate_reward;
             continue
         }
-        let number_of_signatures = u64::try_from(*signed_blocks.get(&address).unwrap()).unwrap();
-        let final_block_rewards = final_rewards(intermediate_reward, number_of_signatures, number_of_blocks_in_term);
+        let number_of_signatures = work_info.get(&address).unwrap().signed;
+        let final_block_rewards =
+            final_rewards(intermediate_reward, number_of_signatures, u64::try_from(number_of_blocks_in_term).unwrap());
         reduced_rewards += intermediate_reward - final_block_rewards;
         pending_rewards.insert(address, final_block_rewards);
     }
 
     // Give additional rewards
-    give_additional_rewards(reduced_rewards, missed_signatures, |address, reward| {
+    give_additional_rewards(reduced_rewards, work_info, |address, reward| {
         let prev = pending_rewards.entry(*address).or_default();
         *prev += reward;
         Ok(())
@@ -456,12 +468,12 @@ fn final_rewards(intermediate_reward: u64, number_of_signatures: u64, number_of_
 
 fn give_additional_rewards<F: FnMut(&Address, u64) -> Result<(), Error>>(
     mut reduced_rewards: u64,
-    missed_signatures: HashMap<Address, (usize, usize)>,
+    work_info: HashMap<Address, WorkInfo>,
     mut f: F,
 ) -> Result<(), Error> {
-    let sorted_validators = missed_signatures
+    let sorted_validators = work_info
         .into_iter()
-        .map(|(address, (proposed, missed))| (address, Ratio::new(missed, proposed)))
+        .map(|(address, info)| (address, Ratio::new(info.missed, info.proposed)))
         // When one sees the Ratio crate's Order trait implementation, he/she can easily realize that the
         // comparing routine is erroneous. It inversely compares denominators when the numerators are the same.
         // That's problematic when it makes comparisons between ratios such as Ratio{numer: 0, denom:2} and Ratio{numer: 0, denom: 3}.
@@ -620,20 +632,44 @@ mod tests {
         let addr12 = Address::random();
         let addr20 = Address::random();
         let addr21 = Address::random();
-        let missed_signatures = HashMap::from_iter(
+        let work_info = HashMap::from_iter(
             vec![
-                (addr00, (30, 28)),
-                (addr10, (60, 59)),
-                (addr11, (120, 118)),
-                (addr12, (120, 118)),
-                (addr20, (60, 60)),
-                (addr21, (120, 120)),
+                (addr00, WorkInfo {
+                    proposed: 30,
+                    missed: 28,
+                    signed: 0,
+                }),
+                (addr10, WorkInfo {
+                    proposed: 60,
+                    missed: 59,
+                    signed: 0,
+                }),
+                (addr11, WorkInfo {
+                    proposed: 120,
+                    missed: 118,
+                    signed: 0,
+                }),
+                (addr12, WorkInfo {
+                    proposed: 120,
+                    missed: 118,
+                    signed: 0,
+                }),
+                (addr20, WorkInfo {
+                    proposed: 60,
+                    missed: 60,
+                    signed: 0,
+                }),
+                (addr21, WorkInfo {
+                    proposed: 120,
+                    missed: 120,
+                    signed: 0,
+                }),
             ]
             .into_iter(),
         );
 
         let mut result = HashMap::with_capacity(7);
-        give_additional_rewards(reduced_rewards, missed_signatures, |address, reward| {
+        give_additional_rewards(reduced_rewards, work_info, |address, reward| {
             assert_eq!(None, result.insert(*address, reward));
             Ok(())
         })
