@@ -181,12 +181,6 @@ impl CommonParams {
             if self.nomination_expiration == 0 {
                 return Err("You should set the nomination expiration".to_string())
             }
-            if self.custody_period == 0 {
-                return Err("You should set the custody period".to_string())
-            }
-            if self.release_period == 0 {
-                return Err("You should set the release period".to_string())
-            }
             if self.max_num_of_validators == 0 {
                 return Err("You should set the maximum number of validators".to_string())
             }
@@ -205,7 +199,7 @@ impl CommonParams {
                     self.min_num_of_validators, self.max_num_of_validators
                 ))
             }
-            if self.custody_period >= self.release_period {
+            if self.custody_period > self.release_period {
                 return Err(format!(
                     "The release period({}) should be longer than the custody period({})",
                     self.release_period, self.custody_period

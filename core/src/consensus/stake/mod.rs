@@ -392,17 +392,16 @@ pub fn on_term_close(
     let current_term = metadata.current_term_id();
     ctrace!(ENGINE, "on_term_close. current_term: {}", current_term);
 
+    let metadata = metadata.params().expect(
+        "Term close events can be called after the ChangeParams called, \
+         so the metadata always has CommonParams",
+    );
+    let custody_period = metadata.custody_period();
+    let release_period = metadata.release_period();
+
     let (nomination_expiration, custody_until, kick_at) = {
-        let metadata = metadata.params().expect(
-            "Term close events can be called after the ChangeParams called, \
-             so the metadata always has CommonParams",
-        );
         let nomination_expiration = metadata.nomination_expiration();
         assert_ne!(0, nomination_expiration);
-        let custody_period = metadata.custody_period();
-        assert_ne!(0, custody_period);
-        let release_period = metadata.release_period();
-        assert_ne!(0, release_period);
         (nomination_expiration, current_term + custody_period, current_term + release_period)
     };
 
@@ -412,7 +411,10 @@ pub fn on_term_close(
     let reverted: Vec<_> = expired.into_iter().chain(released).collect();
     revert_delegations(state, &reverted)?;
 
-    jail(state, inactive_validators, custody_until, kick_at)?;
+    let jail_enabled = custody_period != 0 || release_period != 0;
+    if jail_enabled {
+        jail(state, inactive_validators, custody_until, kick_at)?;
+    }
 
     let validators = Validators::elect(state)?;
     validators.save_to_state(state)?;
