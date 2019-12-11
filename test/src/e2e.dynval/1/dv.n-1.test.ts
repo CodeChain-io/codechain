@@ -71,6 +71,10 @@ describe("Dynamic Validator N -> N-1", function() {
     describe("A node is imprisoned to jail", async function() {
         const { nodes } = withNodes(this, {
             promiseExpect,
+            overrideParams: {
+                custodyPeriod: 10,
+                releasePeriod: 30
+            },
             validators: allDynValidators.map((signer, index) => ({
                 signer,
                 delegation: 5_000,

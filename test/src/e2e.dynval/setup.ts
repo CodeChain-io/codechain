@@ -354,8 +354,8 @@ export const defaultParams = {
 
     termSeconds: 15,
     nominationExpiration: 10,
-    custodyPeriod: 10,
-    releasePeriod: 30,
+    custodyPeriod: 0,
+    releasePeriod: 0,
     maxNumOfValidators: 5,
     minNumOfValidators: 3,
     delegationThreshold: 1000,
@@ -465,7 +465,7 @@ export function setTermTestTimeout(
 ): TermWaiter {
     const { terms, params: { termSeconds } = defaultParams } = options;
     const slowMargin = 0.5;
-    const timeoutMargin = 2.0;
+    const timeoutMargin = 4.0;
     context.slow(termSeconds * (terms + slowMargin) * 1000);
     context.timeout(termSeconds * (terms + timeoutMargin) * 1000);
     function termPeriodsToTime(termPeriods: number, margin: number): number {
@@ -485,7 +485,7 @@ export function setTermTestTimeout(
         ) {
             await node.waitForTermChange(
                 waiterParams.target,
-                termPeriodsToTime(waiterParams.termPeriods, 0.5)
+                termPeriodsToTime(waiterParams.termPeriods, 2)
             );
         }
     };

@@ -192,10 +192,10 @@ describe("Change commonParams that doesn't affects validator set", function() {
         it("should be applied after a term seconds", async function() {
             const initialTermSeconds = initialParams.termSeconds;
             const newTermSeconds = 5;
-            const margin = 1.3;
+            const margin = 1.5;
 
             this.slow((initialTermSeconds + newTermSeconds) * 1000 * margin);
-            this.timeout((initialTermSeconds + newTermSeconds) * 1000 * 2);
+            this.timeout((initialTermSeconds + newTermSeconds) * 1000 * 2.5);
 
             const term1Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
@@ -247,8 +247,8 @@ describe("Change commonParams that doesn't affects validator set", function() {
         it("Change minimum fee of pay transaction", async function() {
             const checkingNode = nodes[0];
 
-            this.slow(4_000);
-            this.timeout(6_000);
+            this.slow(6_000);
+            this.timeout(12_000);
 
             const changeTxHash = await changeParams(checkingNode, 1, {
                 ...initialParams,
@@ -284,7 +284,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
 
         it("Should apply larger metadata limit after increment", async function() {
             this.slow(6_000);
-            this.timeout(9_000);
+            this.timeout(12_000);
 
             const alice = validators[0];
             const checkingNode = nodes[0];
@@ -321,7 +321,7 @@ describe("Change commonParams that doesn't affects validator set", function() {
 
         it("Should apply smaller metadata limit after decrement", async function() {
             this.slow(6_000);
-            this.timeout(9_000);
+            this.timeout(12_000);
 
             const alice = validators[0];
             const checkingNode = nodes[0];
