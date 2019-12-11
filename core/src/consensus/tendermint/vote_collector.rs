@@ -138,6 +138,10 @@ impl PriorityCollector {
     fn iter_from_highest(&self) -> Rev<Iter<'_, PriorityInfo>> {
         self.priorities.iter().rev()
     }
+
+    fn iter(&self) -> Iter<PriorityInfo> {
+        self.priorities.iter()
+    }
 }
 
 impl MessageCollector {
@@ -376,5 +380,20 @@ impl VoteCollector {
             }
             None => vec![],
         }
+    }
+
+    pub fn get_all_priority_infos(&self) -> Vec<(SortitionRound, PriorityInfo)> {
+        self.votes
+            .iter()
+            .filter(|(vote_step, _)| vote_step.step == Step::Propose)
+            .flat_map(|(&vote_step, collector)| {
+                let round: SortitionRound = vote_step.into();
+                collector
+                    .priority_collector()
+                    .iter()
+                    .map(|priority_info| (round, priority_info.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
     }
 }

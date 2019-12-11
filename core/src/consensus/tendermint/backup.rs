@@ -14,41 +14,77 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockHash;
 use kvdb::{DBTransaction, KeyValueDB};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
-use super::message::ConsensusMessage;
+use super::message::{ConsensusMessage, SortitionRound};
 use super::types::{Height, Step, View};
+use crate::consensus::PriorityInfo;
 use crate::db;
 use crate::db_version;
 
 const BACKUP_KEY: &[u8] = b"tendermint-backup";
 const BACKUP_VERSION: u32 = 1;
 
+pub struct PriorityInfoProjection(pub (SortitionRound, PriorityInfo));
+
+impl PriorityInfoProjection {
+    pub fn get_view(&self) -> PriorityInfoProjectionView {
+        let (ref sortition_round, ref priority_info) = self.0;
+        PriorityInfoProjectionView((sortition_round, priority_info))
+    }
+}
+
+impl Decodable for PriorityInfoProjection {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let item_count = rlp.item_count()?;
+        if item_count != 2 {
+            Err(DecoderError::RlpIncorrectListLen {
+                got: item_count,
+                expected: 2,
+            })
+        } else {
+            Ok(Self((rlp.val_at(0)?, rlp.val_at(1)?)))
+        }
+    }
+}
+
+pub struct PriorityInfoProjectionView<'a>(pub (&'a SortitionRound, &'a PriorityInfo));
+
+impl Encodable for PriorityInfoProjectionView<'_> {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let (sortition_round, priority_info) = self.0;
+        s.begin_list(2).append(sortition_round).append(priority_info);
+    }
+}
+
 pub struct BackupView<'a> {
     pub height: &'a Height,
     pub view: &'a View,
     pub step: &'a Step,
     pub votes: &'a [ConsensusMessage],
+    pub priority_infos: &'a [PriorityInfoProjectionView<'a>],
     pub finalized_view_of_previous_block: &'a View,
     pub finalized_view_of_current_block: &'a Option<View>,
 }
 
+#[derive(RlpDecodable)]
 pub struct BackupDataV0 {
     pub height: Height,
     pub view: View,
     pub step: Step,
     pub votes: Vec<ConsensusMessage>,
-    pub proposal: Option<BlockHash>,
+    pub priority_infos: Vec<PriorityInfoProjection>,
     pub last_confirmed_view: View,
 }
 
+#[derive(RlpDecodable)]
 pub struct BackupDataV1 {
     pub height: Height,
     pub view: View,
     pub step: Step,
     pub votes: Vec<ConsensusMessage>,
-    pub proposal: Option<BlockHash>,
+    pub priority_infos: Vec<PriorityInfoProjection>,
     pub finalized_view_of_previous_block: View,
     pub finalized_view_of_current_block: Option<View>,
 }
@@ -59,12 +95,14 @@ pub fn backup(db: &dyn KeyValueDB, backup_data: BackupView) {
         view,
         step,
         votes,
+        priority_infos,
         finalized_view_of_previous_block,
         finalized_view_of_current_block,
     } = backup_data;
     let mut s = rlp::RlpStream::new();
-    s.begin_list(6);
+    s.begin_list(7);
     s.append(height).append(view).append(step).append_list(votes);
+    s.append_list(priority_infos);
     s.append(finalized_view_of_previous_block);
     s.append(finalized_view_of_current_block);
 
@@ -83,19 +121,7 @@ pub fn restore(db: &dyn KeyValueDB) -> Option<BackupDataV1> {
     if version < BACKUP_VERSION {
         migrate(db);
     }
-    load_v1(db)
-}
-
-fn find_proposal(votes: &[ConsensusMessage], height: Height, view: View) -> Option<BlockHash> {
-    votes
-        .iter()
-        .rev()
-        .map(|vote| &vote.on)
-        .find(|vote_on| {
-            vote_on.step.step == Step::Propose && vote_on.step.view == view && vote_on.step.height == height
-        })
-        .map(|vote_on| vote_on.block_hash)
-        .unwrap_or(None)
+    load_with_version::<BackupDataV1>(db)
 }
 
 fn migrate(db: &dyn KeyValueDB) {
@@ -114,7 +140,7 @@ fn migrate(db: &dyn KeyValueDB) {
 }
 
 fn migrate_from_0_to_1(db: &dyn KeyValueDB) {
-    let v0 = if let Some(v0) = load_v0(db) {
+    let v0 = if let Some(v0) = load_with_version::<BackupDataV0>(db) {
         v0
     } else {
         return
@@ -125,7 +151,7 @@ fn migrate_from_0_to_1(db: &dyn KeyValueDB) {
         view: v0.view,
         step: v0.step,
         votes: v0.votes,
-        proposal: v0.proposal,
+        priority_infos: v0.priority_infos,
         // This is not a correct behavior if step == Step::Commit.
         // In Commit state, the Tendermint module overwrote the last_confirmed_view to finalized_view_of_current_block.
         // So we can't restore finalized_view_of_previous block.
@@ -142,59 +168,15 @@ fn migrate_from_0_to_1(db: &dyn KeyValueDB) {
         view: &v1.view,
         step: &v1.step,
         votes: &v1.votes,
+        priority_infos: &v1.priority_infos.iter().map(|projection| projection.get_view()).collect::<Vec<_>>(),
         finalized_view_of_previous_block: &v1.finalized_view_of_previous_block,
         finalized_view_of_current_block: &v1.finalized_view_of_current_block,
     })
 }
 
-fn load_v0(db: &dyn KeyValueDB) -> Option<BackupDataV0> {
-    let value = db.get(db::COL_EXTRA, BACKUP_KEY).expect("Low level database error. Some issue with disk?");
-    let (height, view, step, votes, last_confirmed_view) = value.map(|bytes| {
-        let rlp = rlp::Rlp::new(&bytes);
-        (
-            rlp.val_at(0).unwrap(),
-            rlp.val_at(1).unwrap(),
-            rlp.val_at(2).unwrap(),
-            rlp.at(3).unwrap().as_list().unwrap(),
-            rlp.val_at(4).unwrap(),
-        )
-    })?;
-
-    let proposal = find_proposal(&votes, height, view);
-
-    Some(BackupDataV0 {
-        height,
-        view,
-        step,
-        votes,
-        proposal,
-        last_confirmed_view,
-    })
-}
-
-fn load_v1(db: &dyn KeyValueDB) -> Option<BackupDataV1> {
-    #[derive(RlpDecodable)]
-    struct Backup {
-        height: Height,
-        view: View,
-        step: Step,
-        votes: Vec<ConsensusMessage>,
-        finalized_view_of_previous_block: View,
-        finalized_view_of_current_block: Option<View>,
-    }
-
+fn load_with_version<T: Decodable>(db: &dyn KeyValueDB) -> Option<T> {
     let value = db.get(db::COL_EXTRA, BACKUP_KEY).expect("Low level database error. Some issue with disk?")?;
-    let backup: Backup = rlp::decode(&value).unwrap();
+    let backup: T = rlp::decode(&value).unwrap();
 
-    let proposal = find_proposal(&backup.votes, backup.height, backup.view);
-
-    Some(BackupDataV1 {
-        height: backup.height,
-        view: backup.view,
-        step: backup.step,
-        votes: backup.votes,
-        proposal,
-        finalized_view_of_previous_block: backup.finalized_view_of_previous_block,
-        finalized_view_of_current_block: backup.finalized_view_of_current_block,
-    })
+    Some(backup)
 }

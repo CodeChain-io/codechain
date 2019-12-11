@@ -32,7 +32,7 @@ use rlp::{Encodable, Rlp};
 use vrf::openssl::{CipherSuite, ECVRF};
 
 use super::super::BitSet;
-use super::backup::{backup, restore, BackupView};
+use super::backup::{backup, restore, BackupView, PriorityInfoProjection, PriorityInfoProjectionView};
 use super::message::*;
 use super::network;
 use super::params::TimeGapParams;
@@ -1013,11 +1013,18 @@ impl Worker {
     }
 
     fn backup(&self) {
+        let priority_infos = self.votes.get_all_priority_infos();
+        let priority_info_projection_views = priority_infos
+            .iter()
+            .map(|(round, priority_info)| PriorityInfoProjectionView((&round, &priority_info)))
+            .collect::<Vec<PriorityInfoProjectionView>>();
+
         backup(self.client().get_kvdb().as_ref(), BackupView {
             height: &self.height,
             view: &self.view,
             step: &self.step.to_step(),
             votes: &self.votes.get_all(),
+            priority_infos: &priority_info_projection_views,
             finalized_view_of_previous_block: &self.finalized_view_of_previous_block,
             finalized_view_of_current_block: &self.finalized_view_of_current_block,
         });
@@ -1039,6 +1046,11 @@ impl Worker {
             self.step = backup_step;
             self.height = backup.height;
             self.view = backup.view;
+            backup.priority_infos.into_iter().for_each(|projection| match projection {
+                PriorityInfoProjection((round, priority_info)) => {
+                    self.votes.collect_priority(round, priority_info);
+                }
+            });
             self.finalized_view_of_previous_block = backup.finalized_view_of_previous_block;
             self.finalized_view_of_current_block = backup.finalized_view_of_current_block;
 
