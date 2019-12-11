@@ -157,7 +157,7 @@ describe("MemPoolMinFees", async function() {
             recipient: validator0Address
         });
 
-        await Promise.all(nodeArray.map(node => node.waitBlockNumber(4)));
+        await Promise.all(nodeArray.map(node => node.waitBlockNumber(3)));
         const expectedTrues = await Promise.all(
             nodeArray.map(node =>
                 node.sdk.rpc.chain.containsTransaction(

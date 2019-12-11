@@ -52,6 +52,10 @@ describe("Dynamic Validator N -> N'", function() {
         const betty = validators[4];
         const { nodes } = withNodes(this, {
             promiseExpect,
+            overrideParams: {
+                custodyPeriod: 10,
+                releasePeriod: 30
+            },
             validators: [
                 { signer: validators[0], delegation: 4200, deposit: 100000 },
                 { signer: validators[1], delegation: 4100, deposit: 100000 },
@@ -112,6 +116,10 @@ describe("Dynamic Validator N -> N'", function() {
         const betty = validators[4];
         const { nodes } = withNodes(this, {
             promiseExpect,
+            overrideParams: {
+                custodyPeriod: 10,
+                releasePeriod: 30
+            },
             validators: [
                 { signer: validators[0], delegation: 4200, deposit: 100000 },
                 { signer: validators[1], delegation: 4100, deposit: 100000 },

@@ -52,7 +52,9 @@ describe("Shutdown test", function() {
             overrideParams: {
                 minNumOfValidators: 4,
                 maxNumOfValidators: 8,
-                delegationThreshold: 1
+                delegationThreshold: 1,
+                custodyPeriod: 10,
+                releasePeriod: 30
             },
             validators: [
                 // Observer: no self-nomination, no-deposit
@@ -149,7 +151,7 @@ describe("Shutdown test", function() {
                     .and.to.include.members(getAlphaBetas().addrs);
             }
 
-            await termWaiter.waitForTermPeriods(1, 0.5);
+            await termWaiter.waitForTermPeriods(1, 2);
             // Revival
             await Promise.all(getAlphaBetas().nodes.map(node => node.start()));
             await fullyConnect(nodes, promiseExpect);
@@ -196,7 +198,9 @@ describe("Shutdown test", function() {
             overrideParams: {
                 minNumOfValidators: 3,
                 maxNumOfValidators: 3,
-                delegationThreshold: 1
+                delegationThreshold: 1,
+                custodyPeriod: 10,
+                releasePeriod: 30
             },
             validators: [
                 // Observer: no self-nomination, no deposit
@@ -239,7 +243,7 @@ describe("Shutdown test", function() {
                     .and.to.include.members(getValidators().addrs);
             }
 
-            await termWaiter.waitForTermPeriods(2, 0.5);
+            await termWaiter.waitForTermPeriods(2, 2);
             // Revival
             await Promise.all(getValidators().nodes.map(node => node.start()));
             await fullyConnect(nodes, promiseExpect);

@@ -37,12 +37,12 @@ import CodeChain from "../helper/spawn";
 const RLP = require("rlp");
 
 describe("Staking", function() {
-    this.timeout(60_000);
+    this.timeout(80_000);
     const promiseExpect = new PromiseExpect();
     let nodes: CodeChain[];
 
     beforeEach(async function() {
-        this.timeout(60_000);
+        this.timeout(80_000);
 
         const validatorAddresses = [
             validator0Address,

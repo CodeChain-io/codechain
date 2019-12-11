@@ -97,6 +97,13 @@ describe("Dynamic Validator M -> M' (Changed the subset, M, M’ = maximum numbe
     describe("1. Jail one of the validator", async function() {
         const { nodes } = withNodes(this, {
             ...nodeParams,
+            overrideParams: {
+                maxNumOfValidators,
+                delegationThreshold: 1000,
+                minDeposit: 10000,
+                custodyPeriod: 10,
+                releasePeriod: 30
+            },
             onBeforeEnable: async bootstrappingNodes => {
                 await bootstrappingNodes[alice].clean(); // alice will be jailed!
             }

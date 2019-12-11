@@ -819,7 +819,7 @@ describe("ChangeParams", function() {
             ).rejectedWith(/nomination expiration/);
         });
 
-        it("custody period cannot be zero", async function() {
+        it.skip("custody period cannot be zero", async function() {
             const newParams = [
                 0x20, // maxExtraDataSize
                 0x0400, // maxAssetSchemeMetadataSize
@@ -882,7 +882,7 @@ describe("ChangeParams", function() {
             ).rejectedWith(/custody period/);
         });
 
-        it("release period cannot be zero", async function() {
+        it.skip("release period cannot be zero", async function() {
             const newParams = [
                 0x20, // maxExtraDataSize
                 0x0400, // maxAssetSchemeMetadataSize
@@ -945,7 +945,7 @@ describe("ChangeParams", function() {
             ).rejectedWith(/release period/);
         });
 
-        it("A release period cannot be equal to a custody period", async function() {
+        it.skip("A release period cannot be equal to a custody period", async function() {
             const newParams = [
                 0x20, // maxExtraDataSize
                 0x0400, // maxAssetSchemeMetadataSize
