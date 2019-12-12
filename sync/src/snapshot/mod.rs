@@ -24,6 +24,7 @@ use std::thread::{spawn, JoinHandle};
 use ccore::snapshot_notify::{NotifyReceiverSource, ReceiverCanceller};
 use ccore::{BlockChainClient, BlockChainTrait, BlockId, Client};
 use cmerkle::snapshot::{ChunkCompressor, Error as SnapshotError, Snapshot};
+use cstate::{StateDB, TopLevelState, TopStateView};
 use ctypes::BlockHash;
 use hashdb::{AsHashDB, HashDB};
 use primitives::H256;
@@ -66,7 +67,7 @@ impl Service {
                 };
                 {
                     let db_lock = client.state_db().read();
-                    if let Err(err) = snapshot(db_lock.as_hashdb(), block_hash, state_root, &root_dir) {
+                    if let Err(err) = snapshot(&db_lock, block_hash, state_root, &root_dir) {
                         cerror!(
                             SYNC,
                             "Snapshot request failed for block: {}, chunk_root: {}, err: {}",
@@ -94,12 +95,26 @@ impl Service {
         }
     }
 }
+fn snapshot(db: &StateDB, block_hash: BlockHash, root: H256, dir: &str) -> Result<(), SnapshotError> {
+    snapshot_trie(db.as_hashdb(), block_hash, root, dir)?;
 
-fn snapshot(db: &dyn HashDB, block_hash: BlockHash, chunk_root: H256, root_dir: &str) -> Result<(), SnapshotError> {
+    let top_state = TopLevelState::from_existing(db.clone(&root), root)?;
+    let shard_roots = {
+        let metadata = top_state.metadata()?.expect("Metadata must exist for snapshot block");
+        let shard_num = *metadata.number_of_shards();
+        (0..shard_num).map(|n| top_state.shard_root(n))
+    };
+    for sr in shard_roots {
+        snapshot_trie(db.as_hashdb(), block_hash, sr?.expect("Shard root must exist"), dir)?;
+    }
+    Ok(())
+}
+
+fn snapshot_trie(db: &dyn HashDB, block_hash: BlockHash, root: H256, root_dir: &str) -> Result<(), SnapshotError> {
     let snapshot_dir = snapshot_dir(root_dir, &block_hash);
     fs::create_dir_all(snapshot_dir)?;
 
-    for chunk in Snapshot::from_hashdb(db, chunk_root) {
+    for chunk in Snapshot::from_hashdb(db, root) {
         let chunk_path = snapshot_path(root_dir, &block_hash, &chunk.root);
         let chunk_file = fs::File::create(chunk_path)?;
         let compressor = ChunkCompressor::new(chunk_file);
