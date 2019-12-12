@@ -105,16 +105,16 @@ describe("Dynamic Validator N -> N+1", function() {
             );
             const delegateTx = stake
                 .createDelegateCCSTransaction(
-                    checkingNode.sdk,
+                    bettyNode.sdk,
                     betty.platformAddress,
                     5_000
                 )
                 .sign({
                     secret: faucetSecret,
-                    seq: await checkingNode.sdk.rpc.chain.getSeq(faucetAddress),
+                    seq: await bettyNode.sdk.rpc.chain.getSeq(faucetAddress),
                     fee: 10
                 });
-            const delegateTxHash = checkingNode.sdk.rpc.chain.sendSignedTransaction(
+            const delegateTxHash = bettyNode.sdk.rpc.chain.sendSignedTransaction(
                 delegateTx
             );
             await checkingNode.waitForTx([nominateTxHash, delegateTxHash]);
