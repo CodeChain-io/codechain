@@ -2055,7 +2055,7 @@ checksum = "e3cbf9f658cdb5000fcf6f362b8ea2ba154b9f146a61c7a20d647034c6b6561b"
 [[package]]
 name = "primitives"
 version = "0.4.0"
-source = "git+https://github.com/CodeChain-io/rust-codechain-primitives.git#3e4a7c6d1da52dce2559d09124b223925cabe7e0"
+source = "git+https://github.com/CodeChain-io/rust-codechain-primitives.git#9dbda1bcc2b8f68c00e6426754800fb806e8117a"
 dependencies = [
  "ethereum-types",
 ]
@@ -2110,12 +2110,6 @@ name = "quick-error"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
-
-[[package]]
-name = "quote"
-version = "0.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 
 [[package]]
 name = "quote"
@@ -2387,7 +2381,7 @@ dependencies = [
 [[package]]
 name = "rlp"
 version = "0.4.0"
-source = "git+https://github.com/CodeChain-io/rlp.git#3f96034fe4dd5812d9b9821ff02a9d7288ea3336"
+source = "git+https://github.com/CodeChain-io/rlp.git#339cc6aa02d91635199178e7c7be07b347054697"
 dependencies = [
  "primitives",
  "rustc-hex 1.0.0",
@@ -2395,7 +2389,8 @@ dependencies = [
 
 [[package]]
 name = "rlp_compress"
-version = "0.1.0"
+version = "0.2.0"
+source = "git+https://github.com/CodeChain-io/rlp.git#339cc6aa02d91635199178e7c7be07b347054697"
 dependencies = [
  "lazy_static 1.2.0",
  "rlp",
@@ -2403,11 +2398,12 @@ dependencies = [
 
 [[package]]
 name = "rlp_derive"
-version = "0.1.0"
+version = "0.2.0"
+source = "git+https://github.com/CodeChain-io/rlp.git#339cc6aa02d91635199178e7c7be07b347054697"
 dependencies = [
- "quote 0.3.15",
- "rlp",
- "syn 0.11.11",
+ "proc-macro2 0.4.30",
+ "quote 0.6.12",
+ "syn 0.15.34",
 ]
 
 [[package]]
@@ -2735,17 +2731,6 @@ checksum = "bb4f380125926a99e52bc279241539c018323fab05ad6368b56f93d9369ff550"
 
 [[package]]
 name = "syn"
-version = "0.11.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3b891b9015c88c576343b9b3e41c2c11a51c219ef067b264bd9c8aa9b441dad"
-dependencies = [
- "quote 0.3.15",
- "synom",
- "unicode-xid 0.0.4",
-]
-
-[[package]]
-name = "syn"
 version = "0.13.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14f9bf6292f3a61d2c716723fdb789a41bbe104168e6f496dc6497e531ea1b9b"
@@ -2775,15 +2760,6 @@ dependencies = [
  "proc-macro2 1.0.6",
  "quote 1.0.2",
  "unicode-xid 0.2.0",
-]
-
-[[package]]
-name = "synom"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a393066ed9010ebaed60b9eafa373d4b1baac186dd7e008555b0f702b51945b6"
-dependencies = [
- "unicode-xid 0.0.4",
 ]
 
 [[package]]
@@ -3217,12 +3193,6 @@ name = "unicode-width"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf3a113775714a22dcb774d8ea3655c53a32debae63a063acc00a91cc586245f"
-
-[[package]]
-name = "unicode-xid"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c1f860d7d29cf02cb2f3f359fd35991af3d30bac52c57d265a3c461074cb4dc"
 
 [[package]]
 name = "unicode-xid"
