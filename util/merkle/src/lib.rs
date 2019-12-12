@@ -68,7 +68,7 @@ pub type Result<T> = ::std::result::Result<T, TrieError>;
 /// Description of what kind of query will be made to the trie.
 pub type Query<T> = dyn Fn(&[u8]) -> T;
 
-/// A key-value datastore implemented as a database-backed modified Merkle tree.
+/// A key-value datastore implemented as a database-backed Merkle trie.
 pub trait Trie {
     /// Return the root of the trie.
     fn root(&self) -> &H256;
@@ -93,7 +93,7 @@ pub trait Trie {
     fn get_with<T>(&self, key: &[u8], query: &Query<T>) -> Result<Option<T>>;
 }
 
-/// A key-value datastore implemented as a database-backed modified Merkle tree.
+/// A key-value datastore implemented as a database-backed Merkle trie.
 pub trait TrieMut {
     /// Return the root of the trie.
     fn root(&self) -> &H256;

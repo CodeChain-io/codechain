@@ -628,6 +628,8 @@ impl Worker {
     }
 
     /// Move to the next height.
+    /// Since changing the `step` needs many things to do, this function does not change the `step` variable.
+    /// The caller should call `move_to_step` after calling this function.
     fn move_to_the_next_height(&mut self) {
         assert!(
             self.step.is_commit(),
@@ -648,6 +650,8 @@ impl Worker {
     /// Jump to the height.
     /// This function is called when new blocks are received from block sync.
     /// This function could be called at any state.
+    /// Since changing the `step` needs many things to do, this function does not change the `step` variable.
+    /// The caller should call `move_to_step` after calling this function.
     fn jump_to_height(&mut self, height: Height, finalized_view_of_previous_height: View) {
         assert!(height > self.height, "{} < {}", height, self.height);
         cinfo!(ENGINE, "Transitioning to height {}.", height);

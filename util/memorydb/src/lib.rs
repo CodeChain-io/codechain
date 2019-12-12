@@ -1,4 +1,5 @@
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
+// Copyright 2019 Kodebox, Inc.
 // This file is part of Parity.
 
 // Parity is free software: you can redistribute it and/or modify
@@ -85,9 +86,7 @@ pub struct MemoryDB {
 impl MemoryDB {
     /// Create a new instance of the memory DB.
     pub fn new() -> MemoryDB {
-        MemoryDB {
-            data: H256FastMap::default(),
-        }
+        Default::default()
     }
 
     /// Clear all data from the database.
@@ -157,34 +156,19 @@ impl MemoryDB {
     /// Consolidate all the entries of `other` into `self`.
     pub fn consolidate(&mut self, mut other: Self) {
         for (key, (value, rc)) in other.drain() {
-            match self.data.entry(key) {
-                Entry::Occupied(mut entry) => {
-                    if entry.get().1 < 0 {
-                        entry.get_mut().0 = value;
-                    }
-
-                    entry.get_mut().1 += rc;
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert((value, rc));
-                }
+            let (old_value, old_rc) = self.data.entry(key).or_default();
+            if *old_rc <= 0 {
+                *old_value = value;
+            }
+            *old_rc += rc;
+            if *old_rc < -1 {
+                *old_rc = -1;
             }
         }
     }
 }
 
 impl HashDB for MemoryDB {
-    fn get(&self, key: &H256) -> Option<DBValue> {
-        if key == &BLAKE_NULL_RLP {
-            return Some(NULL_RLP.to_vec())
-        }
-
-        match self.data.get(key) {
-            Some(&(ref d, rc)) if rc > 0 => Some(d.clone()),
-            _ => None,
-        }
-    }
-
     fn keys(&self) -> HashMap<H256, i32> {
         self.data
             .iter()
@@ -196,6 +180,17 @@ impl HashDB for MemoryDB {
                 }
             })
             .collect()
+    }
+
+    fn get(&self, key: &H256) -> Option<DBValue> {
+        if key == &BLAKE_NULL_RLP {
+            return Some(NULL_RLP.to_vec())
+        }
+
+        match self.data.get(key) {
+            Some(&(ref d, rc)) if rc > 0 => Some(d.clone()),
+            _ => None,
+        }
     }
 
     fn contains(&self, key: &H256) -> bool {
@@ -214,54 +209,20 @@ impl HashDB for MemoryDB {
             return BLAKE_NULL_RLP
         }
         let key = blake256(value);
-        match self.data.entry(key) {
-            Entry::Occupied(mut entry) => {
-                let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
-                if *rc <= 0 {
-                    *old_value = value.to_vec();
-                }
-                *rc += 1;
-            }
-            Entry::Vacant(entry) => {
-                entry.insert((value.to_vec(), 1));
-            }
+        let (old_value, rc) = self.data.entry(key).or_default();
+        if *rc <= 0 {
+            *old_value = value.to_vec();
         }
+        *rc += 1;
         key
-    }
-
-    fn emplace(&mut self, key: H256, value: DBValue) {
-        if *value == NULL_RLP {
-            return
-        }
-
-        match self.data.entry(key) {
-            Entry::Occupied(mut entry) => {
-                let &mut (ref mut old_value, ref mut rc) = entry.get_mut();
-                if *rc <= 0 {
-                    *old_value = value;
-                }
-                *rc += 1;
-            }
-            Entry::Vacant(entry) => {
-                entry.insert((value, 1));
-            }
-        }
     }
 
     fn remove(&mut self, key: &H256) {
         if key == &BLAKE_NULL_RLP {
             return
         }
-
-        match self.data.entry(*key) {
-            Entry::Occupied(mut entry) => {
-                let &mut (_, ref mut rc) = entry.get_mut();
-                *rc -= 1;
-            }
-            Entry::Vacant(entry) => {
-                entry.insert((DBValue::new(), -1));
-            }
-        }
+        let (_, rc) = self.data.entry(*key).or_default();
+        *rc -= 1;
     }
 
     fn is_empty(&self) -> bool {
@@ -308,7 +269,7 @@ mod tests {
         main.remove(&remove_key);
 
         let insert_key = other.insert(b"arf");
-        main.emplace(insert_key, b"arf".to_vec());
+        main.insert(b"arf");
 
         let negative_remove_key = other.insert(b"negative");
         other.remove(&negative_remove_key); // ref cnt: 0
@@ -321,6 +282,6 @@ mod tests {
 
         assert_eq!(overlay[&remove_key], (b"doggo".to_vec(), 0));
         assert_eq!(overlay[&insert_key], (b"arf".to_vec(), 2));
-        assert_eq!(overlay[&negative_remove_key], (b"negative".to_vec(), -2));
+        assert_eq!(overlay[&negative_remove_key], (b"negative".to_vec(), -1));
     }
 }

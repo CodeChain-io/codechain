@@ -44,7 +44,7 @@ pub trait JournalDB: HashDB {
     fn latest_era(&self) -> Option<u64>;
 
     /// Journal recent database operations as being associated with a given era and id.
-    // TODO: give the overlay to this function so journaldbs don't manage the overlays themeselves.
+    // TODO: give the overlay to this function so journaldbs don't manage the overlays themselves.
     fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: &H256) -> Result<u32, UtilError>;
 
     /// Mark a given block as canonical, indicating that competing blocks' states may be pruned out.
@@ -70,8 +70,8 @@ pub trait JournalDB: HashDB {
     /// Get backing database.
     fn backing(&self) -> &Arc<dyn kvdb::KeyValueDB>;
 
-    /// Clear internal strucutres. This should called after changes have been written
-    /// to the backing strage
+    /// Clear internal structures. This should called after changes have been written
+    /// to the backing storage.
     fn flush(&self) {}
 
     /// Consolidate all the insertions and deletions in the given memory overlay.
