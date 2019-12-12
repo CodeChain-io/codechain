@@ -65,9 +65,6 @@ impl fmt::Display for TrieError {
 
 pub type Result<T> = ::std::result::Result<T, TrieError>;
 
-/// Description of what kind of query will be made to the trie.
-pub type Query<T> = dyn Fn(&[u8]) -> T;
-
 /// A key-value datastore implemented as a database-backed Merkle trie.
 pub trait Trie {
     /// Return the root of the trie.
@@ -84,31 +81,11 @@ pub trait Trie {
     }
 
     /// What is the value of the given key in this trie?
-    fn get(&self, key: &[u8]) -> Result<Option<DBValue>> {
-        self.get_with(key, &|bytes| bytes.to_vec())
-    }
-
-    /// Search for the key with the given query parameter. See the docs of the `Query`
-    /// trait for more details.
-    fn get_with<T>(&self, key: &[u8], query: &Query<T>) -> Result<Option<T>>;
+    fn get(&self, key: &[u8]) -> Result<Option<DBValue>>;
 }
 
-/// A key-value datastore implemented as a database-backed Merkle trie.
-pub trait TrieMut {
-    /// Return the root of the trie.
-    fn root(&self) -> &H256;
-
-    /// Is the trie empty?
-    fn is_empty(&self) -> bool;
-
-    /// Does the trie contain a given key?
-    fn contains(&self, key: &[u8]) -> Result<bool> {
-        self.get(key).map(|x| x.is_some())
-    }
-
-    /// What is the value of the given key in this trie?
-    fn get(&self, key: &[u8]) -> Result<Option<DBValue>>;
-
+/// A key-value datastore implemented as a database-backed modified Merkle tree.
+pub trait TrieMut: Trie {
     /// Insert a `key`/`value` pair into the trie. An empty value is equivalent to removing
     /// `key` from the trie. Returns the old value associated with this key, if it existed.
     fn insert(&mut self, key: &[u8], value: &[u8]) -> Result<Option<DBValue>>;
@@ -122,8 +99,8 @@ pub enum TrieFactory {}
 
 impl TrieFactory {
     /// Create new immutable instance of Trie.
-    pub fn readonly<'db>(db: &'db dyn HashDB, root: &'db H256) -> Result<TrieDB<'db>> {
-        Ok(TrieDB::try_new(db, root)?)
+    pub fn readonly<'db>(db: &'db dyn HashDB, root: &'db H256) -> Result<Box<dyn Trie + 'db>> {
+        Ok(Box::new(TrieDB::try_new(db, root)?))
     }
 
     /// Create new mutable instance of Trie.
