@@ -75,6 +75,64 @@ enum State {
     Full,
 }
 
+impl State {
+    fn initial(client: &Client, snapshot_target: Option<(BlockHash, u64)>) -> Self {
+        let (hash, num) = match snapshot_target {
+            Some(target) => target,
+            None => return State::Full,
+        };
+        let header = match client.block_header(&num.into()) {
+            Some(ref h) if h.hash() == hash => h.clone(),
+            _ => return State::SnapshotHeader(hash, num),
+        };
+        if client.block_body(&hash.into()).is_none() {
+            let parent_hash = header.parent_hash();
+            let parent =
+                client.block_header(&parent_hash.into()).expect("Parent header of the snapshot header must exist");
+            return State::SnapshotBody {
+                header,
+                prev_root: parent.transactions_root(),
+            }
+        }
+
+        let state_db = client.state_db().read();
+        let state_root = header.state_root();
+        match TrieFactory::readonly(state_db.as_hashdb(), &state_root) {
+            Ok(ref trie) if trie.is_complete() => State::Full,
+            _ => State::SnapshotChunk {
+                block: hash,
+                restore: SnapshotRestore::new(state_root),
+            },
+        }
+    }
+
+    fn next(&self, client: &Client) -> Self {
+        match self {
+            State::SnapshotHeader(hash, _) => {
+                let header = client.block_header(&(*hash).into()).expect("Snapshot header is imported");
+                let parent = client
+                    .block_header(&header.parent_hash().into())
+                    .expect("Parent of the snapshot header must be imported");
+                State::SnapshotBody {
+                    header,
+                    prev_root: parent.transactions_root(),
+                }
+            }
+            State::SnapshotBody {
+                header,
+                ..
+            } => State::SnapshotChunk {
+                block: header.hash(),
+                restore: SnapshotRestore::new(header.state_root()),
+            },
+            State::SnapshotChunk {
+                ..
+            } => State::Full,
+            State::Full => State::Full,
+        }
+    }
+}
+
 pub struct Extension {
     state: State,
     requests: HashMap<NodeId, Vec<(u64, RequestMessage)>>,
@@ -100,7 +158,7 @@ impl Extension {
     ) -> Extension {
         api.set_timer(SYNC_TIMER_TOKEN, Duration::from_millis(SYNC_TIMER_INTERVAL)).expect("Timer set succeeds");
 
-        let state = Extension::initial_state(client.clone(), snapshot_target);
+        let state = State::initial(&client, snapshot_target);
         cdebug!(SYNC, "Initial state is {:?}", state);
         let mut header = client.best_header();
         let mut hollow_headers = vec![header.decode()];
@@ -138,34 +196,29 @@ impl Extension {
         }
     }
 
-    fn initial_state(client: Arc<Client>, snapshot_target: Option<(BlockHash, u64)>) -> State {
-        let (hash, num) = match snapshot_target {
-            Some(target) => target,
-            None => return State::Full,
-        };
-        let header = match client.block_header(&num.into()) {
-            Some(ref h) if h.hash() == hash => h.clone(),
-            _ => return State::SnapshotHeader(hash, num),
-        };
-        if client.block_body(&hash.into()).is_none() {
-            let parent_hash = header.parent_hash();
-            let parent =
-                client.block_header(&parent_hash.into()).expect("Parent header of the snapshot header must exist");
-            return State::SnapshotBody {
-                header,
-                prev_root: parent.transactions_root(),
+    fn move_state(&mut self) {
+        let next_state = self.state.next(&self.client);
+        cdebug!(SYNC, "Transitioning the state to {:?}", next_state);
+        if discriminant(&next_state) == discriminant(&State::Full) {
+            let best_hash = match &self.state {
+                State::SnapshotHeader(hash, _) => *hash,
+                State::SnapshotBody {
+                    header,
+                    ..
+                } => header.hash(),
+                State::SnapshotChunk {
+                    block,
+                    ..
+                } => *block,
+                State::Full => unreachable!("Trying to transition state from State::Full"),
+            };
+            self.client.force_update_best_block(&best_hash);
+            for downloader in self.header_downloaders.values_mut() {
+                downloader.update_pivot(best_hash);
             }
+            self.send_status_broadcast();
         }
-
-        let state_db = client.state_db().read();
-        let state_root = header.state_root();
-        match TrieFactory::readonly(state_db.as_hashdb(), &state_root) {
-            Ok(ref trie) if trie.is_complete() => State::Full,
-            _ => State::SnapshotChunk {
-                block: hash,
-                restore: SnapshotRestore::new(state_root),
-            },
-        }
+        self.state = next_state;
     }
 
     fn dismiss_request(&mut self, id: &NodeId, request_id: u64) {
@@ -476,8 +529,7 @@ impl NetworkExtension<Event> for Extension {
                         if let Some(root) = restore.next_to_feed() {
                             self.send_chunk_request(&block, &root);
                         } else {
-                            self.client.force_update_best_block(&block);
-                            self.transition_to_full();
+                            self.move_state();
                         }
                     }
                     State::Full => {
@@ -863,11 +915,7 @@ impl Extension {
                             return
                         }
                     }
-                    self.state = State::SnapshotBody {
-                        header: EncodedHeader::new(header.rlp_bytes().to_vec()),
-                        prev_root: *parent.transactions_root(),
-                    };
-                    cdebug!(SYNC, "Transitioning state to {:?}", self.state);
+                    self.move_state();
                 }
                 _ => cdebug!(
                     SYNC,
@@ -941,11 +989,7 @@ impl Extension {
                     };
                     match self.client.import_trusted_block(&block) {
                         Ok(_) | Err(BlockImportError::Import(ImportError::AlreadyInChain)) => {
-                            self.state = State::SnapshotChunk {
-                                block: header.hash(),
-                                restore: SnapshotRestore::new(header.state_root()),
-                            };
-                            cdebug!(SYNC, "Transitioning state to {:?}", self.state);
+                            self.move_state();
                         }
                         Err(BlockImportError::Import(ImportError::AlreadyQueued)) => {}
                         // FIXME: handle import errors
@@ -1051,19 +1095,8 @@ impl Extension {
         if let Some(root) = restore.next_to_feed() {
             self.send_chunk_request(&block, &root);
         } else {
-            self.client.force_update_best_block(&block);
-            self.transition_to_full();
+            self.move_state();
         }
-    }
-
-    fn transition_to_full(&mut self) {
-        cdebug!(SYNC, "Transitioning state to {:?}", State::Full);
-        let best_hash = self.client.best_block_header().hash();
-        for downloader in self.header_downloaders.values_mut() {
-            downloader.update_pivot(best_hash);
-        }
-        self.state = State::Full;
-        self.send_status_broadcast();
     }
 }
 
