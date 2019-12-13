@@ -18,13 +18,13 @@ use std::io::Read;
 use std::sync::Arc;
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
+use cdb::{AsHashDB, HashDB};
 use cjson;
 use ckey::Address;
 use cmerkle::{TrieFactory, TrieMut};
 use cstate::{Metadata, MetadataAddress, Shard, ShardAddress, StateDB, StateResult, StateWithCache, TopLevelState};
 use ctypes::errors::SyntaxError;
 use ctypes::{BlockHash, CommonParams, Header, ShardId};
-use hashdb::{AsHashDB, HashDB};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};

@@ -1,26 +1,30 @@
+// Copyright 2019 Kodebox, Inc.
 // Copyright 2015-2017 Parity Technologies (UK) Ltd.
-// This file is part of Parity.
-
-// Parity is free software: you can redistribute it and/or modify
+// This file is part of CodeChain.
+//
+// This is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
-// Parity is distributed in the hope that it will be useful,
+//
+// This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
 // You should have received a copy of the GNU General Public License
-// along with Parity.  If not, see <http://www.gnu.org/licenses/>.
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Disk-backed `HashDB` implementation.
 
+use std::sync::Arc;
+
 use error::UtilError;
-use hashdb::*;
 use kvdb::{self, DBTransaction};
 use primitives::{Bytes, H256};
-use std::sync::Arc;
+
+use crate::hashdb::HashDB;
+use crate::memorydb::MemoryDB;
 
 /// A `HashDB` which can manage a short-term journal potentially containing many forks of mutually
 /// exclusive actions.
@@ -75,7 +79,7 @@ pub trait JournalDB: HashDB {
     fn flush(&self) {}
 
     /// Consolidate all the insertions and deletions in the given memory overlay.
-    fn consolidate(&mut self, overlay: ::memorydb::MemoryDB);
+    fn consolidate(&mut self, overlay: MemoryDB);
 
     /// Commit all changes in a single batch
     #[cfg(test)]

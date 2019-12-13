@@ -19,6 +19,7 @@ use std::collections::HashSet;
 use std::iter::{once, FromIterator};
 
 use ccrypto::{Blake, BLAKE_NULL_RLP};
+use cdb::AsHashDB;
 use ckey::Address;
 use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::errors::{RuntimeError, UnlockFailureReason};
@@ -29,7 +30,6 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, ShardId, Tracker};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
-use hashdb::AsHashDB;
 use primitives::{Bytes, H160, H256};
 
 use crate::cache::ShardCache;

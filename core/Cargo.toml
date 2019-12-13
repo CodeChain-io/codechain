@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+codechain-db = { path = "../util/db" }
 codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
 codechain-key = { path = "../key" }
@@ -20,16 +21,13 @@ codechain-stratum = { path = "../stratum" }
 codechain-vm = { path = "../vm" }
 crossbeam-channel = "0.3"
 cuckoo = { git = "https://github.com/CodeChain-io/rust-cuckoo.git", rev = "280cab9c" }
-hashdb = { path = "../util/hashdb" }
 hyper = { git = "https://github.com/paritytech/hyper", default-features = false }
-journaldb = { path = "../util/journaldb" }
 kvdb = "0.1"
 kvdb-rocksdb = "0.1"
 kvdb-memorydb = "0.1"
 linked-hash-map = "0.5"
 log = "0.4.6"
 lru-cache = "0.1.2"
-memorydb = { path = "../util/memorydb" }
 num-rational = "0.2.1"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

@@ -297,6 +297,7 @@ name = "codechain-core"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto",
+ "codechain-db",
  "codechain-io",
  "codechain-json",
  "codechain-key",
@@ -311,16 +312,13 @@ dependencies = [
  "codechain-vm",
  "crossbeam-channel",
  "cuckoo",
- "hashdb",
  "hyper 0.10.0-a.0",
- "journaldb",
  "kvdb",
  "kvdb-memorydb",
  "kvdb-rocksdb",
  "linked-hash-map",
  "log 0.4.6",
  "lru-cache",
- "memorydb",
  "num-rational",
  "parking_lot 0.6.4",
  "primitives",
@@ -343,6 +341,19 @@ dependencies = [
  "quick-error",
  "ring",
  "rust-crypto",
+]
+
+[[package]]
+name = "codechain-db"
+version = "0.1.0"
+dependencies = [
+ "codechain-crypto",
+ "kvdb",
+ "kvdb-memorydb",
+ "plain_hasher",
+ "primitives",
+ "rlp",
+ "util-error",
 ]
 
 [[package]]
@@ -453,11 +464,9 @@ name = "codechain-merkle"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto",
- "hashdb",
- "journaldb",
+ "codechain-db",
  "kvdb",
  "kvdb-rocksdb",
- "memorydb",
  "primitives",
  "rand 0.6.1",
  "rlp",
@@ -534,13 +543,12 @@ name = "codechain-state"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto",
+ "codechain-db",
  "codechain-key",
  "codechain-logger",
  "codechain-merkle",
  "codechain-types",
  "codechain-vm",
- "hashdb",
- "journaldb",
  "kvdb",
  "kvdb-memorydb",
  "log 0.4.6",
@@ -576,6 +584,7 @@ name = "codechain-sync"
 version = "0.1.0"
 dependencies = [
  "codechain-core",
+ "codechain-db",
  "codechain-key",
  "codechain-logger",
  "codechain-merkle",
@@ -583,8 +592,6 @@ dependencies = [
  "codechain-state",
  "codechain-timer",
  "codechain-types",
- "hashdb",
- "journaldb",
  "kvdb",
  "kvdb-memorydb",
  "log 0.4.6",
@@ -1130,13 +1137,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hashdb"
-version = "0.1.1"
-dependencies = [
- "primitives",
-]
-
-[[package]]
 name = "heapsize"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1288,20 +1288,6 @@ name = "itoa"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c069bbec61e1ca5a596166e55dfe4773ff745c3d16b700013bcaff9a6df2c682"
-
-[[package]]
-name = "journaldb"
-version = "0.1.0"
-dependencies = [
- "codechain-crypto",
- "hashdb",
- "kvdb",
- "kvdb-memorydb",
- "memorydb",
- "primitives",
- "rlp",
- "util-error",
-]
 
 [[package]]
 name = "jsonrpc-core"
@@ -1592,17 +1578,6 @@ name = "memoffset"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f9dc261e2b62d7a622bf416ea3c5245cdd5d9a7fcc428c0d06804dfce1775b3"
-
-[[package]]
-name = "memorydb"
-version = "0.1.1"
-dependencies = [
- "codechain-crypto",
- "hashdb",
- "plain_hasher",
- "primitives",
- "rlp",
-]
 
 [[package]]
 name = "mime"

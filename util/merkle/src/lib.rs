@@ -15,9 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as ccrypto;
-extern crate hashdb;
-#[cfg(test)]
-extern crate memorydb;
+extern crate codechain_db as cdb;
 extern crate primitives;
 extern crate rlp;
 
@@ -27,7 +25,7 @@ extern crate trie_standardmap as standardmap;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
-use hashdb::{DBValue, HashDB};
+use cdb::{DBValue, HashDB};
 use primitives::H256;
 
 mod nibbleslice;

@@ -36,6 +36,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrder};
 use std::sync::Arc;
 
+use cdb;
 use ckey::{public_to_address, Address, Generator, KeyPair, NetworkId, PlatformAddress, Private, Public, Random};
 use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
@@ -45,7 +46,6 @@ use ctimer::{TimeoutHandler, TimerToken};
 use ctypes::transaction::{Action, Transaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracker, TxHash};
 use cvm::ChainTimeInfo;
-use journaldb;
 use kvdb::KeyValueDB;
 use kvdb_memorydb;
 use parking_lot::RwLock;
@@ -338,7 +338,7 @@ impl TestBlockChainClient {
 
 pub fn get_temp_state_db() -> StateDB {
     let db = kvdb_memorydb::create(NUM_COLUMNS.unwrap_or(0));
-    let journal_db = journaldb::new(Arc::new(db), journaldb::Algorithm::Archive, COL_STATE);
+    let journal_db = cdb::new_journaldb(Arc::new(db), cdb::Algorithm::Archive, COL_STATE);
     StateDB::new(journal_db)
 }
 

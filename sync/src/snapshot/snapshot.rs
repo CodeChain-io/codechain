@@ -23,8 +23,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ccore::COL_STATE;
+use cdb::{new_journaldb, Algorithm, JournalDB};
 use cmerkle::Node;
-use journaldb::{self, Algorithm, JournalDB};
 use kvdb::KeyValueDB;
 use primitives::H256;
 use rlp::{Rlp, RlpStream};
@@ -78,7 +78,7 @@ impl Snapshot {
         snappy.read_to_end(&mut buf)?;
 
         let rlp = Rlp::new(&buf);
-        let mut journal = journaldb::new(backing, Algorithm::Archive, COL_STATE);
+        let mut journal = new_journaldb(backing, Algorithm::Archive, COL_STATE);
         let mut inserted_keys = HashSet::new();
         let mut referenced_keys = HashSet::new();
         referenced_keys.insert(*root);
@@ -297,14 +297,12 @@ mod tests {
     use ccore::COL_STATE;
 
     use cmerkle::{Trie, TrieFactory, TrieMut};
-    use journaldb;
-    use journaldb::Algorithm;
     use kvdb_memorydb;
     use primitives::H256;
     use tempfile::tempdir;
     use trie_standardmap::{Alphabet, StandardMap, ValueMode};
 
-    use super::{ReadSnapshot, Snapshot, WriteSnapshot};
+    use super::*;
 
     #[test]
     fn init() {
@@ -313,7 +311,7 @@ mod tests {
         let mut root = H256::new();
 
         let kvdb = Arc::new(kvdb_memorydb::create(1));
-        let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
+        let mut jdb = new_journaldb(kvdb.clone(), Algorithm::Archive, COL_STATE);
         {
             let _ = TrieFactory::create(jdb.as_hashdb_mut(), &mut root);
         }
@@ -339,7 +337,7 @@ mod tests {
         let mut root = H256::new();
         {
             let kvdb = Arc::new(kvdb_memorydb::create(1));
-            let mut jdb = journaldb::new(kvdb.clone(), Algorithm::Archive, COL_STATE);
+            let mut jdb = new_journaldb(kvdb.clone(), Algorithm::Archive, COL_STATE);
             {
                 let mut t = TrieFactory::create(jdb.as_hashdb_mut(), &mut root);
                 let mut inserted_keys = HashSet::new();
@@ -364,7 +362,7 @@ mod tests {
             let kvdb = Arc::new(kvdb_memorydb::create(1));
             snapshot.read_snapshot(kvdb.clone(), &root).unwrap();
 
-            let jdb = journaldb::new(kvdb, Algorithm::Archive, COL_STATE);
+            let jdb = new_journaldb(kvdb, Algorithm::Archive, COL_STATE);
             let t = TrieFactory::readonly(jdb.as_hashdb(), &root).unwrap();
             let mut inserted_keys = HashSet::new();
             for &(ref key, ref value) in &x {

@@ -6,15 +6,13 @@ edition = "2018"
 
 [dependencies]
 rand = "0.6.1"
-hashdb = {path = "../hashdb" }
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+codechain-db = { path = "../db" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 
 [dev-dependencies]
-journaldb = { path = "../journaldb" }
 kvdb = "0.1"
 kvdb-rocksdb = "0.1"
 tempfile = "3.1.0"
 trie-standardmap = { path = "../trie-standardmap" }
-memorydb = {path = "../memorydb" }

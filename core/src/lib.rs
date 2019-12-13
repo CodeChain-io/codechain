@@ -17,6 +17,7 @@
 #![cfg_attr(feature = "nightly", feature(test))]
 
 extern crate codechain_crypto as ccrypto;
+extern crate codechain_db as cdb;
 extern crate codechain_io as cio;
 extern crate codechain_json as cjson;
 extern crate codechain_key as ckey;
@@ -32,14 +33,11 @@ extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
 extern crate crossbeam_channel;
 extern crate cuckoo;
-extern crate hashdb;
-extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;
 extern crate kvdb_rocksdb;
 extern crate linked_hash_map;
 extern crate lru_cache;
-extern crate memorydb;
 extern crate num_rational;
 extern crate primitives;
 extern crate rand;
