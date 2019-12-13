@@ -22,7 +22,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 
-use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
+use cmerkle::{self, Result as TrieResult, Trie, TrieMut};
 
 use super::CacheableItem;
 
@@ -195,7 +195,7 @@ where
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn get(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<Option<Item>> {
+    pub fn get(&self, a: &Item::Address, db: &dyn Trie) -> cmerkle::Result<Option<Item>> {
         // check local cache first
         if let Some(cached_item) = self.cache.borrow_mut().get_mut(a) {
             cached_item.touched = touched_count();
@@ -203,17 +203,17 @@ where
         }
 
         // not found in the cache, get from the DB and insert into cache
-        let maybe_item = db.get_with(a.as_ref(), &|bytes| ::rlp::decode::<Item>(bytes).unwrap())?;
+        let maybe_item = db.get(a.as_ref())?.map(|bytes| ::rlp::decode::<Item>(&bytes).unwrap());
         self.insert(a, Entry::<Item>::new_clean(maybe_item.clone()));
         Ok(maybe_item)
     }
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn get_mut(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<RefMut<Item>> {
+    pub fn get_mut(&self, a: &Item::Address, db: &dyn Trie) -> cmerkle::Result<RefMut<Item>> {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
-            let maybe_item = db.get_with(a.as_ref(), &|bytes| ::rlp::decode::<Item>(bytes).unwrap())?;
+            let maybe_item = db.get(a.as_ref())?.map(|bytes| ::rlp::decode::<Item>(&bytes).unwrap());
             self.insert(a, Entry::<Item>::new_clean(maybe_item));
         }
         self.note(a);
