@@ -33,9 +33,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use cdb::{new_journaldb, Algorithm, AsHashDB, HashDB, JournalDB};
 use ctypes::ShardId;
-use hashdb::{AsHashDB, HashDB};
-use journaldb::{self, Algorithm, JournalDB};
 use kvdb::DBTransaction;
 use kvdb_memorydb;
 use primitives::H256;
@@ -64,7 +63,7 @@ impl StateDB {
 
     pub fn new_with_memorydb() -> Self {
         let memorydb = Arc::new(kvdb_memorydb::create(0));
-        let db = journaldb::new(memorydb, Algorithm::Archive, None);
+        let db = new_journaldb(memorydb, Algorithm::Archive, None);
         Self::new(db)
     }
 

@@ -1,0 +1,19 @@
+[package]
+name = "codechain-db"
+version = "0.1.0"
+authors = ["CodeChain Team <hi@codechain.io>", "Parity Technologies <admin@parity.io>"]
+description = "Databases that CodeChain uses"
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+kvdb = "0.1"
+plain_hasher = "0.2"
+primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
+rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
+util-error = { path = "../error" }
+
+[dev-dependencies]
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+kvdb-memorydb = "0.1"

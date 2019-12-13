@@ -16,9 +16,8 @@
 
 #![feature(test)]
 
+extern crate codechain_db as cdb;
 extern crate codechain_merkle as cmerkle;
-extern crate hashdb;
-extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_rocksdb as rocksdb;
 extern crate primitives;
@@ -29,6 +28,7 @@ extern crate test;
 use std::path::Path;
 use std::sync::Arc;
 
+use cdb::{new_journaldb, Algorithm, JournalDB};
 use cmerkle::{Trie, TrieFactory, TrieMut};
 use kvdb::DBTransaction;
 use primitives::H256;
@@ -40,7 +40,7 @@ use test::Bencher;
 struct TestDB {
     _dir: TempDir,
     db: Arc<Database>,
-    journal: Box<dyn journaldb::JournalDB>,
+    journal: Box<dyn JournalDB>,
     root: H256,
 }
 
@@ -57,7 +57,7 @@ impl TestDB {
         // Create database
         let config = Self::config(path);
         let db = Arc::new(Database::open(&config, path.to_str().unwrap()).unwrap());
-        let mut journal = journaldb::new(db.clone(), journaldb::Algorithm::Archive, Some(0));
+        let mut journal = new_journaldb(db.clone(), Algorithm::Archive, Some(0));
         let mut root = H256::new();
         {
             let hashdb = journal.as_hashdb_mut();
@@ -82,7 +82,7 @@ impl TestDB {
         // Create database
         let config = Self::config(dir.path());
         let db = Arc::new(Database::open(&config, dir.path().to_str().unwrap()).unwrap());
-        let journal = journaldb::new(db.clone(), journaldb::Algorithm::Archive, Some(0));
+        let journal = new_journaldb(db.clone(), Algorithm::Archive, Some(0));
 
         Self {
             _dir: dir,

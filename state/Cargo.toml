@@ -6,13 +6,12 @@ edition = "2018"
 
 [dependencies]
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+codechain-db = { path = "../util/db" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
 codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
 codechain-vm = { path = "../vm" }
-hashdb = { path = "../util/hashdb" }
-journaldb = { path = "../util/journaldb" }
 kvdb = "0.1"
 kvdb-memorydb = "0.1"
 log = "0.4.6"

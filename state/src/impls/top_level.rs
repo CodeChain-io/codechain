@@ -39,6 +39,7 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 use ccrypto::BLAKE_NULL_RLP;
+use cdb::AsHashDB;
 use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Public, Signature};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::errors::RuntimeError;
@@ -50,7 +51,6 @@ use ctypes::util::unexpected::Mismatch;
 use ctypes::Tracker;
 use ctypes::{BlockNumber, CommonParams, ShardId, TxHash};
 use cvm::ChainTimeInfo;
-use hashdb::AsHashDB;
 use kvdb::DBTransaction;
 #[cfg(test)]
 use primitives::H160;
@@ -1012,7 +1012,7 @@ fn is_active_account(state: &dyn TopStateView, address: &Address) -> TrieResult<
 mod tests_state {
     use std::sync::Arc;
 
-    use journaldb::{self, Algorithm};
+    use cdb::{new_journaldb, Algorithm};
 
     use super::*;
     use crate::tests::helpers::{empty_top_state, get_memory_db, get_temp_state, get_temp_state_db};
@@ -1077,7 +1077,7 @@ mod tests_state {
     #[test]
     fn get_from_database() {
         let memory_db = get_memory_db();
-        let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
+        let jorunal = new_journaldb(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
         let db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
@@ -1108,7 +1108,7 @@ mod tests_state {
     #[test]
     fn get_from_cache() {
         let memory_db = get_memory_db();
-        let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
+        let jorunal = new_journaldb(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
         let mut db = StateDB::new(jorunal.boxed_clone());
         let a = Address::default();
         let root = {
@@ -1180,7 +1180,7 @@ mod tests_state {
     fn remove_from_database() {
         let a = Address::default();
         let memory_db = get_memory_db();
-        let jorunal = journaldb::new(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
+        let jorunal = new_journaldb(Arc::clone(&memory_db), Algorithm::Archive, Some(0));
         let mut db = StateDB::new(jorunal.boxed_clone());
         let root = {
             let mut state = empty_top_state(StateDB::new(jorunal));

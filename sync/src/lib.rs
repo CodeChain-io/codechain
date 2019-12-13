@@ -17,6 +17,7 @@
 extern crate parking_lot;
 
 extern crate codechain_core as ccore;
+extern crate codechain_db as cdb;
 extern crate codechain_merkle as cmerkle;
 #[macro_use]
 extern crate codechain_logger as clogger;
@@ -25,9 +26,6 @@ extern crate codechain_state as cstate;
 extern crate codechain_timer as ctimer;
 extern crate codechain_types as ctypes;
 
-#[cfg(test)]
-extern crate hashdb;
-extern crate journaldb;
 extern crate kvdb;
 #[cfg(test)]
 extern crate kvdb_memorydb;

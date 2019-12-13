@@ -1,33 +1,34 @@
-// Copyright 2015-2017 Parity Technologies (UK) Ltd.
 // Copyright 2019 Kodebox, Inc.
-// This file is part of Parity.
-
-// Parity is free software: you can redistribute it and/or modify
+// Copyright 2015-2017 Parity Technologies (UK) Ltd.
+// This file is part of CodeChain.
+//
+// This is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
-// Parity is distributed in the hope that it will be useful,
+//
+// This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
+//
 // You should have received a copy of the GNU General Public License
-// along with Parity.  If not, see <http://www.gnu.org/licenses/>.
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Disk-backed `HashDB` implementation.
 
-use super::memorydb::*;
-use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
-use error::{BaseDataError, UtilError};
-use hashdb::*;
-use kvdb::{DBTransaction, KeyValueDB};
-use primitives::{Bytes, H256};
-use rlp::{decode, encode};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::traits::JournalDB;
+use error::{BaseDataError, UtilError};
+use kvdb::{DBTransaction, KeyValueDB};
+use primitives::{Bytes, H256};
+use rlp::{decode, encode};
+
+use super::traits::JournalDB;
+use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
+use crate::hashdb::*;
+use crate::memorydb::*;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -199,7 +200,6 @@ impl JournalDB for ArchiveDB {
 mod tests {
     use super::*;
     use crypto::blake256;
-    use hashdb::HashDB;
     use {kvdb_memorydb, JournalDB};
 
     #[test]

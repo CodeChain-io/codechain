@@ -18,6 +18,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
+use cdb::{new_journaldb, Algorithm, AsHashDB};
 use cio::IoChannel;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
@@ -29,8 +30,6 @@ use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
-use hashdb::AsHashDB;
-use journaldb;
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use primitives::{Bytes, H160, H256, U256};
@@ -91,7 +90,7 @@ impl Client {
         message_channel: IoChannel<ClientIoMessage>,
         reseal_timer: TimerApi,
     ) -> Result<Arc<Client>, Error> {
-        let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, crate::db::COL_STATE);
+        let journal_db = new_journaldb(Arc::clone(&db), Algorithm::Archive, crate::db::COL_STATE);
         let mut state_db = StateDB::new(journal_db);
         if !scheme.check_genesis_root(state_db.as_hashdb()) {
             return Err(SchemeError::InvalidState.into())

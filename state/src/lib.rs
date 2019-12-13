@@ -15,14 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_crypto as ccrypto;
+extern crate codechain_db as cdb;
 extern crate codechain_merkle as cmerkle;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_key as ckey;
 extern crate codechain_types as ctypes;
 extern crate codechain_vm as cvm;
-extern crate hashdb;
-extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_memorydb;
 extern crate lru_cache;

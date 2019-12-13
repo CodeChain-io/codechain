@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ccrypto::blake256;
-use hashdb::HashDB;
+use cdb::HashDB;
 use primitives::H256;
 
 use crate::nibbleslice::NibbleSlice;
@@ -28,14 +28,12 @@ use crate::{Trie, TrieError};
 ///
 /// # Example
 /// ```
-/// extern crate hashdb;
-/// extern crate memorydb;
+/// extern crate codechain_db as cdb;
 /// extern crate primitives;
 /// extern crate codechain_merkle as cmerkle;
 ///
 /// use cmerkle::*;
-/// use hashdb::*;
-/// use memorydb::*;
+/// use cdb::*;
 /// use primitives::H256;
 ///
 /// let mut memdb = MemoryDB::new();
@@ -120,9 +118,10 @@ impl<'db> Trie for TrieDB<'db> {
 
 #[cfg(test)]
 mod tests {
+    use cdb::MemoryDB;
+
     use super::*;
     use crate::*;
-    use memorydb::*;
 
     #[test]
     fn get() {

@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 codechain-core = { path = "../core" }
+codechain-db = { path = "../util/db" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
@@ -15,7 +16,6 @@ codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
-journaldb = { path = "../util/journaldb" }
 kvdb = "0.1"
 log = "0.4.6"
 never-type = "0.1.0"
@@ -29,7 +29,6 @@ token-generator = "0.1.0"
 util-error = { path = "../util/error" }
 
 [dev-dependencies]
-hashdb = { path = "../util/hashdb" }
 kvdb-memorydb = "0.1"
 tempfile = "3.0.4"
 trie-standardmap = { path = "../util/trie-standardmap" }

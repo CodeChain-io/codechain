@@ -16,8 +16,7 @@
 use std::fmt;
 
 use ccrypto::{blake256, BLAKE_NULL_RLP};
-use hashdb::DBValue;
-use hashdb::HashDB;
+use cdb::{DBValue, HashDB};
 use primitives::H256;
 
 use crate::nibbleslice::NibbleSlice;
@@ -341,7 +340,7 @@ impl<'a> TrieMut for TrieDBMut<'a> {
 #[cfg(test)]
 mod tests {
     use ccrypto::BLAKE_NULL_RLP;
-    use memorydb::*;
+    use cdb::*;
     use standardmap::*;
 
     use crate::triehash::trie_root;
