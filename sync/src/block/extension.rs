@@ -17,7 +17,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::mem::discriminant;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -261,7 +260,7 @@ impl Extension {
     fn move_state(&mut self) {
         let next_state = self.state.next(&self.client);
         cdebug!(SYNC, "Transitioning the state to {:?}", next_state);
-        if discriminant(&next_state) == discriminant(&State::Full) {
+        if let State::Full = next_state {
             let best_hash = match &self.state {
                 State::SnapshotHeader(hash, _) => *hash,
                 State::SnapshotBody {
@@ -294,7 +293,7 @@ impl Extension {
     }
 
     fn send_status(&mut self, id: &NodeId) {
-        if discriminant(&self.state) != discriminant(&State::Full) {
+        if let State::Full = self.state {
             return
         }
 
@@ -314,7 +313,7 @@ impl Extension {
     }
 
     fn send_status_broadcast(&mut self) {
-        if discriminant(&self.state) != discriminant(&State::Full) {
+        if let State::Full = self.state {
             return
         }
 
