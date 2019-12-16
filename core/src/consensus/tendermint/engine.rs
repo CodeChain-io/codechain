@@ -184,7 +184,6 @@ impl ConsensusEngine for Tendermint {
                 self.machine.add_balance(block, &author, block_author_reward)?;
             }
             _ => {
-                stake::update_validator_weights(block.state_mut(), &author)?;
                 stake::add_intermediate_rewards(block.state_mut(), author, block_author_reward)?;
             }
         }

@@ -341,12 +341,6 @@ pub fn move_current_to_previous_intermediate_rewards(state: &mut TopLevelState) 
     rewards.save_to_state(state)
 }
 
-pub fn update_validator_weights(state: &mut TopLevelState, block_author: &Address) -> StateResult<()> {
-    let mut validators = Validators::load_from_state(state)?;
-    validators.update_weight(block_author);
-    validators.save_to_state(state)
-}
-
 fn change_params(
     state: &mut TopLevelState,
     metadata_seq: u64,
