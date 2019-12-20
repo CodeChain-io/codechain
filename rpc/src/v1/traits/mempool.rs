@@ -35,9 +35,14 @@ pub trait Mempool {
     #[rpc(name = "mempool_getErrorHint")]
     fn get_error_hint(&self, transaction_hash: TxHash) -> Result<Option<String>>;
 
-    /// Gets transactions in the current mem pool.
+    /// Gets transactions in the current mem pool. future_included is set to check whether append future queue or not.
     #[rpc(name = "mempool_getPendingTransactions")]
-    fn get_pending_transactions(&self, from: Option<u64>, to: Option<u64>) -> Result<PendingTransactions>;
+    fn get_pending_transactions(
+        &self,
+        from: Option<u64>,
+        to: Option<u64>,
+        future_included: bool,
+    ) -> Result<PendingTransactions>;
 
     /// Gets the count of transactions in the current mem pool.
     #[rpc(name = "mempool_getPendingTransactionsCount")]

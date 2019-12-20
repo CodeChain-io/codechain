@@ -240,6 +240,7 @@ pub struct LocalizedTransaction {
 impl LocalizedTransaction {
     /// Returns transaction signer.
     /// Panics if `LocalizedTransaction` is constructed using invalid `UnverifiedTransaction`.
+
     pub fn signer(&mut self) -> Public {
         if let Some(public) = self.cached_signer_public {
             return public
