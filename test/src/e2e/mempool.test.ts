@@ -16,10 +16,15 @@
 
 import { expect } from "chai";
 import { H256 } from "codechain-primitives/lib";
-import { Asset, Timelock } from "codechain-sdk/lib/core/classes";
+import {
+    Asset,
+    SignedTransaction,
+    Timelock
+} from "codechain-sdk/lib/core/classes";
 import "mocha";
 import { faucetAddress } from "../helper/constants";
 import CodeChain from "../helper/spawn";
+import json = Mocha.reporters.json;
 
 describe("Sealing test", function() {
     let node: CodeChain;
@@ -55,7 +60,6 @@ describe("Future queue", function() {
 
     it("all pending transactions must be mined", async function() {
         const seq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
-
         await node.sendPayTx({ seq: seq + 3 });
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(seq);
         await node.sendPayTx({ seq: seq + 2 });
@@ -66,6 +70,38 @@ describe("Future queue", function() {
         expect(await node.sdk.rpc.chain.getSeq(faucetAddress)).to.equal(
             seq + 4
         );
+    });
+
+    afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            node.keepLogs();
+        }
+        await node.clean();
+    });
+});
+
+describe("Get Pending Transaction", function() {
+    let node: CodeChain;
+
+    beforeEach(async function() {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    it("all transaction in both queues should be included", async function() {
+        await node.sdk.rpc.devel.stopSealing();
+
+        const sq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
+        const tx = await node.sendPayTx({ seq: sq + 3 });
+
+        const {
+            transactions: wholeTXs
+        } = await node.sdk.rpc.sendRpcRequest(
+            "mempool_getPendingTransactions",
+            [null, null, true]
+        );
+
+        expect(wholeTXs[0].sig).to.equal(tx.toJSON().sig);
     });
 
     afterEach(async function() {
