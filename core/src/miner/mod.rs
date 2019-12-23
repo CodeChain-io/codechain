@@ -147,6 +147,9 @@ pub trait MinerService: Send + Sync {
     /// Get a count of all pending transactions in the mem pool.
     fn count_pending_transactions(&self, range: Range<u64>) -> usize;
 
+    /// a count of all pending transaction including both current and future transactions.
+    fn future_included_count_pending_transactions(&self, range: Range<u64>) -> usize;
+
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction>;
 

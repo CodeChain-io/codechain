@@ -746,6 +746,11 @@ impl BlockChainClient for Client {
     fn count_pending_transactions(&self, range: Range<u64>) -> usize {
         self.importer.miner.count_pending_transactions(range)
     }
+
+    fn future_included_count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.importer.miner.future_included_count_pending_transactions(range)
+    }
+
     fn future_ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
         self.importer.miner.future_ready_transactions(range)
     }

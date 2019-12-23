@@ -34,6 +34,7 @@ use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChainTrait};
 use crate::transaction::{PendingSignedTransactions, SignedTransaction};
 use crate::Error as CoreError;
+use std::cmp::max;
 
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
 
@@ -934,6 +935,30 @@ impl MemPool {
             .count()
     }
 
+    pub fn future_included_count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.future
+            .queue
+            .iter()
+            .map(|t| {
+                self.by_hash
+                    .get(&t.hash)
+                    .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
+            .filter(|t| range.contains(&t.inserted_timestamp))
+            .count()
+            + self
+                .current
+                .queue
+                .iter()
+                .map(|t| {
+                    self.by_hash
+                        .get(&t.hash)
+                        .expect("All transactions in `current` and `future` are always included in `by_hash`")
+                })
+                .filter(|t| range.contains(&t.inserted_timestamp))
+                .count()
+    }
+
     /// Return all future transactions along with current transactions.
     pub fn get_future_pending_transactions(
         &self,
@@ -997,13 +1022,12 @@ impl MemPool {
 
 
         let mut current_signed_tx: Vec<SignedTransaction> = pending_items.iter().map(|t| t.tx.clone()).collect();
+        let current_last_timestamp = pending_items.into_iter().map(|t| t.inserted_timestamp).max();
         let mut future_signed_tx: Vec<SignedTransaction> = future_pending_items.iter().map(|t| t.tx.clone()).collect();
-        for tx in &mut future_signed_tx {
-            current_signed_tx.push(tx.clone());
-        }
+        current_signed_tx.append(&mut future_signed_tx);
         let transactions: Vec<SignedTransaction> = current_signed_tx;
-        let last_timestamp = future_pending_items.into_iter().map(|t| t.inserted_timestamp).max();
-
+        let future_last_timestamp = future_pending_items.into_iter().map(|t| t.inserted_timestamp).max();
+        let last_timestamp = max(current_last_timestamp, future_last_timestamp);
         PendingSignedTransactions {
             transactions,
             last_timestamp,
