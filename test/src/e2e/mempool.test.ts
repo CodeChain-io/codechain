@@ -88,7 +88,7 @@ describe("Get Pending Transaction", function() {
         await node.start();
     });
 
-    it("all transaction in both queues should be included", async function() {
+    it("all transactions in both queues should be included", async function() {
         await node.sdk.rpc.devel.stopSealing();
 
         const sq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
@@ -102,6 +102,34 @@ describe("Get Pending Transaction", function() {
         );
 
         expect(wholeTXs[0].sig).to.equal(tx.toJSON().sig);
+    });
+
+    afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            node.keepLogs();
+        }
+        await node.clean();
+    });
+});
+
+describe("Count pending transactions", function() {
+    let node: CodeChain;
+
+    beforeEach(async function() {
+        node = new CodeChain();
+        await node.start();
+    });
+    it("Counting transactions included future transactions", async function() {
+        await node.sdk.rpc.devel.stopSealing();
+
+        const sq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
+        const tx = await node.sendPayTx({ seq: sq + 3 });
+        const count = await node.sdk.rpc.sendRpcRequest(
+            "mempool_getPendingTransactionsCount",
+            [null, null, true]
+        );
+
+        expect(count).to.equal(1);
     });
 
     afterEach(async function() {

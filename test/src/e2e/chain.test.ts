@@ -148,10 +148,9 @@ describe("chain", function() {
         expect(reward).to.equal(0);
     });
 
-    it.only("getPendingTransactions", async function() {
-
+    it("getPendingTransactions", async function() {
         const {
-            transactions:  pending
+            transactions: pending
         } = await node.sdk.rpc.sendRpcRequest(
             "mempool_getPendingTransactions",
             [null, null, true]
