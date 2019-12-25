@@ -56,34 +56,28 @@ pub struct BlockChain {
     pending_best_proposal_block_hash: RwLock<Option<BlockHash>>,
 }
 
+fn get_or_insert_with<F: FnOnce() -> BlockHash>(db: &dyn KeyValueDB, key: &[u8], default: F) -> BlockHash {
+    match db.get(db::COL_EXTRA, key).unwrap() {
+        Some(hash) => H256::from_slice(&hash).into(),
+        None => {
+            let hash = default();
+
+            let mut batch = DBTransaction::new();
+            batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
+            db.write(batch).expect("Low level database error. Some issue with disk?");
+            hash
+        }
+    }
+}
+
 impl BlockChain {
     /// Create new instance of blockchain from given Genesis.
     pub fn new(genesis: &[u8], db: Arc<dyn KeyValueDB>) -> Self {
         let genesis_block = BlockView::new(genesis);
 
         // load best block
-        let best_block_hash = match db.get(db::COL_EXTRA, BEST_BLOCK_KEY).unwrap() {
-            Some(hash) => H256::from_slice(&hash).into(),
-            None => {
-                let hash = genesis_block.hash();
-
-                let mut batch = DBTransaction::new();
-                batch.put(db::COL_EXTRA, BEST_BLOCK_KEY, &hash);
-                db.write(batch).expect("Low level database error. Some issue with disk?");
-                hash
-            }
-        };
-
-        let best_proposal_block_hash = match db.get(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY).unwrap() {
-            Some(hash) => H256::from_slice(&hash).into(),
-            None => {
-                let hash = genesis_block.hash();
-                let mut batch = DBTransaction::new();
-                batch.put(db::COL_EXTRA, BEST_PROPOSAL_BLOCK_KEY, &hash);
-                db.write(batch).expect("Low level database error. Some issue with disk?");
-                hash
-            }
-        };
+        let best_block_hash = get_or_insert_with(&*db, BEST_BLOCK_KEY, || genesis_block.hash());
+        let best_proposal_block_hash = get_or_insert_with(&*db, BEST_PROPOSAL_BLOCK_KEY, || genesis_block.hash());
 
         Self {
             best_block_hash: RwLock::new(best_block_hash),
