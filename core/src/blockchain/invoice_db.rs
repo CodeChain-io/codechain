@@ -30,7 +30,7 @@ use crate::db::{self, CacheUpdatePolicy, Key, Readable, Writable};
 ///
 /// **Does not do input data verification.**
 pub struct InvoiceDB {
-    // tracker -> transaction hashe + error hint
+    // tracker -> transaction hash + error hint
     tracker_cache: RwLock<HashMap<Tracker, TrackerInvoices>>,
     // transaction hash -> error hint
     hash_cache: RwLock<HashMap<TxHash, Option<String>>>,
@@ -129,7 +129,7 @@ impl Decodable for TrackerInvoices {
             })
         }
         let mut vec = Vec::with_capacity(item_count / 2);
-        // TODO: Optimzie the below code
+        // TODO: Optimize the below code
         for i in 0..(item_count / 2) {
             vec.push((rlp.val_at(i * 2)?, rlp.val_at(i * 2 + 1)?));
         }
