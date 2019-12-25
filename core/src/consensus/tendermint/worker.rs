@@ -1558,7 +1558,7 @@ impl Worker {
     }
 
     fn vote_on_header_for_proposal(&mut self, header: &Header) -> Result<ConsensusMessage, Error> {
-        assert!(header.number() == self.height);
+        assert_eq!(header.number(), self.height);
 
         let parent_hash = header.parent_hash();
         let prev_proposer_idx = self.block_proposer_idx(*parent_hash).expect("Prev block must exists");
