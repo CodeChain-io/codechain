@@ -32,6 +32,7 @@ use super::mem_pool_types::{
 };
 use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChainTrait};
+use crate::miner::fetch_account_creator;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction};
 use crate::Error as CoreError;
 
@@ -424,14 +425,7 @@ impl MemPool {
 
     // Recover MemPool state from db stored data
     pub fn recover_from_db<C: AccountData + BlockChainTrait>(&mut self, client: &C) {
-        let fetch_account = |p: &Public| -> AccountDetails {
-            let address = public_to_address(p);
-            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
-            AccountDetails {
-                seq: client.latest_seq(&a),
-                balance: client.latest_balance(&a),
-            }
-        };
+        let fetch_account = fetch_account_creator(client);
         let by_hash = backup::recover_to_data(self.db.as_ref());
 
         let recover_block_number = client.chain_info().best_block_number;
@@ -1428,14 +1422,7 @@ pub mod test {
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
         let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone(), Default::default());
 
-        let fetch_account = |p: &Public| -> AccountDetails {
-            let address = public_to_address(p);
-            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
-            AccountDetails {
-                seq: test_client.latest_seq(&a),
-                balance: test_client.latest_balance(&a),
-            }
-        };
+        let fetch_account = fetch_account_creator(&test_client);
         let no_timelock = TxTimelock {
             block: None,
             timestamp: None,
@@ -1558,14 +1545,7 @@ pub mod test {
         txs: Vec<SignedTransaction>,
         origin: TxOrigin,
     ) -> Vec<Result<TransactionImportResult, Error>> {
-        let fetch_account = |p: &Public| -> AccountDetails {
-            let address = public_to_address(p);
-            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
-            AccountDetails {
-                seq: test_client.latest_seq(&a),
-                balance: test_client.latest_balance(&a),
-            }
-        };
+        let fetch_account = fetch_account_creator(test_client);
         let no_timelock = TxTimelock {
             block: None,
             timestamp: None,
@@ -1700,14 +1680,7 @@ pub mod test {
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
         let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db, Default::default());
 
-        let fetch_account = |p: &Public| -> AccountDetails {
-            let address = public_to_address(p);
-            let a = test_client.latest_regular_key_owner(&address).unwrap_or(address);
-            AccountDetails {
-                seq: test_client.latest_seq(&a),
-                balance: test_client.latest_balance(&a),
-            }
-        };
+        let fetch_account = fetch_account_creator(&test_client);
         let keypair = Random.generate().unwrap();
         let address = public_to_address(keypair.public());
         println!("! {}", address);
