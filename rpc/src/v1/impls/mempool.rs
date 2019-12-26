@@ -27,7 +27,6 @@ use jsonrpc_core::Result;
 use super::super::errors;
 use super::super::traits::Mempool;
 use super::super::types::PendingTransactions;
-
 pub struct MempoolClient<C> {
     client: Arc<C>,
 }
@@ -72,13 +71,32 @@ where
         Ok(self.client.error_hint(&transaction_hash))
     }
 
-    fn get_pending_transactions(&self, from: Option<u64>, to: Option<u64>) -> Result<PendingTransactions> {
-        Ok(self.client.ready_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)).into())
+    fn get_pending_transactions(
+        &self,
+        from: Option<u64>,
+        to: Option<u64>,
+        future_included: Option<bool>,
+    ) -> Result<PendingTransactions> {
+        if future_included.unwrap_or(false) {
+            Ok(self.client.future_ready_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)).into())
+        } else {
+            Ok(self.client.ready_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)).into())
+        }
     }
 
-    fn get_pending_transactions_count(&self, from: Option<u64>, to: Option<u64>) -> Result<usize> {
-        Ok(self.client.count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
+    fn get_pending_transactions_count(
+        &self,
+        from: Option<u64>,
+        to: Option<u64>,
+        future_included: Option<bool>,
+    ) -> Result<usize> {
+        if future_included.unwrap_or(false) {
+            Ok(self.client.future_included_count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
+        } else {
+            Ok(self.client.count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
+        }
     }
+
 
     fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>> {
         let malicious_user_vec = self.client.get_malicious_users();

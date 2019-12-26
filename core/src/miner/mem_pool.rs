@@ -35,6 +35,7 @@ use crate::client::{AccountData, BlockChainTrait};
 use crate::miner::fetch_account_creator;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction};
 use crate::Error as CoreError;
+use std::cmp::max;
 
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
 
@@ -928,7 +929,104 @@ impl MemPool {
             .count()
     }
 
-    /// Return all future transactions.
+    pub fn future_included_count_pending_transactions(&self, range: Range<u64>) -> usize {
+        self.future
+            .queue
+            .iter()
+            .map(|t| {
+                self.by_hash
+                    .get(&t.hash)
+                    .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
+            .filter(|t| range.contains(&t.inserted_timestamp))
+            .count()
+            + self
+                .current
+                .queue
+                .iter()
+                .map(|t| {
+                    self.by_hash
+                        .get(&t.hash)
+                        .expect("All transactions in `current` and `future` are always included in `by_hash`")
+                })
+                .filter(|t| range.contains(&t.inserted_timestamp))
+                .count()
+    }
+
+    /// Return all future transactions along with current transactions.
+    pub fn get_future_pending_transactions(
+        &self,
+        size_limit: usize,
+        current_timestamp: Option<u64>,
+        range: Range<u64>,
+    ) -> PendingSignedTransactions {
+        let mut current_size: usize = 0;
+        let future_pending_items: Vec<_> = self
+            .future
+            .queue
+            .iter()
+            .map(|t| {
+                self.by_hash
+                    .get(&t.hash)
+                    .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
+            .filter(|t| {
+                if let Some(expiration) = t.expiration() {
+                    if let Some(timestamp) = current_timestamp {
+                        return expiration >= timestamp
+                    }
+                }
+                true
+            })
+            .filter(|t| range.contains(&t.inserted_timestamp))
+            .take_while(|t| {
+                let encoded_byte_array = rlp::encode(&t.tx);
+                let size_in_byte = encoded_byte_array.len();
+                current_size += size_in_byte;
+                current_size < size_limit
+            })
+            .collect();
+
+
+        let pending_items: Vec<_> = self
+            .current
+            .queue
+            .iter()
+            .map(|t| {
+                self.by_hash
+                    .get(&t.hash)
+                    .expect("All transactions in `current` and `future` are always included in `by_hash`")
+            })
+            .filter(|t| {
+                if let Some(expiration) = t.expiration() {
+                    if let Some(timestamp) = current_timestamp {
+                        return expiration >= timestamp
+                    }
+                }
+                true
+            })
+            .filter(|t| range.contains(&t.inserted_timestamp))
+            .take_while(|t| {
+                let encoded_byte_array = rlp::encode(&t.tx);
+                let size_in_byte = encoded_byte_array.len();
+                current_size += size_in_byte;
+                current_size < size_limit
+            })
+            .collect();
+
+
+        let mut current_signed_tx: Vec<SignedTransaction> = pending_items.iter().map(|t| t.tx.clone()).collect();
+        let current_last_timestamp = pending_items.into_iter().map(|t| t.inserted_timestamp).max();
+        let mut future_signed_tx: Vec<SignedTransaction> = future_pending_items.iter().map(|t| t.tx.clone()).collect();
+        current_signed_tx.append(&mut future_signed_tx);
+        let transactions: Vec<SignedTransaction> = current_signed_tx;
+        let future_last_timestamp = future_pending_items.into_iter().map(|t| t.inserted_timestamp).max();
+        let last_timestamp = max(current_last_timestamp, future_last_timestamp);
+        PendingSignedTransactions {
+            transactions,
+            last_timestamp,
+        }
+    }
     pub fn future_transactions(&self) -> Vec<SignedTransaction> {
         self.future
             .queue

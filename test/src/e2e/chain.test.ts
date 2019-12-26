@@ -149,8 +149,13 @@ describe("chain", function() {
     });
 
     it("getPendingTransactions", async function() {
-        const pending = await node.sdk.rpc.chain.getPendingTransactions();
-        expect(pending.transactions.length).to.equal(0);
+        const {
+            transactions: pending
+        } = await node.sdk.rpc.sendRpcRequest(
+            "mempool_getPendingTransactions",
+            [null, null, true]
+        );
+        expect(pending.length).to.equal(0);
     });
 
     it("sendPayTx, getTransaction", async function() {
