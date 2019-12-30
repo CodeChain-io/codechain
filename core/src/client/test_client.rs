@@ -538,6 +538,10 @@ impl BlockChainClient for TestBlockChainClient {
         self.miner.import_external_transactions(self, transactions);
     }
 
+    fn delete_all_pending_transactions(&self) {
+        self.miner.delete_all_pending_transactions();
+    }
+
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
         self.miner.ready_transactions(range)
     }

@@ -35,6 +35,10 @@ pub trait Mempool {
     #[rpc(name = "mempool_getErrorHint")]
     fn get_error_hint(&self, transaction_hash: TxHash) -> Result<Option<String>>;
 
+    /// Deletes all pending transactions in the mem pool, including future queue.
+    #[rpc(name = "mempool_deleteAllPendingTransactions")]
+    fn delete_all_pending_transactions(&self) -> Result<()>;
+
     /// Gets transactions in the current mem pool. future_included is set to check whether append future queue or not.
     #[rpc(name = "mempool_getPendingTransactions")]
     fn get_pending_transactions(
