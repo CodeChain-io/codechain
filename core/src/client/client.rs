@@ -739,6 +739,10 @@ impl BlockChainClient for Client {
         }
     }
 
+    fn delete_all_pending_transactions(&self) {
+        self.importer.miner.delete_all_pending_transactions();
+    }
+
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
         self.importer.miner.ready_transactions(range)
     }
