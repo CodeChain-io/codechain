@@ -16,3 +16,10 @@
 
 # macOS
 .DS_store
+
+keystore.db
+
+# CodeChain uses node & yarn for tests
+node_modules/
+yarn-error.log
+yarn.lock
