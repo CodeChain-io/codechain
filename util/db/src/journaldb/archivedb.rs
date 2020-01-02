@@ -20,7 +20,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use error::{BaseDataError, UtilError};
 use kvdb::{DBTransaction, KeyValueDB};
 use primitives::{Bytes, H256};
 use rlp::{decode, encode};
@@ -29,6 +28,7 @@ use super::traits::JournalDB;
 use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
 use crate::hashdb::*;
 use crate::memorydb::*;
+use crate::DatabaseError;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -120,7 +120,7 @@ impl JournalDB for ArchiveDB {
         self.latest_era
     }
 
-    fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, _id: &H256) -> Result<u32, UtilError> {
+    fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, _id: &H256) -> Result<u32, DatabaseError> {
         let mut inserts = 0usize;
         let mut deletes = 0usize;
 
@@ -148,12 +148,12 @@ impl JournalDB for ArchiveDB {
         _batch: &mut DBTransaction,
         _end_era: u64,
         _canon_id: &H256,
-    ) -> Result<u32, UtilError> {
+    ) -> Result<u32, DatabaseError> {
         // keep everything! it's an archive, after all.
         Ok(0)
     }
 
-    fn inject(&mut self, batch: &mut DBTransaction) -> Result<u32, UtilError> {
+    fn inject(&mut self, batch: &mut DBTransaction) -> Result<u32, DatabaseError> {
         let mut inserts = 0usize;
         let mut deletes = 0usize;
 
@@ -161,7 +161,7 @@ impl JournalDB for ArchiveDB {
             let (key, (value, rc)) = i;
             if rc > 0 {
                 if self.backing.get(self.column, &key)?.is_some() {
-                    return Err(BaseDataError::AlreadyExists(key).into())
+                    return Err(DatabaseError::AlreadyExists(key))
                 }
                 batch.put(self.column, &key, &value);
                 inserts += 1;
@@ -169,7 +169,7 @@ impl JournalDB for ArchiveDB {
             if rc < 0 {
                 assert_eq!(-1, rc);
                 if self.backing.get(self.column, &key)?.is_none() {
-                    return Err(BaseDataError::NegativelyReferencedHash(key).into())
+                    return Err(DatabaseError::NegativelyReferencedHash(key))
                 }
                 batch.delete(self.column, &key);
                 deletes += 1;

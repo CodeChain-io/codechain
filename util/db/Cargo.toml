@@ -12,7 +12,6 @@ kvdb = "0.1"
 plain_hasher = "0.2"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
-util-error = { path = "../error" }
 
 [dev-dependencies]
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }

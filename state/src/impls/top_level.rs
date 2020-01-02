@@ -39,7 +39,7 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 use ccrypto::BLAKE_NULL_RLP;
-use cdb::AsHashDB;
+use cdb::{AsHashDB, DatabaseError};
 use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Public, Signature};
 use cmerkle::{Result as TrieResult, TrieError, TrieFactory};
 use ctypes::errors::RuntimeError;
@@ -55,7 +55,6 @@ use kvdb::DBTransaction;
 #[cfg(test)]
 use primitives::H160;
 use primitives::{Bytes, H256};
-use util_error::UtilError;
 
 use crate::cache::{ShardCache, TopCache};
 use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
@@ -678,7 +677,7 @@ impl TopLevelState {
         self.top_cache.action_data_mut(key, &trie)
     }
 
-    pub fn journal_under(&self, batch: &mut DBTransaction, now: u64) -> Result<u32, UtilError> {
+    pub fn journal_under(&self, batch: &mut DBTransaction, now: u64) -> Result<u32, DatabaseError> {
         self.db.borrow_mut().journal_under(batch, now, self.root)
     }
 

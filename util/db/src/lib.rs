@@ -17,17 +17,18 @@
 extern crate kvdb;
 extern crate primitives;
 extern crate rlp;
-extern crate util_error as error;
 
 #[cfg(test)]
 extern crate codechain_crypto as crypto;
 #[cfg(test)]
 extern crate kvdb_memorydb;
 
+mod error;
 mod hashdb;
 mod journaldb;
 mod memorydb;
 
+pub use crate::error::DatabaseError;
 pub use crate::hashdb::{AsHashDB, DBValue, HashDB};
 pub use crate::journaldb::{new_journaldb, Algorithm, JournalDB};
 pub use crate::memorydb::MemoryDB;

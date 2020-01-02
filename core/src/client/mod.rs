@@ -18,7 +18,6 @@ mod chain_notify;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod client;
 mod config;
-mod error;
 mod importer;
 mod test_client;
 
@@ -26,12 +25,12 @@ pub use self::chain_notify::ChainNotify;
 
 pub use self::client::Client;
 pub use self::config::ClientConfig;
-pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
 use std::ops::Range;
 use std::sync::Arc;
 
+use cdb::DatabaseError;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
@@ -267,7 +266,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
 }
 
 /// Result of import block operation.
-pub type ImportResult = Result<BlockHash, Error>;
+pub type ImportResult = Result<BlockHash, DatabaseError>;
 
 /// Provides methods used for sealing new state
 pub trait BlockProducer {
@@ -336,7 +335,7 @@ pub trait ExecuteClient: ChainTimeInfo {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, Error>;
+    ) -> Result<Vec<String>, DatabaseError>;
 }
 
 pub trait StateInfo {

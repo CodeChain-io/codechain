@@ -21,4 +21,3 @@ primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 rlp_derive = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2" }
 rustc-hex = "1.0"
-util-error = { path = "../util/error" }
