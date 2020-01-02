@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 codechain-core = { path = "../core" }
-codechain-db = { path = "../util/db" }
+codechain-db = { git = "https://github.com/CodeChain-io/rust-codechain-db.git", version = "0.1" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-merkle = { path = "../util/merkle" }
@@ -26,7 +26,6 @@ rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 snap = "0.2"
 time = "0.1"
 token-generator = "0.1.0"
-util-error = { path = "../util/error" }
 
 [dev-dependencies]
 kvdb-memorydb = "0.1"

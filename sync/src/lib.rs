@@ -42,7 +42,6 @@ extern crate time;
 extern crate token_generator;
 #[cfg(test)]
 extern crate trie_standardmap;
-extern crate util_error;
 
 mod block;
 mod snapshot;

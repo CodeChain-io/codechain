@@ -50,7 +50,6 @@ extern crate rlp_derive;
 extern crate parking_lot;
 extern crate snap;
 extern crate table;
-extern crate util_error;
 
 #[macro_use]
 extern crate log;

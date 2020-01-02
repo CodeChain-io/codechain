@@ -18,7 +18,7 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
-use cdb::{new_journaldb, Algorithm, AsHashDB};
+use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError};
 use cio::IoChannel;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cmerkle::Result as TrieResult;
@@ -38,8 +38,8 @@ use rlp::Rlp;
 use super::importer::Importer;
 use super::{
     AccountData, AssetClient, BlockChainClient, BlockChainInfo, BlockChainTrait, BlockProducer, ChainNotify,
-    ClientConfig, DatabaseClient, EngineClient, EngineInfo, Error as ClientError, ExecuteClient, ImportBlock,
-    ImportResult, MiningBlockChainClient, Shard, StateInfo, StateOrBlock, TextClient,
+    ClientConfig, DatabaseClient, EngineClient, EngineInfo, ExecuteClient, ImportBlock, ImportResult,
+    MiningBlockChainClient, Shard, StateInfo, StateOrBlock, TextClient,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
@@ -440,7 +440,7 @@ impl ExecuteClient for Client {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, ClientError> {
+    ) -> Result<Vec<String>, DatabaseError> {
         let mut results = Vec::with_capacity(indices.len());
         for (i, index) in indices.iter().enumerate() {
             let input = inputs.get(*index);
