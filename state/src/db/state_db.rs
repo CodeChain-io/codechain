@@ -33,12 +33,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use cdb::{new_journaldb, Algorithm, AsHashDB, HashDB, JournalDB};
+use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError, HashDB, JournalDB};
 use ctypes::ShardId;
 use kvdb::DBTransaction;
 use kvdb_memorydb;
 use primitives::H256;
-use util_error::UtilError;
 
 use crate::cache::{GlobalCache, ShardCache, TopCache};
 use crate::impls::TopLevelState;
@@ -68,7 +67,7 @@ impl StateDB {
     }
 
     /// Journal all recent operations under the given era and ID.
-    pub fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: H256) -> Result<u32, UtilError> {
+    pub fn journal_under(&mut self, batch: &mut DBTransaction, now: u64, id: H256) -> Result<u32, DatabaseError> {
         let records = self.db.journal_under(batch, now, &id)?;
         self.current_hash = Some(id);
         Ok(records)
@@ -81,7 +80,7 @@ impl StateDB {
         batch: &mut DBTransaction,
         end_era: u64,
         canon_id: &H256,
-    ) -> Result<u32, UtilError> {
+    ) -> Result<u32, DatabaseError> {
         self.db.mark_canonical(batch, end_era, canon_id)
     }
 

@@ -17,15 +17,15 @@
 use std::fmt::{Display, Formatter, Result as FormatResult};
 use std::io::{Error as FileError, ErrorKind};
 
+use cdb::DatabaseError;
 use primitives::H256;
-use util_error::UtilError;
 
 #[derive(Debug)]
 pub enum Error {
     NodeNotFound(H256),
     SyncError(String),
     FileError(ErrorKind),
-    UtilError(UtilError),
+    Database(DatabaseError),
 }
 
 impl From<FileError> for Error {
@@ -34,9 +34,9 @@ impl From<FileError> for Error {
     }
 }
 
-impl From<UtilError> for Error {
-    fn from(error: UtilError) -> Self {
-        Error::UtilError(error)
+impl From<DatabaseError> for Error {
+    fn from(error: DatabaseError) -> Self {
+        Error::Database(error)
     }
 }
 
@@ -46,7 +46,7 @@ impl Display for Error {
             Error::NodeNotFound(key) => write!(f, "State node not found: {:x}", key),
             Error::SyncError(reason) => write!(f, "Sync error: {}", reason),
             Error::FileError(kind) => write!(f, "File system error: {:?}", kind),
-            Error::UtilError(error) => write!(f, "Util error: {:?}", error),
+            Error::Database(error) => write!(f, "DB error: {}", error),
         }
     }
 }

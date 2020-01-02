@@ -329,7 +329,6 @@ dependencies = [
  "rlp_derive",
  "snap",
  "table",
- "util-error",
 ]
 
 [[package]]
@@ -353,7 +352,6 @@ dependencies = [
  "plain_hasher",
  "primitives",
  "rlp",
- "util-error",
 ]
 
 [[package]]
@@ -558,7 +556,6 @@ dependencies = [
  "rlp",
  "rlp_derive",
  "rustc-hex 1.0.0",
- "util-error",
 ]
 
 [[package]]
@@ -605,7 +602,6 @@ dependencies = [
  "time",
  "token-generator",
  "trie-standardmap",
- "util-error",
 ]
 
 [[package]]
@@ -3216,16 +3212,6 @@ dependencies = [
  "idna 0.2.0",
  "matches",
  "percent-encoding 2.1.0",
-]
-
-[[package]]
-name = "util-error"
-version = "0.1.0"
-dependencies = [
- "error-chain",
- "primitives",
- "rlp",
- "rustc-hex 1.0.0",
 ]
 
 [[package]]
