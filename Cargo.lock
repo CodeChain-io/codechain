@@ -3099,7 +3099,8 @@ dependencies = [
 
 [[package]]
 name = "trie-standardmap"
-version = "0.1.0"
+version = "0.2.0"
+source = "git+https://github.com/CodeChain-io/trie-standardmap.git#f2cdd24acb7f00e44566d86af6102c5d16b02921"
 dependencies = [
  "codechain-crypto",
  "primitives",

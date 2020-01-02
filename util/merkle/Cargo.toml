@@ -15,4 +15,4 @@ rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 kvdb = "0.1"
 kvdb-rocksdb = "0.1"
 tempfile = "3.1.0"
-trie-standardmap = { path = "../trie-standardmap" }
+trie-standardmap = { git = "https://github.com/CodeChain-io/trie-standardmap.git", version = "0.2" }

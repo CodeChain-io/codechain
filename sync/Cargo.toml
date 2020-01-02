@@ -31,4 +31,4 @@ util-error = { path = "../util/error" }
 [dev-dependencies]
 kvdb-memorydb = "0.1"
 tempfile = "3.0.4"
-trie-standardmap = { path = "../util/trie-standardmap" }
+trie-standardmap = { git = "https://github.com/CodeChain-io/trie-standardmap.git", version = "0.2" }
