@@ -16,9 +16,9 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use cmerkle::skewed_merkle_root;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::{BlockNumber, CommonParams, Header};
+use merkle_trie::skewed_merkle_root;
 use primitives::{Bytes, H256};
 use rlp::Rlp;
 

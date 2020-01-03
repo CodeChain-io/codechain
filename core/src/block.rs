@@ -18,13 +18,13 @@ use std::collections::HashSet;
 
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
-use cmerkle::skewed_merkle_root;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
 use ctypes::errors::HistoryError;
 use ctypes::header::{Header, Seal};
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, CommonParams, TxHash};
 use cvm::ChainTimeInfo;
+use merkle_trie::skewed_merkle_root;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 

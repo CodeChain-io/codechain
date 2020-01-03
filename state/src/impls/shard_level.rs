@@ -21,7 +21,6 @@ use std::iter::{once, FromIterator};
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use cdb::AsHashDB;
 use ckey::Address;
-use cmerkle::{self, TrieError, TrieFactory};
 use ctypes::errors::{RuntimeError, UnlockFailureReason};
 use ctypes::transaction::{
     AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, AssetWrapCCCOutput, PartialHashing,
@@ -30,6 +29,7 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 use ctypes::{BlockNumber, ShardId, Tracker};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
+use merkle_trie::{Result as TrieResult, TrieError, TrieFactory};
 use primitives::{Bytes, H160, H256};
 
 use crate::cache::ShardCache;
@@ -65,7 +65,7 @@ impl<'db> ShardLevelState<'db> {
         db: &'db mut RefCell<StateDB>,
         root: H256,
         cache: &'db mut ShardCache,
-    ) -> cmerkle::Result<Self> {
+    ) -> TrieResult<Self> {
         if !db.borrow().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root))
         }
@@ -85,7 +85,7 @@ impl<'db> ShardLevelState<'db> {
         db: &RefCell<StateDB>,
         root: H256,
         cache: ShardCache,
-    ) -> cmerkle::Result<ReadOnlyShardLevelState> {
+    ) -> TrieResult<ReadOnlyShardLevelState> {
         if !db.borrow().as_hashdb().contains(&root) {
             return Err(TrieError::InvalidStateRoot(root))
         }
@@ -661,13 +661,13 @@ impl<'db> ShardLevelState<'db> {
         registrar: Option<Address>,
         allowed_script_hashes: Vec<H160>,
         pool: Vec<Asset>,
-    ) -> cmerkle::Result<AssetScheme> {
+    ) -> TrieResult<AssetScheme> {
         self.cache.create_asset_scheme(&AssetSchemeAddress::new(asset_type, shard_id), || {
             AssetScheme::new_with_pool(metadata, supply, approver, registrar, allowed_script_hashes, pool)
         })
     }
 
-    fn get_asset_scheme_mut(&self, shard_id: ShardId, asset_type: H160) -> cmerkle::Result<RefMut<AssetScheme>> {
+    fn get_asset_scheme_mut(&self, shard_id: ShardId, asset_type: H160) -> TrieResult<RefMut<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset_scheme_mut(&AssetSchemeAddress::new(asset_type, shard_id), &trie)
@@ -681,7 +681,7 @@ impl<'db> ShardLevelState<'db> {
         lock_script_hash: H160,
         parameters: Vec<Bytes>,
         quantity: u64,
-    ) -> cmerkle::Result<OwnedAsset> {
+    ) -> TrieResult<OwnedAsset> {
         self.cache.create_asset(&OwnedAssetAddress::new(tracker, index, self.shard_id), || {
             OwnedAsset::new(asset_type, lock_script_hash, parameters, quantity)
         })
@@ -694,7 +694,7 @@ impl<'db> ShardLevelState<'db> {
 }
 
 impl<'db> ShardStateView for ShardLevelState<'db> {
-    fn asset_scheme(&self, asset_type: H160) -> cmerkle::Result<Option<AssetScheme>> {
+    fn asset_scheme(&self, asset_type: H160) -> TrieResult<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, self.shard_id), &trie)
@@ -777,7 +777,7 @@ pub struct ReadOnlyShardLevelState<'db> {
 }
 
 impl<'db> ShardStateView for ReadOnlyShardLevelState<'db> {
-    fn asset_scheme(&self, asset_type: H160) -> cmerkle::Result<Option<AssetScheme>> {
+    fn asset_scheme(&self, asset_type: H160) -> TrieResult<Option<AssetScheme>> {
         let db = self.db.borrow();
         let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
         self.cache.asset_scheme(&AssetSchemeAddress::new(asset_type, self.shard_id), &trie)

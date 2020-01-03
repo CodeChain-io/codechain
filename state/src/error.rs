@@ -16,8 +16,8 @@
 
 use std::fmt;
 
-use cmerkle::TrieError;
 use ctypes::errors::RuntimeError;
+use merkle_trie::TrieError;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Error {
