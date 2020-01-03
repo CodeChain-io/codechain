@@ -15,10 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ckey::{public_to_address, Address, Public, Signature};
-use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
 use ctypes::{BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
+use merkle_trie::Result as TrieResult;
 use primitives::{Bytes, H160, H256};
 
 use crate::{

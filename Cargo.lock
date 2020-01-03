@@ -261,7 +261,6 @@ dependencies = [
  "codechain-key",
  "codechain-keystore",
  "codechain-logger",
- "codechain-merkle",
  "codechain-network",
  "codechain-rpc",
  "codechain-state",
@@ -303,7 +302,6 @@ dependencies = [
  "codechain-key",
  "codechain-keystore",
  "codechain-logger",
- "codechain-merkle",
  "codechain-network",
  "codechain-state",
  "codechain-stratum",
@@ -319,6 +317,7 @@ dependencies = [
  "linked-hash-map",
  "log 0.4.6",
  "lru-cache",
+ "merkle-trie",
  "num-rational",
  "parking_lot 0.6.4",
  "primitives",
@@ -458,21 +457,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "codechain-merkle"
-version = "0.1.0"
-dependencies = [
- "codechain-crypto",
- "codechain-db",
- "kvdb",
- "kvdb-rocksdb",
- "primitives",
- "rand 0.6.1",
- "rlp",
- "tempfile",
- "trie-standardmap",
-]
-
-[[package]]
 name = "codechain-network"
 version = "0.1.0"
 dependencies = [
@@ -544,13 +528,13 @@ dependencies = [
  "codechain-db",
  "codechain-key",
  "codechain-logger",
- "codechain-merkle",
  "codechain-types",
  "codechain-vm",
  "kvdb",
  "kvdb-memorydb",
  "log 0.4.6",
  "lru-cache",
+ "merkle-trie",
  "parking_lot 0.6.4",
  "primitives",
  "rlp",
@@ -584,7 +568,6 @@ dependencies = [
  "codechain-db",
  "codechain-key",
  "codechain-logger",
- "codechain-merkle",
  "codechain-network",
  "codechain-state",
  "codechain-timer",
@@ -592,6 +575,7 @@ dependencies = [
  "kvdb",
  "kvdb-memorydb",
  "log 0.4.6",
+ "merkle-trie",
  "never-type",
  "parking_lot 0.6.4",
  "primitives",
@@ -1574,6 +1558,20 @@ name = "memoffset"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f9dc261e2b62d7a622bf416ea3c5245cdd5d9a7fcc428c0d06804dfce1775b3"
+
+[[package]]
+name = "merkle-trie"
+version = "0.1.0"
+source = "git+https://github.com/CodeChain-io/rust-merkle-trie.git#a6e067fe71c232d9024952ee63905ab4f5c4407d"
+dependencies = [
+ "codechain-crypto",
+ "codechain-db",
+ "primitives",
+ "rand 0.6.1",
+ "rlp",
+ "rlp_derive",
+ "snap",
+]
 
 [[package]]
 name = "mime"

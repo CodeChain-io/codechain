@@ -32,13 +32,13 @@ use std::sync::Arc;
 
 use cdb::DatabaseError;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
-use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
+use merkle_trie::Result as TrieResult;
 use primitives::{Bytes, H160, H256, U256};
 
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};

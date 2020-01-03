@@ -16,7 +16,7 @@
 
 use std::cell::RefMut;
 
-use cmerkle::{Result as TrieResult, Trie, TrieMut};
+use merkle_trie::{Result as TrieResult, Trie, TrieMut};
 
 use super::WriteBack;
 use crate::{AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress};

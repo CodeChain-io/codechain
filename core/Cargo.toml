@@ -12,7 +12,6 @@ codechain-json = { path = "../json" }
 codechain-key = { path = "../key" }
 codechain-keystore = { path="../keystore" }
 codechain-logger = { path = "../util/logger" }
-codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-timer = { path = "../util/timer" }
@@ -28,6 +27,7 @@ kvdb-memorydb = "0.1"
 linked-hash-map = "0.5"
 log = "0.4.6"
 lru-cache = "0.1.2"
+merkle-trie = { git = "https://github.com/CodeChain-io/rust-merkle-trie.git", version = "0.1" }
 num-rational = "0.2.1"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

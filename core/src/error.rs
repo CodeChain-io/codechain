@@ -20,11 +20,11 @@ use std::io::Error as StdIoError;
 use cdb::DatabaseError;
 use cio::IoError;
 use ckey::{Address, Error as KeyError};
-use cmerkle::TrieError;
 use cstate::StateError;
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
 use ctypes::{BlockHash, BlockNumber};
+use merkle_trie::TrieError;
 use primitives::{H256, U256};
 use rlp::DecoderError;
 

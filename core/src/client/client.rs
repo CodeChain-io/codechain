@@ -21,7 +21,6 @@ use std::sync::{Arc, Weak};
 use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError};
 use cio::IoChannel;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
-use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
     ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
@@ -31,6 +30,7 @@ use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use kvdb::{DBTransaction, KeyValueDB};
+use merkle_trie::Result as TrieResult;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use primitives::{Bytes, H160, H256, U256};
 use rlp::Rlp;
