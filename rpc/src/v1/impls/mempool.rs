@@ -71,6 +71,11 @@ where
         Ok(self.client.error_hint(&transaction_hash))
     }
 
+    fn delete_all_pending_transactions(&self) -> Result<()> {
+        self.client.delete_all_pending_transactions();
+        Ok(())
+    }
+
     fn get_pending_transactions(
         &self,
         from: Option<u64>,

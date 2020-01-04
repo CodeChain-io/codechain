@@ -374,6 +374,11 @@ impl Miner {
         results
     }
 
+    pub fn delete_all_pending_transactions(&self) {
+        let mut mem_pool = self.mem_pool.write();
+        mem_pool.remove_all();
+    }
+
     fn calculate_timelock<C: BlockChainTrait>(&self, tx: &SignedTransaction, client: &C) -> Result<TxTimelock, Error> {
         let mut max_block = None;
         let mut max_timestamp = None;

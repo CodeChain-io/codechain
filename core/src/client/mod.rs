@@ -221,6 +221,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     /// Queue transactions for importing.
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId);
 
+    /// Delete all pending transactions.
+    fn delete_all_pending_transactions(&self);
+
     /// List all transactions that are allowed into the next block.
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions;
 

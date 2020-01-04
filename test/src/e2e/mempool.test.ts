@@ -80,7 +80,46 @@ describe("Future queue", function() {
     });
 });
 
-describe("Get Pending Transaction", function() {
+describe("Delete All Pending Transactions", function() {
+    let node: CodeChain;
+
+    beforeEach(async function() {
+        node = new CodeChain();
+        await node.start();
+    });
+
+    it("all pending transactions should be deleted", async function() {
+        await node.sdk.rpc.devel.stopSealing();
+
+        const sq = (await node.sdk.rpc.chain.getSeq(faucetAddress)) || 0;
+
+        await node.sendPayTx({ seq: sq + 0 }); // will be in the current queue
+        await node.sendPayTx({ seq: sq + 3 }); // will be in the future queue
+
+        await node.sdk.rpc.sendRpcRequest(
+            "mempool_deleteAllPendingTransactions",
+            []
+        );
+
+        const {
+            transactions: wholeTXs
+        } = await node.sdk.rpc.sendRpcRequest(
+            "mempool_getPendingTransactions",
+            [null, null, true]
+        );
+
+        expect(wholeTXs.length).to.equal(0);
+    });
+
+    afterEach(async function() {
+        if (this.currentTest!.state === "failed") {
+            node.keepLogs();
+        }
+        await node.clean();
+    });
+});
+
+describe("Get Pending Transactions", function() {
     let node: CodeChain;
 
     beforeEach(async function() {

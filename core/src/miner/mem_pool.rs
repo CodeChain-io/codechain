@@ -379,6 +379,12 @@ impl MemPool {
             .collect()
     }
 
+    /// Clear both current and future.
+    pub fn remove_all(&mut self) {
+        self.current.clear();
+        self.future.clear();
+    }
+
     /// Checks the current seq for all transactions' senders in the pool and removes the old transactions.
     /// Expired transactions are removed by this function only.
     pub fn remove_old<F>(&mut self, fetch_account: &F, current_block_number: PoolingInstant, current_timestamp: u64)
