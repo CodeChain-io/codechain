@@ -16,8 +16,12 @@
 
 mod params;
 
-use std::cmp::{max, min};
-
+use self::params::CuckooParams;
+use super::ConsensusEngine;
+use crate::block::ExecutedBlock;
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::{EngineError, EngineType};
+use crate::error::{BlockError, Error};
 use ccrypto::blake256;
 use ckey::Address;
 use ctypes::util::unexpected::{Mismatch, OutOfBounds};
@@ -25,13 +29,7 @@ use ctypes::{CommonParams, Header};
 use cuckoo::Cuckoo as CuckooVerifier;
 use primitives::U256;
 use rlp::Rlp;
-
-use self::params::CuckooParams;
-use super::ConsensusEngine;
-use crate::block::ExecutedBlock;
-use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::{EngineError, EngineType};
-use crate::error::{BlockError, Error};
+use std::cmp::{max, min};
 
 /// Cuckoo specific seal
 #[derive(Debug, PartialEq)]

@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::VecDeque;
-use std::{fmt, io, net};
-
+use crate::SocketAddr;
 use mio::deprecated::{TryRead, TryWrite};
 use mio::event::Evented;
 use mio::net::TcpStream;
 use mio::{Poll, PollOpt, Ready, Token};
 use rlp::{Decodable, DecoderError, Encodable, Rlp};
-
-use crate::SocketAddr;
+use std::collections::VecDeque;
+use std::{fmt, io, net};
 
 #[derive(Debug)]
 pub enum Error {

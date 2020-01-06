@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::net::IpAddr;
-use std::sync::Arc;
-
-use cidr::IpCidr;
-use parking_lot::RwLock;
-
 use super::control::Control;
 use super::filter::{Filter, FilterEntry};
+use cidr::IpCidr;
+use parking_lot::RwLock;
+use std::net::IpAddr;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct Filters {

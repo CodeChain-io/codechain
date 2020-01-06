@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::str::FromStr;
-use std::{fmt, ptr};
-
 use crypto::Password as CryptoPassword;
 use never_type::Never;
+use std::str::FromStr;
+use std::{fmt, ptr};
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Password(String);

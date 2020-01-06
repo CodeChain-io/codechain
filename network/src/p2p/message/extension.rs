@@ -14,16 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use super::ENCRYPTED_ID;
+use super::UNENCRYPTED_ID;
+use crate::session::Session;
 use ccrypto::aes::{self, SymmetricCipherError};
 use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::session::Session;
-
-use super::ENCRYPTED_ID;
-use super::UNENCRYPTED_ID;
+use std::sync::Arc;
 
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]

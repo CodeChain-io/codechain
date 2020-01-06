@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::net::IpAddr;
-
 use ccrypto::Blake;
-
 use cnetwork::{IntoSocketAddr, NodeId, SocketAddr};
 use primitives::H128;
+use std::net::IpAddr;
 
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct KademliaId {

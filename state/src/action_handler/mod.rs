@@ -16,17 +16,15 @@
 
 mod hit;
 
-use std::convert::From;
-
+use super::TopStateView;
+use crate::{StateResult, TopLevelState};
 use ccrypto::blake256;
 use ckey::{Address, Public};
 use ctypes::errors::SyntaxError;
 use ctypes::{CommonParams, Header};
 use primitives::H256;
 use rlp::{Encodable, RlpStream};
-
-use super::TopStateView;
-use crate::{StateResult, TopLevelState};
+use std::convert::From;
 
 pub trait ActionHandler: Send + Sync {
     fn name(&self) -> &'static str;

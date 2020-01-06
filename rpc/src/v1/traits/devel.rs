@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::net::SocketAddr;
-
+use super::super::types::TPSTestSetting;
 use cjson::bytes::Bytes;
 use jsonrpc_core::Result;
 use primitives::H256;
-
-use super::super::types::TPSTestSetting;
+use std::net::SocketAddr;
 
 #[rpc(server)]
 pub trait Devel {

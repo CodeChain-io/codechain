@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Duration;
-
-use cjson;
-use ckey::{Address, PlatformAddress};
-
 use super::super::validator_set::DynamicValidator;
 use super::types::View;
 use super::Step;
+use cjson;
+use ckey::{Address, PlatformAddress};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 
 /// `Tendermint` params.
 pub struct TendermintParams {

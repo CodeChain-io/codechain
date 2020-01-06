@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::NodeId;
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::cmp::Ordering;
 use std::convert::{From, Into};
 use std::fmt;
 use std::net::{self, AddrParseError, IpAddr, Ipv4Addr};
 use std::ops::Deref;
 use std::str::FromStr;
-
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::NodeId;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SocketAddr {

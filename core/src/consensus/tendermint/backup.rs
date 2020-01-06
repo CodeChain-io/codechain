@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::BlockHash;
-use kvdb::{DBTransaction, KeyValueDB};
-
 use super::message::ConsensusMessage;
 use super::types::{Height, Step, View};
 use crate::db;
 use crate::db_version;
+use ctypes::BlockHash;
+use kvdb::{DBTransaction, KeyValueDB};
 
 const BACKUP_KEY: &[u8] = b"tendermint-backup";
 const BACKUP_VERSION: u32 = 1;

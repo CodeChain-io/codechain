@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-use std::io::Error as StdIoError;
-
+use crate::account_provider::Error as AccountProviderError;
+use crate::consensus::EngineError;
 use cdb::DatabaseError;
 use cio::IoError;
 use ckey::{Address, Error as KeyError};
@@ -27,9 +26,8 @@ use ctypes::{BlockHash, BlockNumber};
 use merkle_trie::TrieError;
 use primitives::{H256, U256};
 use rlp::DecoderError;
-
-use crate::account_provider::Error as AccountProviderError;
-use crate::consensus::EngineError;
+use std::fmt;
+use std::io::Error as StdIoError;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 /// Import to the block queue result

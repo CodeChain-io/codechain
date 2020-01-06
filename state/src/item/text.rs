@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::CacheableItem;
 use ccrypto::Blake;
 use ckey::Address;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::CacheableItem;
 
 /// Text stored in the DB. Used by Store/Remove Action.
 #[derive(Clone, Debug, Default, PartialEq)]

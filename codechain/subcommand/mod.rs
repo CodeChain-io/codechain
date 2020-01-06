@@ -17,10 +17,9 @@
 mod account_command;
 mod convert_command;
 
-use clap::ArgMatches;
-
 use self::account_command::run_account_command;
 use self::convert_command::run_convert_command;
+use clap::ArgMatches;
 
 pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
     let subcommand = matches.subcommand.as_ref().unwrap();

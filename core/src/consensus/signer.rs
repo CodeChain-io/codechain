@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 use ckey::{Address, Public, SchnorrSignature, Signature};
 use ckeystore::DecryptedAccount;
 use primitives::H256;
-
-use crate::account_provider::{AccountProvider, Error as AccountProviderError};
+use std::sync::Arc;
 
 /// Everything that an Engine needs to sign messages.
 pub struct EngineSigner {

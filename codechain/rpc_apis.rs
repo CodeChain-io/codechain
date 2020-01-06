@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
 use ccore::{AccountProvider, Client, Miner};
 use clogger::SLOGGER;
 use cnetwork::{EventSender, NetworkControl};
 use crpc::{MetaIoHandler, Middleware, Params, Value};
 use csync::BlockSyncEvent;
+use std::sync::Arc;
 
 pub struct ApiDependencies {
     pub client: Arc<Client>,

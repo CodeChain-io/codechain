@@ -16,7 +16,6 @@
 
 use cjson::bytes::{Bytes, WithoutPrefix};
 use ckey::PlatformAddress;
-
 use jsonrpc_core::Result;
 
 #[rpc(server)]

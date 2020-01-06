@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp;
-
+use super::super::BitSet;
+use super::{Height, Step, View};
 use ccrypto::blake256;
 use ckey::{verify_schnorr, Error as KeyError, Public, SchnorrSignature};
 use ctypes::BlockHash;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use snap;
-
-use super::super::BitSet;
-use super::{Height, Step, View};
+use std::cmp;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]

@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-
 use ctypes::errors::RuntimeError;
 use merkle_trie::TrieError;
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Error {

@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::ActionWithTracker;
 use ccore::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use cjson::uint::Uint;
 use ckey::{NetworkId, Signature};
 use ctypes::{BlockHash, TxHash};
-
-use super::ActionWithTracker;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

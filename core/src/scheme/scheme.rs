@@ -14,9 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io::Read;
-use std::sync::Arc;
-
+use super::pod_state::{PodAccounts, PodShards};
+use super::seal::Generic as GenericSeal;
+use super::Genesis;
+use crate::blockchain::HeaderProvider;
+use crate::codechain_machine::CodeChainMachine;
+use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
+use crate::error::{Error, SchemeError};
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use cdb::{AsHashDB, HashDB};
 use cjson;
@@ -28,15 +32,8 @@ use merkle_trie::{TrieFactory, TrieMut};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::{Encodable, Rlp, RlpStream};
-
-use crate::blockchain::HeaderProvider;
-
-use super::pod_state::{PodAccounts, PodShards};
-use super::seal::Generic as GenericSeal;
-use super::Genesis;
-use crate::codechain_machine::CodeChainMachine;
-use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
-use crate::error::{Error, SchemeError};
+use std::io::Read;
+use std::sync::Arc;
 
 /// Parameters for a block chain; includes both those intrinsic to the design of the
 /// chain and those to be interpreted by the active chain engine.

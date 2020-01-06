@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::{Add, AddAssign, Deref, Sub, SubAssign};
-
-use ctypes::{BlockHash, BlockNumber, Tracker, TxHash};
-use primitives::{H256, H264, U256};
-
 use crate::db::Key;
 use crate::types::TransactionId;
+use ctypes::{BlockHash, BlockNumber, Tracker, TxHash};
+use primitives::{H256, H264, U256};
+use std::ops::{Add, AddAssign, Deref, Sub, SubAssign};
 
 /// Represents index of extra data in database
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]

@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ctypes::{CommonParams, Header};
-
 use super::{verification, Verifier};
 use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
+use ctypes::{CommonParams, Header};
 
 /// A no-op verifier -- this will verify everything it's given immediately.
 pub struct NoopVerifier;

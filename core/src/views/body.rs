@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::TransactionView;
+use crate::transaction::{LocalizedTransaction, UnverifiedTransaction};
 use ccrypto::blake256;
 use ctypes::{BlockHash, BlockNumber, TxHash};
 use rlp::Rlp;
-
-use super::TransactionView;
-use crate::transaction::{LocalizedTransaction, UnverifiedTransaction};
 
 /// View onto block rlp.
 pub struct BodyView<'a> {

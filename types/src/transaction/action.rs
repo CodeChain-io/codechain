@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
-
+use crate::errors::SyntaxError;
+use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, ShardTransaction};
+use crate::{CommonParams, ShardId, Tracker, TxHash};
 use ccrypto::Blake;
 use ckey::{recover, Address, NetworkId, Public, Signature};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::errors::SyntaxError;
-use crate::transaction::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, ShardTransaction};
-use crate::{CommonParams, ShardId, Tracker, TxHash};
+use std::collections::{HashMap, HashSet};
 
 const PAY: u8 = 0x02;
 const SET_REGULAR_KEY: u8 = 0x03;

@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use super::super::errors;
+use super::super::traits::Miner;
+use super::super::types::Work;
 use ccore::block::IsBlock;
 use ccore::{EngineClient, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
 use cjson::bytes::Bytes;
 use ctypes::BlockHash;
 use jsonrpc_core::Result;
-
-use super::super::errors;
-use super::super::traits::Miner;
-use super::super::types::Work;
+use std::sync::Arc;
 
 pub struct MinerClient<C, M> {
     client: Arc<C>,

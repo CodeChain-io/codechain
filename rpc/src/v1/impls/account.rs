@@ -14,20 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryInto;
-use std::sync::Arc;
-use std::time::Duration;
-
+use super::super::errors::{self, account_provider};
+use super::super::traits::Account;
+use super::super::types::{SendTransactionResult, UnsignedTransaction};
 use ccore::{AccountData, AccountProvider, EngineInfo, MinerService, MiningBlockChainClient, TermInfo};
 use ckey::{Password, PlatformAddress, Signature};
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Result;
 use parking_lot::Mutex;
 use primitives::H256;
-
-use super::super::errors::{self, account_provider};
-use super::super::traits::Account;
-use super::super::types::{SendTransactionResult, UnsignedTransaction};
+use std::convert::TryInto;
+use std::sync::Arc;
+use std::time::Duration;
 
 pub struct AccountClient<C, M> {
     account_provider: Arc<AccountProvider>,

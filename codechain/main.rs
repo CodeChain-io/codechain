@@ -63,10 +63,9 @@ mod rpc_apis;
 mod run_node;
 mod subcommand;
 
-use app_dirs::AppInfo;
-
 use crate::run_node::run_node;
 use crate::subcommand::run_subcommand;
+use app_dirs::AppInfo;
 
 pub const APP_INFO: AppInfo = AppInfo {
     name: "codechain",

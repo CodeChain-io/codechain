@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::{Arc, Weak};
-
-use ckey::{public_to_address, Address, Public};
-use ctypes::util::unexpected::OutOfBounds;
-use ctypes::BlockHash;
-use parking_lot::RwLock;
-
 use super::{RoundRobinValidator, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::consensus::bit_set::BitSet;
 use crate::consensus::stake::{get_validators, Validator};
 use crate::consensus::EngineError;
+use ckey::{public_to_address, Address, Public};
+use ctypes::util::unexpected::OutOfBounds;
+use ctypes::BlockHash;
+use parking_lot::RwLock;
+use std::sync::{Arc, Weak};
 
 /// Validator set containing a known set of public keys.
 pub struct DynamicValidator {

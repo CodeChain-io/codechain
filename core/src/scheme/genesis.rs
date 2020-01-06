@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::seal::Seal;
 use ccrypto::BLAKE_NULL_RLP;
 use cjson;
 use ckey::{Address, PlatformAddress};
 use ctypes::BlockHash;
 use primitives::{Bytes, H256, U256};
-
-use super::seal::Seal;
 
 /// Genesis components.
 pub struct Genesis {

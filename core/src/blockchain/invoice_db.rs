@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
-
+use crate::db::{self, CacheUpdatePolicy, Key, Readable, Writable};
 use ctypes::{Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use primitives::{H256, H264};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::db::{self, CacheUpdatePolicy, Key, Readable, Writable};
+use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 
 /// Structure providing fast access to blockchain data.
 ///

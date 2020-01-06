@@ -14,27 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Range;
-use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
-use std::sync::{Arc, Weak};
-
-use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError};
-use cio::IoChannel;
-use ckey::{Address, NetworkId, PlatformAddress, Public};
-use cnetwork::NodeId;
-use cstate::{
-    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
-};
-use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
-use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
-use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
-use kvdb::{DBTransaction, KeyValueDB};
-use merkle_trie::Result as TrieResult;
-use parking_lot::{Mutex, RwLock, RwLockReadGuard};
-use primitives::{Bytes, H160, H256, U256};
-use rlp::Rlp;
-
 use super::importer::Importer;
 use super::{
     AccountData, AssetClient, BlockChainClient, BlockChainInfo, BlockChainTrait, BlockProducer, ChainNotify,
@@ -52,6 +31,25 @@ use crate::scheme::Scheme;
 use crate::service::ClientIoMessage;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError};
+use cio::IoChannel;
+use ckey::{Address, NetworkId, PlatformAddress, Public};
+use cnetwork::NodeId;
+use cstate::{
+    ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
+};
+use ctimer::{TimeoutHandler, TimerApi, TimerScheduleError, TimerToken};
+use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
+use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
+use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
+use kvdb::{DBTransaction, KeyValueDB};
+use merkle_trie::Result as TrieResult;
+use parking_lot::{Mutex, RwLock, RwLockReadGuard};
+use primitives::{Bytes, H160, H256, U256};
+use rlp::Rlp;
+use std::ops::Range;
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+use std::sync::{Arc, Weak};
 
 const MAX_MEM_POOL_SIZE: usize = 4096;
 

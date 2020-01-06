@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::scheme::Scheme;
+use crate::transaction::SignedTransaction;
 use cstate::StateDB;
 use ctypes::{BlockHash, Header};
 use primitives::{Bytes, U256};
 use rlp::{self, RlpStream};
-
-use crate::scheme::Scheme;
-use crate::transaction::SignedTransaction;
 
 pub fn create_test_block(header: &Header) -> Bytes {
     let mut rlp = RlpStream::new_list(2);
