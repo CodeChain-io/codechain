@@ -24,15 +24,43 @@ mod response;
 pub use self::request::RequestMessage;
 pub use self::response::ResponseMessage;
 
-const MESSAGE_ID_STATUS: u8 = 0x01;
-const MESSAGE_ID_GET_HEADERS: u8 = 0x02;
-const MESSAGE_ID_HEADERS: u8 = 0x03;
-const MESSAGE_ID_GET_BODIES: u8 = 0x04;
-const MESSAGE_ID_BODIES: u8 = 0x05;
-const MESSAGE_ID_GET_STATE_HEAD: u8 = 0x06;
-const MESSAGE_ID_STATE_HEAD: u8 = 0x07;
-const MESSAGE_ID_GET_STATE_CHUNK: u8 = 0x08;
-const MESSAGE_ID_STATE_CHUNK: u8 = 0x09;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+pub enum MessageID {
+    Status = 0x01,
+    GetHeaders = 0x02,
+    Headers = 0x03,
+    GetBodies = 0x04,
+    Bodies = 0x05,
+    GetStateHead = 0x06,
+    StateHead = 0x07,
+    GetStateChunk = 0x08,
+    StateChunk = 0x09,
+}
+
+impl Encodable for MessageID {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for MessageID {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            0x01u8 => Ok(MessageID::Status),
+            0x02 => Ok(MessageID::GetHeaders),
+            0x03 => Ok(MessageID::Headers),
+            0x04 => Ok(MessageID::GetBodies),
+            0x05 => Ok(MessageID::Bodies),
+            0x06 => Ok(MessageID::GetStateHead),
+            0x07 => Ok(MessageID::StateHead),
+            0x08 => Ok(MessageID::GetStateChunk),
+            0x09 => Ok(MessageID::StateChunk),
+            _ => Err(DecoderError::Custom("Unexpected MessageID Value")),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
@@ -54,8 +82,7 @@ impl Encodable for Message {
                 genesis_hash,
             } => {
                 s.begin_list(2);
-                s.append(&MESSAGE_ID_STATUS);
-
+                s.append(&MessageID::Status);
                 s.begin_list(3);
                 s.append(total_score);
                 s.append(best_hash);
@@ -80,48 +107,54 @@ impl Encodable for Message {
 impl Decodable for Message {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let id = rlp.val_at(0)?;
-        if id == MESSAGE_ID_STATUS {
-            let item_count = rlp.item_count()?;
-            if item_count != 2 {
-                return Err(DecoderError::RlpIncorrectListLen {
-                    got: item_count,
-                    expected: 2,
-                })
-            }
-            let message = rlp.at(1)?;
-
-            let message_item_count = message.item_count()?;
-            if message_item_count != 3 {
-                return Err(DecoderError::RlpIncorrectListLen {
-                    expected: 3,
-                    got: message_item_count,
-                })
-            }
-
-            Ok(Message::Status {
-                total_score: message.val_at(0)?,
-                best_hash: message.val_at(1)?,
-                genesis_hash: message.val_at(2)?,
-            })
-        } else {
-            let item_count = rlp.item_count()?;
-            if item_count != 3 {
-                return Err(DecoderError::RlpIncorrectListLen {
-                    got: item_count,
-                    expected: 3,
-                })
-            }
-            let request_id = rlp.val_at(1)?;
-            let message = rlp.at(2)?;
-            match id {
-                MESSAGE_ID_GET_HEADERS
-                | MESSAGE_ID_GET_BODIES
-                | MESSAGE_ID_GET_STATE_HEAD
-                | MESSAGE_ID_GET_STATE_CHUNK => Ok(Message::Request(request_id, RequestMessage::decode(id, &message)?)),
-                MESSAGE_ID_HEADERS | MESSAGE_ID_BODIES | MESSAGE_ID_STATE_HEAD | MESSAGE_ID_STATE_CHUNK => {
-                    Ok(Message::Response(request_id, ResponseMessage::decode(id, &message)?))
+        match id {
+            MessageID::Status => {
+                let item_count = rlp.item_count()?;
+                if item_count != 2 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 2,
+                    })
                 }
-                _ => Err(DecoderError::Custom("Unknown message id detected")),
+                let message = rlp.at(1)?;
+
+                let message_item_count = message.item_count()?;
+                if message_item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        expected: 3,
+                        got: message_item_count,
+                    })
+                }
+
+                Ok(Message::Status {
+                    total_score: message.val_at(0)?,
+                    best_hash: message.val_at(1)?,
+                    genesis_hash: message.val_at(2)?,
+                })
+            }
+            _ => {
+                let item_count = rlp.item_count()?;
+                if item_count != 3 {
+                    return Err(DecoderError::RlpIncorrectListLen {
+                        got: item_count,
+                        expected: 3,
+                    })
+                }
+                let request_id = rlp.val_at(1)?;
+                let message = rlp.at(2)?;
+                match id {
+                    MessageID::GetHeaders
+                    | MessageID::GetBodies
+                    | MessageID::GetStateHead
+                    | MessageID::GetStateChunk => {
+                        Ok(Message::Request(request_id, RequestMessage::decode(id, &message)?))
+                    }
+
+                    MessageID::Headers | MessageID::Bodies | MessageID::StateHead | MessageID::StateChunk => {
+                        Ok(Message::Response(request_id, ResponseMessage::decode(id, &message)?))
+                    }
+                    _ => Err(DecoderError::Custom("Unknown message id detected")),
+                }
             }
         }
     }

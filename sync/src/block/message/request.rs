@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::MessageID;
 use ctypes::{BlockHash, BlockNumber};
 use primitives::H256;
 use rlp::{DecoderError, Encodable, Rlp, RlpStream};
@@ -63,22 +64,22 @@ impl Encodable for RequestMessage {
 }
 
 impl RequestMessage {
-    pub fn message_id(&self) -> u8 {
+    pub fn message_id(&self) -> MessageID {
         match self {
             RequestMessage::Headers {
                 ..
-            } => super::MESSAGE_ID_GET_HEADERS,
-            RequestMessage::Bodies(..) => super::MESSAGE_ID_GET_BODIES,
-            RequestMessage::StateHead(..) => super::MESSAGE_ID_GET_STATE_HEAD,
+            } => MessageID::GetHeaders,
+            RequestMessage::Bodies(..) => MessageID::GetBodies,
+            RequestMessage::StateHead(..) => MessageID::GetStateHead,
             RequestMessage::StateChunk {
                 ..
-            } => super::MESSAGE_ID_GET_STATE_CHUNK,
+            } => MessageID::GetStateChunk,
         }
     }
 
-    pub fn decode(id: u8, rlp: &Rlp) -> Result<Self, DecoderError> {
+    pub fn decode(id: MessageID, rlp: &Rlp) -> Result<Self, DecoderError> {
         let message = match id {
-            super::MESSAGE_ID_GET_HEADERS => {
+            MessageID::GetHeaders => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -91,8 +92,8 @@ impl RequestMessage {
                     max_count: rlp.val_at(1)?,
                 }
             }
-            super::MESSAGE_ID_GET_BODIES => RequestMessage::Bodies(rlp.as_list()?),
-            super::MESSAGE_ID_GET_STATE_HEAD => {
+            MessageID::GetBodies => RequestMessage::Bodies(rlp.as_list()?),
+            MessageID::GetStateHead => {
                 let item_count = rlp.item_count()?;
                 if item_count != 1 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -102,7 +103,7 @@ impl RequestMessage {
                 }
                 RequestMessage::StateHead(rlp.val_at(0)?)
             }
-            super::MESSAGE_ID_GET_STATE_CHUNK => {
+            MessageID::GetStateChunk => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -127,9 +128,9 @@ mod tests {
     use primitives::H256;
     use rlp::{Encodable, Rlp};
 
-    use super::RequestMessage;
+    use super::{MessageID, RequestMessage};
 
-    pub fn decode_bytes(id: u8, bytes: &[u8]) -> RequestMessage {
+    pub fn decode_bytes(id: MessageID, bytes: &[u8]) -> RequestMessage {
         let rlp = Rlp::new(bytes);
         RequestMessage::decode(id, &rlp).unwrap()
     }
