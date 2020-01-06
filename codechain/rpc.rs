@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io;
-use std::net::SocketAddr;
-
 use crate::rpc_apis;
 use crpc::{
     jsonrpc_core, start_http, start_ipc, start_ws, HttpServer, IpcServer, MetaIoHandler, Middleware, WsError, WsServer,
 };
 use futures::future::Either;
 use serde_json;
+use std::io;
+use std::net::SocketAddr;
 
 #[derive(Debug, PartialEq)]
 pub struct RpcHttpConfig {

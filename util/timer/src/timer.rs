@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use parking_lot::{Condvar, Mutex, RwLock};
 use std::cmp::Reverse;
 use std::collections::binary_heap::BinaryHeap;
 use std::collections::hash_map::{Entry, HashMap};
@@ -23,8 +24,6 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Weak};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
-
-use parking_lot::{Condvar, Mutex, RwLock};
 
 pub type TimerName = &'static str;
 const TIMER_NAME_DEFAULT: TimerName = "UNNAMED_TIMER";

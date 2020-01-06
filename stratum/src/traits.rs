@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std;
-use std::error::Error as StdError;
-
 use jsonrpc_core::{Error as JsonError, ErrorCode as JsonErrorCode};
 use jsonrpc_tcp_server::PushMessageError;
 use primitives::{Bytes, H256};
+use std;
+use std::error::Error as StdError;
 
 #[derive(Debug, Clone)]
 pub enum Error {

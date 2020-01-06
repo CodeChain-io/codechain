@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::ops::Deref;
-
 use kvdb::{DBTransaction, KeyValueDB};
 use parking_lot::RwLock;
 use rlp;
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::ops::Deref;
 
 // database columns
 /// Column for State

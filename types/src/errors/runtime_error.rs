@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt::{Display, Formatter, Result as FormatResult};
-
-use ckey::Address;
-use primitives::H160;
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
 use super::TaggedRlp;
 use crate::util::unexpected::Mismatch;
 use crate::{ShardId, Tracker};
+use ckey::Address;
+use primitives::H160;
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use std::fmt::{Display, Formatter, Result as FormatResult};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]

@@ -16,9 +16,8 @@
 
 //! Accounts Directory
 
-use std::path::PathBuf;
-
 use crate::{Error, SafeAccount};
+use std::path::PathBuf;
 
 mod disk;
 mod memory;

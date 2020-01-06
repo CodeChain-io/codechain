@@ -14,24 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
-use std::iter::once;
-use std::iter::FromIterator;
-use std::ops::Range;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
-use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
-use cstate::{FindActionHandler, TopLevelState};
-use ctypes::errors::{HistoryError, RuntimeError};
-use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
-use ctypes::{BlockHash, BlockNumber, Header, TxHash};
-use cvm::ChainTimeInfo;
-use kvdb::KeyValueDB;
-use parking_lot::{Mutex, RwLock};
-use primitives::{Bytes, H256};
-
 use super::mem_pool::{Error as MemPoolError, MemPool};
 pub use super::mem_pool_types::MemPoolFees;
 use super::mem_pool_types::{MemPoolInput, TxOrigin, TxTimelock};
@@ -49,7 +31,23 @@ use crate::error::Error;
 use crate::scheme::Scheme;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, TransactionId};
+use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
+use cstate::{FindActionHandler, TopLevelState};
+use ctypes::errors::{HistoryError, RuntimeError};
+use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
+use ctypes::{BlockHash, BlockNumber, Header, TxHash};
+use cvm::ChainTimeInfo;
+use kvdb::KeyValueDB;
+use parking_lot::{Mutex, RwLock};
+use primitives::{Bytes, H256};
 use std::borrow::Borrow;
+use std::collections::HashSet;
+use std::iter::once;
+use std::iter::FromIterator;
+use std::ops::Range;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 /// Configures the behaviour of the miner.
 #[derive(Debug, PartialEq)]

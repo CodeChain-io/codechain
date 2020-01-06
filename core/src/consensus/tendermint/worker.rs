@@ -14,22 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp::Ordering;
-use std::iter::Iterator;
-use std::mem;
-use std::sync::{Arc, Weak};
-use std::thread::{Builder, JoinHandle};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
-use cnetwork::{EventSender, NodeId};
-use crossbeam_channel as crossbeam;
-use ctypes::transaction::{Action, Transaction};
-use ctypes::util::unexpected::Mismatch;
-use ctypes::{BlockHash, BlockNumber, Header};
-use primitives::{u256_from_u128, Bytes, U256};
-use rlp::{Encodable, Rlp};
-
 use super::super::BitSet;
 use super::backup::{backup, restore, BackupView};
 use super::message::*;
@@ -53,7 +37,21 @@ use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
 use crate::BlockId;
+use ckey::{public_to_address, verify_schnorr, Address, SchnorrSignature};
+use cnetwork::{EventSender, NodeId};
+use crossbeam_channel as crossbeam;
+use ctypes::transaction::{Action, Transaction};
+use ctypes::util::unexpected::Mismatch;
+use ctypes::{BlockHash, BlockNumber, Header};
+use primitives::{u256_from_u128, Bytes, U256};
+use rlp::{Encodable, Rlp};
 use std::cell::Cell;
+use std::cmp::Ordering;
+use std::iter::Iterator;
+use std::mem;
+use std::sync::{Arc, Weak};
+use std::thread::{Builder, JoinHandle};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 type SpawnResult = (
     JoinHandle<()>,

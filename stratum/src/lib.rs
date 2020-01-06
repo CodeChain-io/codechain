@@ -38,10 +38,6 @@ mod traits;
 
 pub use crate::traits::{Error, JobDispatcher, PushWorkHandler, ServiceConfiguration};
 
-use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
-use std::sync::Arc;
-
 use ccrypto::blake256;
 use cjson::bytes::Bytes;
 use jsonrpc_core::{to_value, Compatibility, IoDelegate, MetaIoHandler, Metadata, Params};
@@ -51,6 +47,9 @@ use jsonrpc_tcp_server::{
 };
 use parking_lot::RwLock;
 use primitives::H256;
+use std::collections::{HashMap, HashSet};
+use std::net::SocketAddr;
+use std::sync::Arc;
 
 type RpcResult = Result<jsonrpc_core::Value, jsonrpc_core::Error>;
 

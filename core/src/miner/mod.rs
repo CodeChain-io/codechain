@@ -23,15 +23,6 @@ mod sealing_queue;
 mod stratum;
 mod work_notify;
 
-use std::ops::Range;
-
-use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
-use cstate::{FindActionHandler, TopStateView};
-use ctypes::transaction::IncompleteTransaction;
-use ctypes::{BlockHash, TxHash};
-use cvm::ChainTimeInfo;
-use primitives::Bytes;
-
 use self::mem_pool_types::AccountDetails;
 pub use self::mem_pool_types::MemPoolFees;
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
@@ -45,6 +36,13 @@ use crate::consensus::EngineType;
 use crate::error::Error;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::BlockId;
+use ckey::{public_to_address, Address, Password, PlatformAddress, Public};
+use cstate::{FindActionHandler, TopStateView};
+use ctypes::transaction::IncompleteTransaction;
+use ctypes::{BlockHash, TxHash};
+use cvm::ChainTimeInfo;
+use primitives::Bytes;
+use std::ops::Range;
 
 /// Miner client API
 pub trait MinerService: Send + Sync {

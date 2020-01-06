@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-use std::io;
-
-use mio::event::Evented;
-use mio::{Poll, PollOpt, Ready, Token};
-use rlp::{Decodable, DecoderError, Encodable, Rlp};
-
 use super::SignedMessage;
 use crate::session::Session;
 use crate::stream::{Error as StreamError, Stream};
 use crate::SocketAddr;
+use mio::event::Evented;
+use mio::{Poll, PollOpt, Ready, Token};
+use rlp::{Decodable, DecoderError, Encodable, Rlp};
+use std::fmt;
+use std::io;
 
 #[derive(Debug)]
 pub enum Error {

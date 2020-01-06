@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::CUSTOM_ACTION_HANDLER_ID;
+use ckey::{public_to_address, Address, Public};
+use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
+use ctypes::errors::RuntimeError;
+use primitives::{Bytes, H256};
+use rlp::{decode_list, encode_list, Decodable, Encodable, Rlp, RlpStream};
 use std::cmp::Ordering;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::{self, BTreeSet};
@@ -21,14 +27,6 @@ use std::collections::{btree_map, HashMap, HashSet};
 use std::mem;
 use std::ops::Deref;
 use std::vec;
-
-use ckey::{public_to_address, Address, Public};
-use cstate::{ActionData, ActionDataKeyBuilder, StateResult, TopLevelState, TopState, TopStateView};
-use ctypes::errors::RuntimeError;
-use primitives::{Bytes, H256};
-use rlp::{decode_list, encode_list, Decodable, Encodable, Rlp, RlpStream};
-
-use super::CUSTOM_ACTION_HANDLER_ID;
 
 pub fn get_account_key(address: &Address) -> H256 {
     ActionDataKeyBuilder::new(CUSTOM_ACTION_HANDLER_ID, 2).append(&"Account").append(address).into_key()

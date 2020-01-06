@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-use std::str::{self, FromStr};
-
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt;
+use std::str::{self, FromStr};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct NetworkId([u8; 2]);

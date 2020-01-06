@@ -14,20 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::btree_map::BTreeMap;
-use std::collections::{HashMap, HashSet};
-use std::convert::TryFrom;
-use std::iter::Iterator;
-use std::sync::atomic::Ordering as AtomicOrdering;
-use std::sync::{Arc, Weak};
-
-use ckey::{public_to_address, Address};
-use cnetwork::NetworkService;
-use crossbeam_channel as crossbeam;
-use cstate::{ActionHandler, TopStateView};
-use ctypes::{BlockHash, CommonParams, Header};
-use num_rational::Ratio;
-
 use super::super::stake;
 use super::super::{ConsensusEngine, EngineError, Seal};
 use super::network::TendermintExtension;
@@ -45,7 +31,19 @@ use crate::encoded;
 use crate::error::Error;
 use crate::views::HeaderView;
 use crate::BlockId;
+use ckey::{public_to_address, Address};
+use cnetwork::NetworkService;
+use crossbeam_channel as crossbeam;
+use cstate::{ActionHandler, TopStateView};
+use ctypes::{BlockHash, CommonParams, Header};
+use num_rational::Ratio;
 use rlp::Encodable;
+use std::collections::btree_map::BTreeMap;
+use std::collections::{HashMap, HashSet};
+use std::convert::TryFrom;
+use std::iter::Iterator;
+use std::sync::atomic::Ordering as AtomicOrdering;
+use std::sync::{Arc, Weak};
 
 #[derive(Default)]
 struct WorkInfo {

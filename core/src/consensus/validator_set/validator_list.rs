@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
-use std::sync::{Arc, Weak};
-
-use ckey::{public_to_address, Address, Public};
-use ctypes::util::unexpected::OutOfBounds;
-use ctypes::BlockHash;
-use parking_lot::RwLock;
-
 use super::super::BitSet;
 use super::ValidatorSet;
 use crate::client::ConsensusClient;
 use crate::consensus::EngineError;
 use crate::types::BlockId;
+use ckey::{public_to_address, Address, Public};
+use ctypes::util::unexpected::OutOfBounds;
+use ctypes::BlockHash;
+use parking_lot::RwLock;
+use std::collections::HashSet;
+use std::sync::{Arc, Weak};
 
 /// Validator set containing a known set of public keys.
 pub struct RoundRobinValidator {

@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fs;
-use std::path::Path;
-use std::sync::{Arc, Weak};
-use std::time::{SystemTime, UNIX_EPOCH};
-
+use crate::config::{self, load_config};
+use crate::constants::{DEFAULT_DB_PATH, DEFAULT_KEYS_PATH};
+use crate::dummy_network_service::DummyNetworkService;
+use crate::json::PasswordFile;
+use crate::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
+use crate::rpc_apis::ApiDependencies;
 use ccore::{
     AccountProvider, AccountProviderError, BlockId, ChainNotify, Client, ClientConfig, ClientService, EngineInfo,
     EngineType, Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
@@ -37,13 +38,10 @@ use fdlimit::raise_fd_limit;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
-
-use crate::config::{self, load_config};
-use crate::constants::{DEFAULT_DB_PATH, DEFAULT_KEYS_PATH};
-use crate::dummy_network_service::DummyNetworkService;
-use crate::json::PasswordFile;
-use crate::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
-use crate::rpc_apis::ApiDependencies;
+use std::fs;
+use std::path::Path;
+use std::sync::{Arc, Weak};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn network_start(
     network_id: NetworkId,

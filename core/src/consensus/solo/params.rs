@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-
 use cjson;
 use ckey::{Address, PlatformAddress};
+use std::collections::HashMap;
 
 /// Params for a null engine.
 #[derive(Clone, Default)]

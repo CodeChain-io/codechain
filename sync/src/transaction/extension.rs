@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
-use std::time::Duration;
-
+use super::message::Message;
 use ccore::{BlockChainClient, UnverifiedTransaction};
 use cnetwork::{Api, NetworkExtension, NodeId};
 use ctimer::TimerToken;
 use ctypes::TxHash;
 use never_type::Never;
 use rlp::{Encodable, Rlp};
-
-use super::message::Message;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
+use std::time::Duration;
 
 const BROADCAST_TIMER_TOKEN: TimerToken = 0;
 const BROADCAST_TIMER_INTERVAL: u64 = 1000;

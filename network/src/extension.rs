@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::NodeId;
+use cio::IoError;
+use ctimer::{TimerScheduleError, TimerToken};
+use primitives::Bytes;
 use std::convert::From;
 use std::result;
 use std::sync::Arc;
 use std::time::Duration;
-
-use cio::IoError;
-use ctimer::{TimerScheduleError, TimerToken};
-use primitives::Bytes;
-
-use crate::NodeId;
 
 #[derive(Debug)]
 pub enum Error {

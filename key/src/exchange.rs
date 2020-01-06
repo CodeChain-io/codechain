@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::result;
-
-use secp256k1::{ecdh, key};
-
 use crate::{Error, Private, Public, Secret, SECP256K1};
+use secp256k1::{ecdh, key};
+use std::result;
 
 pub fn exchange(public: &Public, private: &Private) -> result::Result<Secret, Error> {
     let public = {

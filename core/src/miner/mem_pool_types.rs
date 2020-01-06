@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-
+use crate::transaction::SignedTransaction;
 use ckey::Public;
 use ctypes::transaction::Action;
 use ctypes::{BlockNumber, TxHash};
 use rlp;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::transaction::SignedTransaction;
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Point in time when transaction was inserted.
 pub type PoolingInstant = BlockNumber;

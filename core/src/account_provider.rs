@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use ckey::{public_to_address, Address, Error as KeyError, Generator, KeyPair, Password, Private, Public, Random};
+use ckeystore::accounts_dir::MemoryDirectory;
+use ckeystore::{DecryptedAccount, Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-use ckey::{public_to_address, Address, Error as KeyError, Generator, KeyPair, Password, Private, Public, Random};
-use ckeystore::accounts_dir::MemoryDirectory;
-use ckeystore::{DecryptedAccount, Error as KeystoreError, KeyStore, SecretStore, SimpleSecretStore};
-use parking_lot::RwLock;
 
 /// Type of unlock.
 #[derive(Clone, PartialEq)]

@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use primitives::{remove_0x_prefix, H160};
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-
-use primitives::{remove_0x_prefix, H160};
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Clone, Copy, Default, Debug, Deserialize, Serialize, Eq)]
 pub struct Address(H160);

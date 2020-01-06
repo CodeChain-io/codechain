@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp;
-use std::fmt;
-use std::str::FromStr;
-
+use crate::{Address, Error, NetworkId};
 use bech32::Bech32;
 use parking_lot::Mutex;
 use primitives::H160;
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use crate::{Address, Error, NetworkId};
+use std::cmp;
+use std::fmt;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash)]
 pub struct PlatformAddress {

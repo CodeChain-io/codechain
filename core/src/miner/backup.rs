@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-
+use super::mem_pool_types::MemPoolItem;
+use crate::db as dblib;
 use kvdb::{DBTransaction, KeyValueDB};
 use primitives::H256;
 use rlp::Encodable;
-
-use super::mem_pool_types::MemPoolItem;
-use crate::db as dblib;
+use std::collections::HashMap;
 
 const PREFIX_SIZE: usize = 5;
 const PREFIX_ITEM: &[u8; PREFIX_SIZE] = b"item_";

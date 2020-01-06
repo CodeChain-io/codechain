@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::net::{self, IpAddr};
-use std::sync::Arc;
-
+use super::super::errors;
+use super::super::traits::Net;
+use super::super::types::FilterStatus;
 use cidr::IpCidr;
 use ckey::Public;
 use cnetwork::{NetworkControl, SocketAddr};
 use jsonrpc_core::Result;
-
-use super::super::errors;
-use super::super::traits::Net;
-use super::super::types::FilterStatus;
+use std::collections::HashMap;
+use std::net::{self, IpAddr};
+use std::sync::Arc;
 
 pub struct NetClient {
     network_control: Arc<dyn NetworkControl>,

@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use std::time::Duration;
-
+use super::downloader::{BodyDownloader, HeaderDownloader};
+use super::message::{Message, RequestMessage, ResponseMessage};
 use ccore::encoded::Header as EncodedHeader;
 use ccore::{
     Block, BlockChainClient, BlockChainTrait, BlockId, BlockImportError, ChainNotify, Client, ImportBlock, ImportError,
@@ -34,10 +31,11 @@ use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, Rlp};
+use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+use std::time::Duration;
 use token_generator::TokenGenerator;
-
-use super::downloader::{BodyDownloader, HeaderDownloader};
-use super::message::{Message, RequestMessage, ResponseMessage};
 
 const SYNC_TIMER_TOKEN: TimerToken = 0;
 const SYNC_EXPIRE_TOKEN_BEGIN: TimerToken = SYNC_TIMER_TOKEN + 1;

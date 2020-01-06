@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::asset::Asset;
+use crate::CacheableItem;
 use ccrypto::Blake;
 use ckey::Address;
 use ctypes::errors::RuntimeError;
 use ctypes::{ShardId, Tracker};
 use primitives::{H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use super::asset::Asset;
-use crate::CacheableItem;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AssetScheme {

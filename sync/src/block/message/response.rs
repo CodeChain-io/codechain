@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{DecoderError, Encodable, Rlp, RlpStream};
-use snap;
-
 use ccore::UnverifiedTransaction;
 use ctypes::Header;
+use rlp::{DecoderError, Encodable, Rlp, RlpStream};
+use snap;
 
 #[derive(Debug, PartialEq)]
 pub enum ResponseMessage {

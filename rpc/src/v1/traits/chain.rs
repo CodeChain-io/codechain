@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 use cjson::scheme::Params;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public};
 use ctypes::{BlockHash, BlockNumber, ShardId, Tracker, TxHash};
-use primitives::{Bytes as BytesArray, H160, H256};
-
 use jsonrpc_core::Result;
-
-use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use primitives::{Bytes as BytesArray, H160, H256};
 
 #[rpc(server)]
 pub trait Chain {

@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::CacheableItem;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use ctypes::ShardId;
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::CacheableItem;
 
 #[derive(Clone, Debug)]
 pub struct Shard {

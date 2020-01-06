@@ -24,12 +24,11 @@ mod common;
 
 use ccrypto::{BLAKE_EMPTY, BLAKE_NULL_RLP};
 use ckey::NetworkId;
+use common::TestClient;
 use ctypes::transaction::{AssetOutPoint, AssetTransferInput, ShardTransaction};
 use cvm::Instruction;
 use cvm::{execute, RuntimeError, ScriptResult, VMConfig};
 use primitives::{H160, H256};
-
-use common::TestClient;
 
 #[test]
 fn simple_success() {

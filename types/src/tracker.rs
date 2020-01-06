@@ -15,11 +15,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-use std::fmt::{self, Display, Formatter};
-use std::ops::Deref;
-
 use primitives::H256;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use std::fmt::{self, Display, Formatter};
+use std::ops::Deref;
 
 
 #[derive(Clone, Copy, Default, Eq, Hash, PartialEq, Debug, Deserialize, Serialize)]

@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::env;
-use std::thread;
-use time;
-
+use crate::{email::EmailAlarm, structured_logger, SLOGGER};
 use atty;
 use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{Level, LevelFilter, Log, Metadata, Record};
-
-use crate::{email::EmailAlarm, structured_logger, SLOGGER};
+use std::env;
+use std::thread;
+use time;
 
 pub struct Config {
     pub instance_id: usize,

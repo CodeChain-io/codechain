@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::BTreeMap;
-use std::fmt;
-use std::ops::Deref;
-
+use super::pod_account::PodAccount;
+use super::pod_shard_metadata::PodShardMetadata;
 use cjson;
 use ckey::Address;
 use ctypes::ShardId;
-
-use super::pod_account::PodAccount;
-use super::pod_shard_metadata::PodShardMetadata;
+use std::collections::BTreeMap;
+use std::fmt;
+use std::ops::Deref;
 
 /// State of all accounts in the system expressed in Plain Old Data.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

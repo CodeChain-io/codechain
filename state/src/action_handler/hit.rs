@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::{ActionDataKeyBuilder, ActionHandler};
+use crate::{StateResult, TopLevelState, TopState, TopStateView};
 use ckey::{Address, Public};
 use ctypes::errors::SyntaxError;
 use ctypes::{CommonParams, Header};
 use primitives::H256;
 use rlp::{self, Decodable, Encodable, Rlp};
-
-use super::{ActionDataKeyBuilder, ActionHandler};
-use crate::{StateResult, TopLevelState, TopState, TopStateView};
 
 const CUSTOM_ACTION_HANDLER_ID: u64 = 1;
 

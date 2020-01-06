@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::Nonce;
 use ccrypto::aes::{self, SymmetricCipherError};
 use ccrypto::Blake;
 use ckey::Secret;
 use primitives::H256;
-
-use super::Nonce;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialOrd, PartialEq)]
 pub struct Session {

@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io::stdin;
-use std::ops::Deref;
-use std::str::FromStr;
-
+use crate::config::ChainType;
 use ckey::hex::ToHex;
 use ckey::{public_to_address, Address, KeyPair, NetworkId, PlatformAddress, Private, Public};
 use clap::ArgMatches;
-
-use crate::config::ChainType;
 use primitives::remove_0x_prefix;
+use std::io::stdin;
+use std::ops::Deref;
+use std::str::FromStr;
 
 pub fn run_convert_command(matches: &ArgMatches) -> Result<(), String> {
     let from = matches.value_of("from").expect("Argument 'from' is required");

@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-
 use ccore::AccountProviderError;
 use ccore::Error as CoreError;
 use ckey::Error as KeyError;
@@ -23,10 +21,10 @@ use ckeystore::Error as KeystoreError;
 use cnetwork::control::Error as NetworkControlError;
 use cstate::StateError;
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
+use jsonrpc_core::{Error, ErrorCode, Value};
 use rlp::DecoderError;
 use rustc_serialize::hex::FromHexError as HexError;
-
-use jsonrpc_core::{Error, ErrorCode, Value};
+use std::fmt;
 
 pub enum ConversionError {
     Key(KeyError),

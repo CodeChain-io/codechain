@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::cmp::{Ordering, PartialEq};
 use std::convert::TryFrom;
 use std::fmt;
 use std::ops::Sub;
-
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 const MAX_VALIDATOR_SIZE: usize = 800;
 const BITSET_SIZE: usize = MAX_VALIDATOR_SIZE / 8;

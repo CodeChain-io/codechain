@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cell::RefCell;
-use std::cmp;
-use std::time::{SystemTime, UNIX_EPOCH};
-
+use crate::{BlockHash, BlockNumber};
 use ccrypto::{blake256, BLAKE_NULL_RLP};
 use ckey::Address;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
-
-use crate::{BlockHash, BlockNumber};
+use std::cell::RefCell;
+use std::cmp;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Semantic boolean for when a seal/signature is included.
 pub enum Seal {

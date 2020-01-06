@@ -16,22 +16,20 @@
 
 pub mod kind;
 
-use std::cmp;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
-use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
-use std::thread::{self, JoinHandle};
-
-use cio::IoChannel;
-use ctypes::BlockHash;
-use parking_lot::{Mutex, RwLock};
-use primitives::U256;
-
 use self::kind::{BlockLike, Kind, MemUsage};
 use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error, ImportError};
 use crate::service::ClientIoMessage;
 use crate::types::{BlockStatus as Status, VerificationQueueInfo as QueueInfo};
+use cio::IoChannel;
+use ctypes::BlockHash;
+use parking_lot::{Mutex, RwLock};
+use primitives::U256;
+use std::cmp;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering as AtomicOrdering};
+use std::sync::{Arc, Condvar as SCondvar, Mutex as SMutex};
+use std::thread::{self, JoinHandle};
 
 const MIN_MEM_LIMIT: usize = 16384;
 const MIN_QUEUE_LIMIT: usize = 512;

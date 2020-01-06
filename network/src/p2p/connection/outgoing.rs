@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io;
-
+use super::{EstablishedConnection, IncomingMessage, OutgoingMessage, Result};
+use crate::session::Session;
+use crate::stream::Stream;
+use crate::SocketAddr;
 use cio::IoManager;
 use ckey::{NetworkId, Public};
 use mio::deprecated::EventLoop;
 use mio::unix::UnixReady;
 use mio::{PollOpt, Ready, Token};
-
-use super::{EstablishedConnection, IncomingMessage, OutgoingMessage, Result};
-use crate::session::Session;
-use crate::stream::Stream;
-use crate::SocketAddr;
+use std::io;
 
 pub struct OutgoingConnection {
     stream: Stream,

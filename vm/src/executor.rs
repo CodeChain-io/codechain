@@ -19,7 +19,6 @@ use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
 use ctypes::{BlockNumber, Tracker};
-
 use primitives::{H160, H256};
 
 

@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-
-use ckey::Address;
-use parking_lot::RwLock;
-
 use super::KeyDirectory;
 use crate::{Error, SafeAccount};
+use ckey::Address;
+use parking_lot::RwLock;
+use std::collections::HashMap;
 
 /// Accounts in-memory storage.
 #[derive(Default)]

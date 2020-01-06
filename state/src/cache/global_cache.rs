@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
-
 use super::lru_cache::LruCache;
 use super::{ShardCache, TopCache};
 use crate::{Account, ActionData, AssetScheme, Metadata, OwnedAsset, RegularAccount, Shard, Text};
-
 use ctypes::ShardId;
+use std::collections::{HashMap, HashSet};
 
 pub struct GlobalCache {
     account: LruCache<Account>,

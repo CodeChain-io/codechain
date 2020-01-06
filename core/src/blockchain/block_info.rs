@@ -16,7 +16,6 @@
 
 use super::route::TreeRoute;
 use crate::views::{BlockView, HeaderView};
-
 use ctypes::BlockHash;
 use primitives::Bytes;
 

@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::str::FromStr;
-use std::{fmt, fs};
-
 use ccore::Scheme;
 use never_type::Never;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer};
+use std::str::FromStr;
+use std::{fmt, fs};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ChainType {

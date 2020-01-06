@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::super::types::PendingTransactions;
 use cjson::bytes::Bytes;
 use ckey::PlatformAddress;
 use ctypes::{Tracker, TxHash};
 use jsonrpc_core::Result;
-
-use super::super::types::PendingTransactions;
 
 #[rpc(server)]
 pub trait Mempool {

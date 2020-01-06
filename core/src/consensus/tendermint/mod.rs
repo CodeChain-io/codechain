@@ -25,15 +25,6 @@ pub mod vote_collector;
 mod vote_regression_checker;
 mod worker;
 
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Weak};
-use std::thread::JoinHandle;
-
-use crossbeam_channel as crossbeam;
-use cstate::ActionHandler;
-use ctimer::TimerToken;
-use parking_lot::RwLock;
-
 use self::chain_notify::TendermintChainNotify;
 pub use self::message::{ConsensusMessage, VoteOn, VoteStep};
 pub use self::params::{TendermintParams, TimeGapParams, TimeoutParams};
@@ -42,6 +33,13 @@ use super::{stake, ValidatorSet};
 use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::ChainNotify;
+use crossbeam_channel as crossbeam;
+use cstate::ActionHandler;
+use ctimer::TimerToken;
+use parking_lot::RwLock;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Weak};
+use std::thread::JoinHandle;
 
 /// Timer token representing the consensus step timeouts.
 const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;

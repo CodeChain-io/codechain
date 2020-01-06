@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::num::NonZeroU32;
-use std::str;
-
-use ccrypto;
-use ckey::{public_to_address, Address, KeyPair, Password, Private, Secret};
-use smallvec::SmallVec;
-
 use crate::account::{Aes128Ctr, Cipher, Kdf, Pbkdf2, Prf};
 use crate::random::Random;
 use crate::{json, Error};
+use ccrypto;
+use ckey::{public_to_address, Address, KeyPair, Password, Private, Secret};
+use smallvec::SmallVec;
+use std::num::NonZeroU32;
+use std::str;
 
 /// Encrypted data
 #[derive(Debug, PartialEq, Clone)]

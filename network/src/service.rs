@@ -14,21 +14,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::net::IpAddr;
-use std::sync::Arc;
-
-use cidr::IpCidr;
-use cio::{IoError, IoService};
-use ckey::{NetworkId, Public};
-use crossbeam_channel::Sender;
-use ctimer::TimerLoop;
-
 use crate::client::Client;
 use crate::control::{Control, Error as ControlError};
 use crate::filters::{FilterEntry, FiltersControl};
 use crate::routing_table::RoutingTable;
 use crate::{p2p, Api, NetworkExtension, SocketAddr};
+use cidr::IpCidr;
+use cio::{IoError, IoService};
+use ckey::{NetworkId, Public};
+use crossbeam_channel::Sender;
+use ctimer::TimerLoop;
+use std::collections::HashMap;
+use std::net::IpAddr;
+use std::sync::Arc;
 
 pub struct Service {
     p2p: IoService<p2p::Message>,

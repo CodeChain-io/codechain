@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use crate::client::ConsensusClient;
+use crate::consensus::{ConsensusMessage, ValidatorSet};
 use ccrypto::Blake;
 use ckey::{recover, Address, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::CommonParams;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::client::ConsensusClient;
-use crate::consensus::{ConsensusMessage, ValidatorSet};
+use std::sync::Arc;
 
 const ACTION_TAG_TRANSFER_CCS: u8 = 1;
 const ACTION_TAG_DELEGATE_CCS: u8 = 2;
