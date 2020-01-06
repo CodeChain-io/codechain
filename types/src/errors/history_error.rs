@@ -42,26 +42,50 @@ pub enum Error {
     },
 }
 
-const ERROR_ID_LIMIT_REACHED: u8 = 2;
-const ERROR_ID_OLD: u8 = 3;
-const ERROR_ID_TIMELOCKED: u8 = 5;
-const ERROR_ID_TOO_CHEAP_TO_REPLACE: u8 = 6;
-const ERROR_ID_TX_ALREADY_IMPORTED: u8 = 7;
-const ERROR_ID_TRANSFER_EXPIRED: u8 = 8;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum ErrorID {
+    LimitReached = 2,
+    Old = 3,
+    Timelocked = 5,
+    TooCheapToReplace = 6,
+    TxAlreadyImported = 7,
+    TransferExpired = 8,
+}
+
+impl Encodable for ErrorID {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for ErrorID {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            2u8 => Ok(ErrorID::LimitReached),
+            3 => Ok(ErrorID::Old),
+            5 => Ok(ErrorID::Timelocked),
+            6 => Ok(ErrorID::TooCheapToReplace),
+            7 => Ok(ErrorID::TxAlreadyImported),
+            8 => Ok(ErrorID::TransferExpired),
+            _ => Err(DecoderError::Custom("Unexpected ErrorID Value")),
+        }
+    }
+}
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
-    type Tag = u8;
+    type Tag = ErrorID;
 
-    fn length_of(tag: u8) -> Result<usize, DecoderError> {
+    fn length_of(tag: ErrorID) -> Result<usize, DecoderError> {
         Ok(match tag {
-            ERROR_ID_LIMIT_REACHED => 1,
-            ERROR_ID_OLD => 1,
-            ERROR_ID_TIMELOCKED => 3,
-            ERROR_ID_TOO_CHEAP_TO_REPLACE => 1,
-            ERROR_ID_TX_ALREADY_IMPORTED => 1,
-            ERROR_ID_TRANSFER_EXPIRED => 3,
-            _ => return Err(DecoderError::Custom("Invalid HistoryError")),
+            ErrorID::LimitReached => 1,
+            ErrorID::Old => 1,
+            ErrorID::Timelocked => 3,
+            ErrorID::TooCheapToReplace => 1,
+            ErrorID::TxAlreadyImported => 1,
+            ErrorID::TransferExpired => 3,
         })
     }
 }
@@ -69,39 +93,38 @@ impl TaggedRlp for RlpHelper {
 impl Encodable for Error {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            Error::LimitReached => RlpHelper::new_tagged_list(s, ERROR_ID_LIMIT_REACHED),
-            Error::Old => RlpHelper::new_tagged_list(s, ERROR_ID_OLD),
+            Error::LimitReached => RlpHelper::new_tagged_list(s, ErrorID::LimitReached),
+            Error::Old => RlpHelper::new_tagged_list(s, ErrorID::Old),
             Error::Timelocked {
                 timelock,
                 remaining_time,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_TIMELOCKED).append(timelock).append(remaining_time),
-            Error::TooCheapToReplace => RlpHelper::new_tagged_list(s, ERROR_ID_TOO_CHEAP_TO_REPLACE),
-            Error::TransactionAlreadyImported => RlpHelper::new_tagged_list(s, ERROR_ID_TX_ALREADY_IMPORTED),
+            } => RlpHelper::new_tagged_list(s, ErrorID::Timelocked).append(timelock).append(remaining_time),
+            Error::TooCheapToReplace => RlpHelper::new_tagged_list(s, ErrorID::TooCheapToReplace),
+            Error::TransactionAlreadyImported => RlpHelper::new_tagged_list(s, ErrorID::TxAlreadyImported),
             Error::TransferExpired {
                 expiration,
                 timestamp,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_TRANSFER_EXPIRED).append(expiration).append(timestamp),
+            } => RlpHelper::new_tagged_list(s, ErrorID::TransferExpired).append(expiration).append(timestamp),
         };
     }
 }
 
 impl Decodable for Error {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        let tag = rlp.val_at::<u8>(0)?;
+        let tag = rlp.val_at(0)?;
         let error = match tag {
-            ERROR_ID_LIMIT_REACHED => Error::LimitReached,
-            ERROR_ID_OLD => Error::Old,
-            ERROR_ID_TIMELOCKED => Error::Timelocked {
+            ErrorID::LimitReached => Error::LimitReached,
+            ErrorID::Old => Error::Old,
+            ErrorID::Timelocked => Error::Timelocked {
                 timelock: rlp.val_at(1)?,
                 remaining_time: rlp.val_at(2)?,
             },
-            ERROR_ID_TOO_CHEAP_TO_REPLACE => Error::TooCheapToReplace,
-            ERROR_ID_TX_ALREADY_IMPORTED => Error::TransactionAlreadyImported,
-            ERROR_ID_TRANSFER_EXPIRED => Error::TransferExpired {
+            ErrorID::TooCheapToReplace => Error::TooCheapToReplace,
+            ErrorID::TxAlreadyImported => Error::TransactionAlreadyImported,
+            ErrorID::TransferExpired => Error::TransferExpired {
                 expiration: rlp.val_at(1)?,
                 timestamp: rlp.val_at(2)?,
             },
-            _ => return Err(DecoderError::Custom("Invalid HistoryError")),
         };
         RlpHelper::check_size(rlp, tag)?;
         Ok(error)

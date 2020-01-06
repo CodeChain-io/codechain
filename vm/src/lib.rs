@@ -29,5 +29,5 @@ mod instruction;
 mod opcode;
 
 pub use crate::decoder::{decode, DecoderError};
-pub use crate::executor::{execute, ChainTimeInfo, Config as VMConfig, RuntimeError, ScriptResult};
+pub use crate::executor::{execute, ChainTimeInfo, Config as VMConfig, RuntimeError, ScriptResult, TimelockType};
 pub use crate::instruction::Instruction;
