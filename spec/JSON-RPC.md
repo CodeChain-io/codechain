@@ -1727,6 +1727,30 @@ Errors: `Invalid Params`
 
 [Back to **List of methods**](#list-of-methods)
 
+## mempool_deleteAllPendingTransactions
+Deletes all pending transactions in both current and future queues.
+
+### Params
+No parameters.
+
+### Returns
+`null`
+
+### Request Example
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_deleteAllPendingTransactions", "params": [], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{"jsonrpc":"2.0","result":null,"id":null}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
 ## mempool_getPendingTransactions
 Gets transactions that have insertion_timestamps within the given range from the current transaction queue.
 
