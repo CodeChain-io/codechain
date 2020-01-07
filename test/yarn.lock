@@ -449,7 +449,7 @@ codechain-primitives@^1.0.0:
     node-forge "^0.7.6"
     rlp "^2.1.0"
 
-"codechain-sdk@https://github.com/MSNTCS/codechain-sdk-js#master":
+"codechain-sdk@https://github.com/MSNTCS/codechain-sdk-js#getPendingTransactions":
   version "2.0.1"
   resolved "https://github.com/MSNTCS/codechain-sdk-js#cde9cb66b27b6dc6ef0921e10b0469e26ad98a42"
   dependencies:

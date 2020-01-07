@@ -18,7 +18,6 @@ mod chain_notify;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod client;
 mod config;
-mod error;
 mod importer;
 mod test_client;
 
@@ -26,20 +25,20 @@ pub use self::chain_notify::ChainNotify;
 
 pub use self::client::Client;
 pub use self::config::ClientConfig;
-pub use self::error::Error;
 pub use self::test_client::TestBlockChainClient;
 
 use std::ops::Range;
 use std::sync::Arc;
 
+use cdb::DatabaseError;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
-use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
+use merkle_trie::Result as TrieResult;
 use primitives::{Bytes, H160, H256, U256};
 
 use crate::block::{ClosedBlock, OpenBlock, SealedBlock};
@@ -222,6 +221,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     /// Queue transactions for importing.
     fn queue_transactions(&self, transactions: Vec<Bytes>, peer_id: NodeId);
 
+    /// Delete all pending transactions.
+    fn delete_all_pending_transactions(&self);
+
     /// List all transactions that are allowed into the next block.
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions;
 
@@ -267,7 +269,7 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
 }
 
 /// Result of import block operation.
-pub type ImportResult = Result<BlockHash, Error>;
+pub type ImportResult = Result<BlockHash, DatabaseError>;
 
 /// Provides methods used for sealing new state
 pub trait BlockProducer {
@@ -336,7 +338,7 @@ pub trait ExecuteClient: ChainTimeInfo {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, Error>;
+    ) -> Result<Vec<String>, DatabaseError>;
 }
 
 pub trait StateInfo {

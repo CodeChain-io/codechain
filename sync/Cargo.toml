@@ -8,16 +8,16 @@ edition = "2018"
 
 [dependencies]
 codechain-core = { path = "../core" }
-codechain-db = { path = "../util/db" }
+codechain-db = { git = "https://github.com/CodeChain-io/rust-codechain-db.git", version = "0.1" }
 codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
-codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
 kvdb = "0.1"
 log = "0.4.6"
+merkle-trie = { git = "https://github.com/CodeChain-io/rust-merkle-trie.git", version = "0.1" }
 never-type = "0.1.0"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
@@ -26,9 +26,8 @@ rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 snap = "0.2"
 time = "0.1"
 token-generator = "0.1.0"
-util-error = { path = "../util/error" }
 
 [dev-dependencies]
 kvdb-memorydb = "0.1"
 tempfile = "3.0.4"
-trie-standardmap = { path = "../util/trie-standardmap" }
+trie-standardmap = { git = "https://github.com/CodeChain-io/trie-standardmap.git", version = "0.2" }

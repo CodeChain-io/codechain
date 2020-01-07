@@ -18,7 +18,6 @@ extern crate parking_lot;
 
 extern crate codechain_core as ccore;
 extern crate codechain_db as cdb;
-extern crate codechain_merkle as cmerkle;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate codechain_network as cnetwork;
@@ -42,7 +41,6 @@ extern crate time;
 extern crate token_generator;
 #[cfg(test)]
 extern crate trie_standardmap;
-extern crate util_error;
 
 mod block;
 mod snapshot;

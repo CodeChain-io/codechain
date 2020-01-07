@@ -47,7 +47,7 @@
     "blakejs": "^1.1.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "codechain-sdk": "https://github.com/MSNTCS/codechain-sdk-js#master",
+    "codechain-sdk": "https://github.com/MSNTCS/codechain-sdk-js#getPendingTransactions",
     "codechain-stakeholder-sdk": "^2.0.0",
     "elliptic": "^6.5.2",
     "lodash": "^4.17.11",

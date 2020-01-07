@@ -18,11 +18,11 @@ pub mod helpers {
     use std::sync::Arc;
 
     use cdb::AsHashDB;
-    use cmerkle::{TrieFactory, TrieMut};
     use ctypes::{BlockNumber, Tracker};
     use cvm::ChainTimeInfo;
     use kvdb::KeyValueDB;
     use kvdb_memorydb;
+    use merkle_trie::{TrieFactory, TrieMut};
     use primitives::H256;
     use rlp::Encodable;
 

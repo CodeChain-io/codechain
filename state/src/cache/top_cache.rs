@@ -17,7 +17,7 @@
 use std::cell::RefMut;
 
 use ckey::Address;
-use cmerkle::{Result as TrieResult, Trie, TrieMut};
+use merkle_trie::{Result as TrieResult, Trie, TrieMut};
 use primitives::H256;
 
 use super::WriteBack;

@@ -24,7 +24,6 @@ extern crate codechain_key as ckey;
 extern crate codechain_keystore as ckeystore;
 #[macro_use]
 extern crate codechain_logger as clogger;
-extern crate codechain_merkle as cmerkle;
 extern crate codechain_network as cnetwork;
 extern crate codechain_state as cstate;
 extern crate codechain_stratum as cstratum;
@@ -50,7 +49,6 @@ extern crate rlp_derive;
 extern crate parking_lot;
 extern crate snap;
 extern crate table;
-extern crate util_error;
 
 #[macro_use]
 extern crate log;

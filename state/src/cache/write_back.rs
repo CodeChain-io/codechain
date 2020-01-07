@@ -22,7 +22,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
 
-use cmerkle::{self, Result as TrieResult, Trie, TrieMut};
+use merkle_trie::{Result as TrieResult, Trie, TrieMut};
 
 use super::CacheableItem;
 
@@ -195,7 +195,7 @@ where
     /// Check caches for required data
     /// First searches for account in the local, then the shared cache.
     /// Populates local cache if nothing found.
-    pub fn get(&self, a: &Item::Address, db: &dyn Trie) -> cmerkle::Result<Option<Item>> {
+    pub fn get(&self, a: &Item::Address, db: &dyn Trie) -> TrieResult<Option<Item>> {
         // check local cache first
         if let Some(cached_item) = self.cache.borrow_mut().get_mut(a) {
             cached_item.touched = touched_count();
@@ -210,7 +210,7 @@ where
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn get_mut(&self, a: &Item::Address, db: &dyn Trie) -> cmerkle::Result<RefMut<Item>> {
+    pub fn get_mut(&self, a: &Item::Address, db: &dyn Trie) -> TrieResult<RefMut<Item>> {
         let contains_key = self.cache.borrow().contains_key(a);
         if !contains_key {
             let maybe_item = db.get(a.as_ref())?.map(|bytes| ::rlp::decode::<Item>(&bytes).unwrap());
@@ -234,7 +234,7 @@ where
         }))
     }
 
-    pub fn create<F: FnOnce() -> Item>(&self, a: &Item::Address, f: F) -> cmerkle::Result<Item> {
+    pub fn create<F: FnOnce() -> Item>(&self, a: &Item::Address, f: F) -> TrieResult<Item> {
         if let Some(cached) = self.cache.borrow().get(a) {
             assert!(cached.item.is_none());
         }

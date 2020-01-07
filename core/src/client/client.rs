@@ -18,10 +18,9 @@ use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Weak};
 
-use cdb::{new_journaldb, Algorithm, AsHashDB};
+use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError};
 use cio::IoChannel;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
-use cmerkle::Result as TrieResult;
 use cnetwork::NodeId;
 use cstate::{
     ActionHandler, AssetScheme, FindActionHandler, OwnedAsset, StateDB, StateResult, Text, TopLevelState, TopStateView,
@@ -31,6 +30,7 @@ use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
 use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use kvdb::{DBTransaction, KeyValueDB};
+use merkle_trie::Result as TrieResult;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 use primitives::{Bytes, H160, H256, U256};
 use rlp::Rlp;
@@ -38,8 +38,8 @@ use rlp::Rlp;
 use super::importer::Importer;
 use super::{
     AccountData, AssetClient, BlockChainClient, BlockChainInfo, BlockChainTrait, BlockProducer, ChainNotify,
-    ClientConfig, DatabaseClient, EngineClient, EngineInfo, Error as ClientError, ExecuteClient, ImportBlock,
-    ImportResult, MiningBlockChainClient, Shard, StateInfo, StateOrBlock, TextClient,
+    ClientConfig, DatabaseClient, EngineClient, EngineInfo, ExecuteClient, ImportBlock, ImportResult,
+    MiningBlockChainClient, Shard, StateInfo, StateOrBlock, TextClient,
 };
 use crate::block::{ClosedBlock, IsBlock, OpenBlock, SealedBlock};
 use crate::blockchain::{BlockChain, BlockProvider, BodyProvider, HeaderProvider, InvoiceProvider, TransactionAddress};
@@ -440,7 +440,7 @@ impl ExecuteClient for Client {
         inputs: &[AssetTransferInput],
         params: &[Vec<Bytes>],
         indices: &[usize],
-    ) -> Result<Vec<String>, ClientError> {
+    ) -> Result<Vec<String>, DatabaseError> {
         let mut results = Vec::with_capacity(indices.len());
         for (i, index) in indices.iter().enumerate() {
             let input = inputs.get(*index);
@@ -737,6 +737,10 @@ impl BlockChainClient for Client {
                 }
             }
         }
+    }
+
+    fn delete_all_pending_transactions(&self) {
+        self.importer.miner.delete_all_pending_transactions();
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {

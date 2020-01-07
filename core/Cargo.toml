@@ -6,13 +6,12 @@ edition = "2018"
 
 [dependencies]
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
-codechain-db = { path = "../util/db" }
+codechain-db = { git = "https://github.com/CodeChain-io/rust-codechain-db.git", version = "0.1" }
 codechain-io = { path = "../util/io" }
 codechain-json = { path = "../json" }
 codechain-key = { path = "../key" }
 codechain-keystore = { path="../keystore" }
 codechain-logger = { path = "../util/logger" }
-codechain-merkle = { path = "../util/merkle" }
 codechain-network = { path = "../network" }
 codechain-state = { path = "../state" }
 codechain-timer = { path = "../util/timer" }
@@ -28,6 +27,7 @@ kvdb-memorydb = "0.1"
 linked-hash-map = "0.5"
 log = "0.4.6"
 lru-cache = "0.1.2"
+merkle-trie = { git = "https://github.com/CodeChain-io/rust-merkle-trie.git", version = "0.1" }
 num-rational = "0.2.1"
 parking_lot = "0.6.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
@@ -37,7 +37,6 @@ rlp_compress = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2
 rlp_derive = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.2" }
 snap = "0.2"
 table = { path = "../util/table" }
-util-error = { path = "../util/error" }
 
 [dev-dependencies]
 rand_xorshift = "0.1.0"

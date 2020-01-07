@@ -38,7 +38,6 @@ use std::sync::Arc;
 
 use cdb;
 use ckey::{public_to_address, Address, Generator, KeyPair, NetworkId, PlatformAddress, Private, Public, Random};
-use cmerkle::skewed_merkle_root;
 use cnetwork::NodeId;
 use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
@@ -48,6 +47,7 @@ use ctypes::{BlockHash, BlockNumber, CommonParams, Header as BlockHeader, Tracke
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use kvdb_memorydb;
+use merkle_trie::skewed_merkle_root;
 use parking_lot::RwLock;
 use primitives::{Bytes, H256, U256};
 use rlp::*;
@@ -536,6 +536,10 @@ impl BlockChainClient for TestBlockChainClient {
         // import right here
         let transactions = transactions.into_iter().filter_map(|bytes| Rlp::new(&bytes).as_val().ok()).collect();
         self.miner.import_external_transactions(self, transactions);
+    }
+
+    fn delete_all_pending_transactions(&self) {
+        self.miner.delete_all_pending_transactions();
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {

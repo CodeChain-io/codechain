@@ -24,8 +24,8 @@ use std::sync::Arc;
 
 use ccore::COL_STATE;
 use cdb::{new_journaldb, Algorithm, JournalDB};
-use cmerkle::Node;
 use kvdb::KeyValueDB;
+use merkle_trie::Node;
 use primitives::H256;
 use rlp::{Rlp, RlpStream};
 use snap;
@@ -296,8 +296,8 @@ mod tests {
 
     use ccore::COL_STATE;
 
-    use cmerkle::{Trie, TrieFactory, TrieMut};
     use kvdb_memorydb;
+    use merkle_trie::{Trie, TrieFactory, TrieMut};
     use primitives::H256;
     use tempfile::tempdir;
     use trie_standardmap::{Alphabet, StandardMap, ValueMode};
