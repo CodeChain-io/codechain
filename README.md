@@ -73,7 +73,7 @@ With the methods above, node organizers can manage their local persistent data u
 ### Building From Source
 
 #### Build Dependencies
-CodeChain requires Rust version 1.39.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
+CodeChain requires Rust version 1.40.0 to build. Using [rustup](https://rustup.rs/ "rustup URL") is recommended.
 
 - For Linux Systems:
   - Ubuntu
