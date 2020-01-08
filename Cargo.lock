@@ -945,9 +945,9 @@ checksum = "fb881f88714a5f816e69131f0103e2c4b444e3a2a8741077b4b68586f2d32129"
 
 [[package]]
 name = "fixed-hash"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b18d6fd718fb4396e7a9c93ac59ba7143501467ca7a143c145b5555a571d5576"
+checksum = "0d5ec8112f00ea8a483e04748a85522184418fd1cf02890b626d8fc28683f7de"
 dependencies = [
  "heapsize",
  "libc",
