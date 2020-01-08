@@ -24,13 +24,39 @@ use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::sync::Arc;
 
-const ACTION_TAG_TRANSFER_CCS: u8 = 1;
-const ACTION_TAG_DELEGATE_CCS: u8 = 2;
-const ACTION_TAG_REVOKE: u8 = 3;
-const ACTION_TAG_SELF_NOMINATE: u8 = 4;
-const ACTION_TAG_REPORT_DOUBLE_VOTE: u8 = 5;
-const ACTION_TAG_REDELEGATE: u8 = 6;
-const ACTION_TAG_CHANGE_PARAMS: u8 = 0xFF;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum ActionTag {
+    TransferCCS = 1,
+    DelegateCCS = 2,
+    Revoke = 3,
+    SelfNominate = 4,
+    ReportDoubleVote = 5,
+    Redelegate = 6,
+    ChangeParams = 0xFF,
+}
+
+impl Encodable for ActionTag {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for ActionTag {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            1u8 => Ok(ActionTag::TransferCCS),
+            2 => Ok(ActionTag::DelegateCCS),
+            3 => Ok(ActionTag::Revoke),
+            4 => Ok(ActionTag::SelfNominate),
+            5 => Ok(ActionTag::ReportDoubleVote),
+            6 => Ok(ActionTag::Redelegate),
+            0xFF => Ok(ActionTag::ChangeParams),
+            _ => Err(DecoderError::Custom("Unexpected ActionTag Value")),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Action {
@@ -181,19 +207,19 @@ impl Encodable for Action {
                 address,
                 quantity,
             } => {
-                s.begin_list(3).append(&ACTION_TAG_TRANSFER_CCS).append(address).append(quantity);
+                s.begin_list(3).append(&ActionTag::TransferCCS).append(address).append(quantity);
             }
             Action::DelegateCCS {
                 address,
                 quantity,
             } => {
-                s.begin_list(3).append(&ACTION_TAG_DELEGATE_CCS).append(address).append(quantity);
+                s.begin_list(3).append(&ActionTag::DelegateCCS).append(address).append(quantity);
             }
             Action::Revoke {
                 address,
                 quantity,
             } => {
-                s.begin_list(3).append(&ACTION_TAG_REVOKE).append(address).append(quantity);
+                s.begin_list(3).append(&ActionTag::Revoke).append(address).append(quantity);
             }
             Action::Redelegate {
                 prev_delegatee,
@@ -201,7 +227,7 @@ impl Encodable for Action {
                 quantity,
             } => {
                 s.begin_list(4)
-                    .append(&ACTION_TAG_REDELEGATE)
+                    .append(&ActionTag::Redelegate)
                     .append(prev_delegatee)
                     .append(next_delegatee)
                     .append(quantity);
@@ -210,7 +236,7 @@ impl Encodable for Action {
                 deposit,
                 metadata,
             } => {
-                s.begin_list(3).append(&ACTION_TAG_SELF_NOMINATE).append(deposit).append(metadata);
+                s.begin_list(3).append(&ActionTag::SelfNominate).append(deposit).append(metadata);
             }
             Action::ChangeParams {
                 metadata_seq,
@@ -218,7 +244,7 @@ impl Encodable for Action {
                 signatures,
             } => {
                 s.begin_list(3 + signatures.len())
-                    .append(&ACTION_TAG_CHANGE_PARAMS)
+                    .append(&ActionTag::ChangeParams)
                     .append(metadata_seq)
                     .append(&**params);
                 for signature in signatures {
@@ -230,7 +256,7 @@ impl Encodable for Action {
                 message2,
             } => {
                 s.begin_list(3)
-                    .append(&ACTION_TAG_REPORT_DOUBLE_VOTE)
+                    .append(&ActionTag::ReportDoubleVote)
                     .append(message1.as_ref())
                     .append(message2.as_ref());
             }
@@ -242,7 +268,7 @@ impl Decodable for Action {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let tag = rlp.val_at(0)?;
         match tag {
-            ACTION_TAG_TRANSFER_CCS => {
+            ActionTag::TransferCCS => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpInvalidLength {
@@ -255,7 +281,7 @@ impl Decodable for Action {
                     quantity: rlp.val_at(2)?,
                 })
             }
-            ACTION_TAG_DELEGATE_CCS => {
+            ActionTag::DelegateCCS => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpInvalidLength {
@@ -268,7 +294,7 @@ impl Decodable for Action {
                     quantity: rlp.val_at(2)?,
                 })
             }
-            ACTION_TAG_REVOKE => {
+            ActionTag::Revoke => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpInvalidLength {
@@ -281,7 +307,7 @@ impl Decodable for Action {
                     quantity: rlp.val_at(2)?,
                 })
             }
-            ACTION_TAG_REDELEGATE => {
+            ActionTag::Redelegate => {
                 let item_count = rlp.item_count()?;
                 if item_count != 4 {
                     return Err(DecoderError::RlpInvalidLength {
@@ -295,7 +321,7 @@ impl Decodable for Action {
                     quantity: rlp.val_at(3)?,
                 })
             }
-            ACTION_TAG_SELF_NOMINATE => {
+            ActionTag::SelfNominate => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpInvalidLength {
@@ -308,7 +334,7 @@ impl Decodable for Action {
                     metadata: rlp.val_at(2)?,
                 })
             }
-            ACTION_TAG_CHANGE_PARAMS => {
+            ActionTag::ChangeParams => {
                 let item_count = rlp.item_count()?;
                 if item_count < 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -325,7 +351,7 @@ impl Decodable for Action {
                     signatures,
                 })
             }
-            ACTION_TAG_REPORT_DOUBLE_VOTE => {
+            ActionTag::ReportDoubleVote => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -340,7 +366,6 @@ impl Decodable for Action {
                     message2,
                 })
             }
-            _ => Err(DecoderError::Custom("Unexpected Tendermint Stake Action Type")),
         }
     }
 }

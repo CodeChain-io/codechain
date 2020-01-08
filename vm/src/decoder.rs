@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+use crate::executor::TimelockType;
 use crate::instruction::Instruction;
 use crate::opcode;
 
@@ -80,10 +80,16 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<Instruction>, DecoderError> {
             opcode::BLAKE160 => result.push(Instruction::Blake160),
             opcode::CHKTIMELOCK => {
                 let val = *iter.next().ok_or(DecoderError::ScriptTooShort)?;
-                if val < 1 || val > 4 {
-                    return Err(DecoderError::InvalidImmediateValue(val))
+                let timelock_type: TimelockType;
+                match val {
+                    1 => timelock_type = TimelockType::Block,
+                    2 => timelock_type = TimelockType::BlockAge,
+                    3 => timelock_type = TimelockType::Time,
+                    4 => timelock_type = TimelockType::TimeAge,
+                    _ => return Err(DecoderError::InvalidImmediateValue(val)),
                 }
-                result.push(Instruction::ChkTimelock(val));
+
+                result.push(Instruction::ChkTimelock(timelock_type));
             }
             invalid_opcode => return Err(DecoderError::InvalidOpCode(invalid_opcode)),
         }
@@ -166,14 +172,15 @@ mod tests {
         assert_eq!(decode(&[opcode::CHKTIMELOCK]), Err(DecoderError::ScriptTooShort));
         assert_eq!(decode(&[opcode::CHKTIMELOCK, 0]), Err(DecoderError::InvalidImmediateValue(0)));
         assert_eq!(decode(&[opcode::CHKTIMELOCK, 5]), Err(DecoderError::InvalidImmediateValue(5)));
-        assert_eq!(decode(&[opcode::CHKTIMELOCK, 1]), Ok(vec![Instruction::ChkTimelock(1)]));
-        assert_eq!(decode(&[opcode::CHKTIMELOCK, 2]), Ok(vec![Instruction::ChkTimelock(2)]));
-        assert_eq!(decode(&[opcode::CHKTIMELOCK, 3]), Ok(vec![Instruction::ChkTimelock(3)]));
-        assert_eq!(decode(&[opcode::CHKTIMELOCK, 4]), Ok(vec![Instruction::ChkTimelock(4)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 1]), Ok(vec![Instruction::ChkTimelock(TimelockType::Block)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 2]), Ok(vec![Instruction::ChkTimelock(TimelockType::BlockAge)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 3]), Ok(vec![Instruction::ChkTimelock(TimelockType::Time)]));
+        assert_eq!(decode(&[opcode::CHKTIMELOCK, 4]), Ok(vec![Instruction::ChkTimelock(TimelockType::TimeAge)]));
+
         assert_eq!(decode(&[opcode::CHKTIMELOCK, 1, opcode::CHKTIMELOCK]), Err(DecoderError::ScriptTooShort));
         assert_eq!(
             decode(&[opcode::CHKTIMELOCK, 1, opcode::CHKTIMELOCK, 2]),
-            Ok(vec![Instruction::ChkTimelock(1), Instruction::ChkTimelock(2)])
+            Ok(vec![Instruction::ChkTimelock(TimelockType::Block), Instruction::ChkTimelock(TimelockType::BlockAge)])
         );
     }
 }
