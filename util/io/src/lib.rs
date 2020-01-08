@@ -27,33 +27,33 @@
 //! struct MyHandler;
 //!
 //! struct MyMessage {
-//! 	data: u32
+//!    data: u32
 //! }
 //!
 //! impl IoHandler<MyMessage> for MyHandler {
-//! 	fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
-//!			io.register_timer(0, Duration::from_secs(1));
-//!			Ok(())
-//!		}
+//!    fn initialize(&self, io: &IoContext<MyMessage>) -> IoHandlerResult<()> {
+//!        io.register_timer(0, Duration::from_secs(1));
+//!        Ok(())
+//!    }
 //!
-//!		fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) -> IoHandlerResult<()> {
-//!			println!("Timeout {}", timer);
-//!			Ok(())
-//!		}
+//!    fn timeout(&self, _io: &IoContext<MyMessage>, timer: TimerToken) -> IoHandlerResult<()> {
+//!        println!("Timeout {}", timer);
+//!        Ok(())
+//!    }
 //!
-//!		fn message(&self, _io: &IoContext<MyMessage>, message: MyMessage) -> IoHandlerResult<()> {
-//!			println!("Message {}", message.data);
-//!			Ok(())
-//!		}
+//!    fn message(&self, _io: &IoContext<MyMessage>, message: MyMessage) -> IoHandlerResult<()> {
+//!        println!("Message {}", message.data);
+//!        Ok(())
+//!    }
 //! }
 //!
-//! fn main () {
-//! 	let mut service = IoService::<MyMessage>::start("Test").expect("Error creating network service");
-//! 	service.register_handler(Arc::new(MyHandler)).unwrap();
+//!  fn main () {
+//!    let mut service = IoService::<MyMessage>::start("Test").expect("Error creating network service");
+//!    service.register_handler(Arc::new(MyHandler)).unwrap();
 //!
-//! 	// Wait for quit condition
-//! 	// ...
-//! 	// Drop the service
+//!    // Wait for quit condition
+//!    // ...
+//!    // Drop the service
 //! }
 //! ```
 

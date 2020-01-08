@@ -12,7 +12,7 @@ jobs:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2019-11-06
+          toolchain: nightly-2019-12-19
           components: clippy
           profile: minimal
           override: true
@@ -28,7 +28,7 @@ jobs:
           fetch-depth: 1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2019-11-06
+          toolchain: nightly-2019-12-19
           components: rustfmt
           profile: minimal
           override: true
