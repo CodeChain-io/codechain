@@ -78,7 +78,7 @@ CodeChain requires Rust version 1.40.0 to build. Using [rustup](https://rustup.r
 - For Linux Systems:
   - Ubuntu
 
-    > `gcc`, `g++` and `make` are required for installing packages.
+    > `cmake`, `gcc`, `g++` and `make` are required for installing packages.
     ```sh
     $ curl https://sh.rustup.rs -sSf | sh
     ```
@@ -86,7 +86,7 @@ CodeChain requires Rust version 1.40.0 to build. Using [rustup](https://rustup.r
 
 - For Mac Systems:
   - MacOS 10.13.2 (17C88) tested
-    > `clang` is required for installing packages.
+    > `cmake` and `clang` are required for installing packages.
 
     ```sh
     $ curl https://sh.rustup.rs -sSf | sh
