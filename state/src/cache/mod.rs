@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use rlp::{Decodable, Encodable};
 use std::fmt;
 use std::hash::Hash;
-
-use rlp::{Decodable, Encodable};
 
 mod global_cache;
 mod lru_cache;

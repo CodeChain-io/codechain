@@ -14,8 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
-
+use super::invoice::Invoice;
+use crate::client::{EngineInfo, TermInfo};
+use crate::consensus::CodeChainEngine;
+use crate::error::{BlockError, Error};
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::BlockId;
 use ccrypto::BLAKE_NULL_RLP;
 use ckey::Address;
 use cstate::{FindActionHandler, StateDB, StateError, StateWithCache, TopLevelState};
@@ -27,13 +31,7 @@ use cvm::ChainTimeInfo;
 use merkle_trie::skewed_merkle_root;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use super::invoice::Invoice;
-use crate::client::{EngineInfo, TermInfo};
-use crate::consensus::CodeChainEngine;
-use crate::error::{BlockError, Error};
-use crate::transaction::{SignedTransaction, UnverifiedTransaction};
-use crate::BlockId;
+use std::collections::HashSet;
 
 /// A block, encoded as it is on the block chain.
 #[derive(Debug, Clone, PartialEq)]

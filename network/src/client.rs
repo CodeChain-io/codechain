@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::thread::{Builder, JoinHandle};
-use std::time::Duration;
-
+use crate::p2p::Message as P2pMessage;
+use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
 use cio::IoChannel;
 use crossbeam_channel as crossbeam;
 use ctimer::{TimeoutHandler, TimerApi, TimerLoop, TimerToken};
 use parking_lot::{Mutex, RwLock};
 use primitives::Bytes;
-
-use crate::p2p::Message as P2pMessage;
-use crate::{Api, IntoSocketAddr, NetworkExtension, NetworkExtensionResult, NodeId};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::thread::{Builder, JoinHandle};
+use std::time::Duration;
 
 struct ClientApi {
     p2p_channel: IoChannel<P2pMessage>,

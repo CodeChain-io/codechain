@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::Transaction;
 use ccore::{Block as CoreBlock, LocalizedTransaction};
 use ckey::{NetworkId, PlatformAddress};
 use ctypes::{BlockHash, BlockNumber};
 use primitives::{H256, U256};
-
-use super::Transaction;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(test)]
-use std::cell::RefCell;
-#[cfg(test)]
-use std::{mem, thread};
-
+use crate::{Generator, KeyPair, SECP256K1};
 use never_type::Never;
 use rand::rngs::OsRng;
 #[cfg(test)]
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-
-use crate::{Generator, KeyPair, SECP256K1};
+#[cfg(test)]
+use std::cell::RefCell;
+#[cfg(test)]
+use std::{mem, thread};
 
 pub struct Random;
 

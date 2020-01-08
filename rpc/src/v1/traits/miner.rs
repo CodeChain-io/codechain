@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::super::types::Work;
 use cjson::bytes::Bytes;
 use ctypes::BlockHash;
 use jsonrpc_core::Result;
-
-use super::super::types::Work;
 
 #[rpc(server)]
 pub trait Miner {

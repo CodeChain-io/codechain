@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io;
-use std::sync::Arc;
-
-use cio::IoManager;
-use mio::deprecated::EventLoop;
-use mio::unix::UnixReady;
-use mio::{PollOpt, Ready, Token};
-use primitives::Bytes;
-
 use super::super::message::{Message, Version};
 use super::super::stream::SignedStream;
 use super::super::{ExtensionMessage, NegotiationMessage};
@@ -30,6 +21,13 @@ use super::Result;
 use crate::session::Session;
 use crate::stream::Stream;
 use crate::SocketAddr;
+use cio::IoManager;
+use mio::deprecated::EventLoop;
+use mio::unix::UnixReady;
+use mio::{PollOpt, Ready, Token};
+use primitives::Bytes;
+use std::io;
+use std::sync::Arc;
 
 pub struct EstablishedConnection {
     stream: SignedStream,

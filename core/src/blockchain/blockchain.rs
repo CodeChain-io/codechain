@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
-use ctypes::{BlockHash, BlockNumber, Tracker, TxHash};
-use kvdb::{DBTransaction, KeyValueDB};
-use parking_lot::RwLock;
-use primitives::H256;
-use rlp::RlpStream;
-
 use super::block_info::BestBlockChanged;
 use super::body_db::{BodyDB, BodyProvider};
 use super::extras::{BlockDetails, TransactionAddress};
@@ -35,6 +27,12 @@ use crate::encoded;
 use crate::invoice::Invoice;
 use crate::transaction::LocalizedTransaction;
 use crate::views::{BlockView, HeaderView};
+use ctypes::{BlockHash, BlockNumber, Tracker, TxHash};
+use kvdb::{DBTransaction, KeyValueDB};
+use parking_lot::RwLock;
+use primitives::H256;
+use rlp::RlpStream;
+use std::sync::Arc;
 
 const BEST_BLOCK_KEY: &[u8] = b"best-block";
 const BEST_PROPOSAL_BLOCK_KEY: &[u8] = b"best-proposal-block";

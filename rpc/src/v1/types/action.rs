@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryFrom;
-
+use super::super::errors::ConversionError;
+use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput};
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress, Public, Signature};
 use ctypes::transaction::{Action as ActionType, AssetMintOutput as AssetMintOutputType};
 use ctypes::{ShardId, Tracker, TxHash};
 use primitives::{Bytes, H160};
 use rustc_serialize::hex::{FromHex, ToHex};
-
-use super::super::errors::ConversionError;
-use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput};
+use std::convert::TryFrom;
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]

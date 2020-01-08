@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::net::IpAddr;
-
-use cidr::IpCidr;
-
 use super::filter::FilterEntry;
+use cidr::IpCidr;
+use std::net::IpAddr;
 
 pub trait Control: Send + Sync {
     fn add_to_whitelist(&self, addr: IpCidr, tag: Option<String>);

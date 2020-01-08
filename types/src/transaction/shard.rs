@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing};
+use crate::util::tag::Tag;
+use crate::{ShardId, Tracker, TxHash};
 use ccrypto::{blake128, blake256, blake256_with_key};
 use ckey::{Address, NetworkId};
 use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use super::{AssetMintOutput, AssetTransferInput, AssetTransferOutput, HashingError, PartialHashing};
-use crate::util::tag::Tag;
-use crate::{ShardId, Tracker, TxHash};
 
 /// Shard Transaction type.
 #[derive(Debug, Clone, PartialEq, Eq)]

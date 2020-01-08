@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io::Read;
-
-use serde_json;
-
 use super::password_entry::PasswordEntry;
+use serde_json;
+use std::io::Read;
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct PasswordFile(Vec<PasswordEntry>);

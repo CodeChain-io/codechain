@@ -16,16 +16,14 @@
 
 //! Client-side stratum job dispatcher and mining notifier handler
 
-use std::net::{AddrParseError, SocketAddr};
-use std::sync::Arc;
-
-use crate::error::Error as MinerError;
-use cstratum::{Error as StratumServiceError, JobDispatcher, PushWorkHandler, Stratum as StratumService};
-use primitives::{Bytes, H256, U256};
-
 use crate::client::Client;
+use crate::error::Error as MinerError;
 use crate::miner::work_notify::NotifyWork;
 use crate::miner::{Miner, MinerService};
+use cstratum::{Error as StratumServiceError, JobDispatcher, PushWorkHandler, Stratum as StratumService};
+use primitives::{Bytes, H256, U256};
+use std::net::{AddrParseError, SocketAddr};
+use std::sync::Arc;
 
 /// Configures stratum server options.
 #[derive(Debug, PartialEq, Clone)]

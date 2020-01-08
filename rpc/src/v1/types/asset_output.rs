@@ -15,15 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 extern crate rustc_serialize;
 
-use std::convert::TryFrom;
-use std::iter::FromIterator;
-use std::ops::Deref;
-
 use cjson::uint::Uint;
 use ctypes::transaction::{AssetMintOutput as AssetMintOutputType, AssetTransferOutput as AssetTransferOutputType};
 use ctypes::ShardId;
 use primitives::H160;
 use rustc_serialize::hex::{FromHex, FromHexError, ToHex};
+use std::convert::TryFrom;
+use std::iter::FromIterator;
+use std::ops::Deref;
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

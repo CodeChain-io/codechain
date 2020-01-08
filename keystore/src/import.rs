@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
+use crate::Error;
+use ckey::Address;
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
-
-use ckey::Address;
-
-use crate::accounts_dir::{DiskKeyFileManager, KeyDirectory, KeyFileManager};
-use crate::Error;
 
 /// Import an account from a file.
 pub fn import_account(path: &Path, dst: &dyn KeyDirectory) -> Result<Address, Error> {

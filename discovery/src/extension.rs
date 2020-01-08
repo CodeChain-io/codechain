@@ -14,20 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
-use std::sync::Arc;
-use std::time::Duration;
-
+use super::message::Message;
+use super::node_id::{address_to_hash, KademliaId};
+use super::Config;
 use cnetwork::{Api, IntoSocketAddr, NetworkExtension, NodeId, RoutingTable};
 use ctimer::TimerToken;
 use never_type::Never;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Decodable, Encodable, Rlp};
-
-use super::message::Message;
-use super::node_id::{address_to_hash, KademliaId};
-use super::Config;
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::time::Duration;
 
 pub struct Extension {
     config: Config,

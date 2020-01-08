@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-
-use ckey::{PlatformAddress, Public};
-
 use crate::uint::Uint;
+use ckey::{PlatformAddress, Public};
+use std::collections::HashMap;
 
 /// Tendermint params deserialization.
 #[derive(Debug, PartialEq, Deserialize)]

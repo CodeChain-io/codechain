@@ -16,16 +16,14 @@
 
 extern crate hyper;
 
-use std::io::Write;
-
-use parking_lot::Mutex;
-use primitives::{H256, U256};
-
 use self::hyper::client::{Client, Request, Response};
 use self::hyper::header::ContentType;
 use self::hyper::method::Method;
 use self::hyper::net::HttpStream;
 use self::hyper::{Next, Url};
+use parking_lot::Mutex;
+use primitives::{H256, U256};
+use std::io::Write;
 
 /// Trait for notifying about new mining work
 pub trait NotifyWork: Send + Sync {

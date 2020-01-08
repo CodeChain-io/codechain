@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use primitives::H256;
-
 use super::AssetTransferInput;
 use crate::util::tag::Tag;
+use primitives::H256;
 
 pub trait PartialHashing {
     fn hash_partially(&self, tag: Tag, cur: &AssetTransferInput, burn: bool) -> Result<H256, HashingError>;

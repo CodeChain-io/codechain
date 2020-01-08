@@ -16,21 +16,19 @@
 
 mod params;
 
-use std::cmp::{max, min};
-
-use ccrypto::blake256;
-use ckey::Address;
-use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::{CommonParams, Header};
-use primitives::U256;
-use rlp::Rlp;
-
 use self::params::BlakePoWParams;
 use super::ConsensusEngine;
 use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineError, EngineType};
 use crate::error::{BlockError, Error};
+use ccrypto::blake256;
+use ckey::Address;
+use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::{CommonParams, Header};
+use primitives::U256;
+use rlp::Rlp;
+use std::cmp::{max, min};
 
 /// BlakePoW specific seal
 #[derive(Debug, PartialEq)]

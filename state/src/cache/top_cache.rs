@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cell::RefMut;
-
-use ckey::Address;
-use merkle_trie::{Result as TrieResult, Trie, TrieMut};
-use primitives::H256;
-
 use super::WriteBack;
 use crate::{
     Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, Text,
 };
+use ckey::Address;
+use merkle_trie::{Result as TrieResult, Trie, TrieMut};
+use primitives::H256;
+use std::cell::RefMut;
 
 pub struct TopCache {
     account: WriteBack<Account>,

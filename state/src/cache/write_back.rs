@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::CacheableItem;
+use merkle_trie::{Result as TrieResult, Trie, TrieMut};
 use std::cell::{RefCell, RefMut};
 use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::HashMap;
@@ -21,10 +23,6 @@ use std::convert::AsRef;
 use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::vec::Vec;
-
-use merkle_trie::{Result as TrieResult, Trie, TrieMut};
-
-use super::CacheableItem;
 
 static TOUCHED_COUNT: AtomicUsize = AtomicUsize::new(0);
 fn touched_count() -> usize {

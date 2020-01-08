@@ -19,12 +19,11 @@ mod incoming;
 mod message;
 mod outgoing;
 
+use ccrypto::aes::SymmetricCipherError;
+use rlp::DecoderError;
 use std::fmt;
 use std::io;
 use std::result;
-
-use ccrypto::aes::SymmetricCipherError;
-use rlp::DecoderError;
 
 pub use self::established::EstablishedConnection;
 pub use self::incoming::IncomingConnection;

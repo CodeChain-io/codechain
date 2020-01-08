@@ -15,16 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // A state machine.
 
+use crate::block::{ExecutedBlock, IsBlock};
+use crate::client::BlockChainTrait;
+use crate::error::Error;
+use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use ckey::Address;
 use cstate::{StateError, TopState, TopStateView};
 use ctypes::errors::{HistoryError, SyntaxError};
 use ctypes::transaction::{Action, AssetTransferInput, Timelock};
 use ctypes::{CommonParams, Header};
-
-use crate::block::{ExecutedBlock, IsBlock};
-use crate::client::BlockChainTrait;
-use crate::error::Error;
-use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 
 pub struct CodeChainMachine {
     params: CommonParams,

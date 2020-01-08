@@ -14,17 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use super::super::errors;
+use super::super::traits::Engine;
 use ccore::{BlockId, EngineInfo, MinerService, StateInfo};
 use cjson::bytes::{Bytes, WithoutPrefix};
 use ckey::PlatformAddress;
 use cstate::FindActionHandler;
-
 use jsonrpc_core::Result;
-
-use super::super::errors;
-use super::super::traits::Engine;
+use std::sync::Arc;
 
 pub struct EngineClient<C, M>
 where

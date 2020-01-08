@@ -23,15 +23,14 @@
 //! When the entirety of the object is needed, it's better to upgrade it to a fully
 //! decoded object where parts like the hash can be saved.
 
+use crate::block::Block as FullBlock;
+use crate::transaction::UnverifiedTransaction;
+use crate::views;
 use ccrypto::blake256;
 use ckey::Address;
 use ctypes::{BlockHash, BlockNumber, Header as FullHeader, TxHash};
 use primitives::{H256, U256};
 use rlp::Rlp;
-
-use crate::block::Block as FullBlock;
-use crate::transaction::UnverifiedTransaction;
-use crate::views;
 
 /// Owning header view.
 #[derive(Debug, Clone, PartialEq, Eq)]

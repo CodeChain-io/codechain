@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fs;
-use std::str::FromStr;
-
-use rpassword;
-
+use crate::config::ChainType;
+use crate::constants::DEFAULT_KEYS_PATH;
 use ccore::AccountProvider;
 use ckey::{NetworkId, Password, PlatformAddress, Private};
 use ckeystore::accounts_dir::RootDiskDirectory;
@@ -26,9 +23,9 @@ use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use primitives::remove_0x_prefix;
-
-use crate::config::ChainType;
-use crate::constants::DEFAULT_KEYS_PATH;
+use rpassword;
+use std::fs;
+use std::str::FromStr;
 
 pub fn run_account_command(matches: &ArgMatches) -> Result<(), String> {
     if matches.subcommand.is_none() {

@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use cidr::{Cidr, IpCidr};
 use std::collections::HashMap;
 use std::net::IpAddr;
-
-use cidr::{Cidr, IpCidr};
 
 #[derive(Default)]
 pub struct Filter {

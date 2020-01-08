@@ -16,14 +16,13 @@
 
 //! Lenient hash json deserialization for test json files.
 
-use std::fmt;
-use std::str::FromStr;
-
 use ckey::Address as CoreAddress;
 use primitives::{H256 as Hash256, H520 as Hash520};
 use rustc_hex::ToHex;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt;
+use std::str::FromStr;
 
 macro_rules! impl_hash {
     ($name:ident, $inner:ident) => {

@@ -30,19 +30,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp::PartialEq;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
-
+use crate::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
 use primitives::{H256, H520};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use rustc_hex::{FromHex, ToHex};
 use secp256k1::{key, Error as SecpError, Message as SecpMessage, RecoverableSignature, RecoveryId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use crate::{public_to_address, Address, Error, Message, Private, Public, SECP256K1};
+use std::cmp::PartialEq;
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 pub const ECDSA_SIGNATURE_LENGTH: usize = 65;
 

@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{BTreeMap, HashMap};
-use std::iter::Iterator;
-
-use ckey::SchnorrSignature;
-use ctypes::BlockHash;
-use rlp::{Encodable, RlpStream};
-
 use super::stake::Action;
 use super::{ConsensusMessage, VoteStep};
 use crate::consensus::BitSet;
+use ckey::SchnorrSignature;
+use ctypes::BlockHash;
+use rlp::{Encodable, RlpStream};
+use std::collections::{BTreeMap, HashMap};
+use std::iter::Iterator;
 
 /// Storing all Proposals, Prevotes and Precommits.
 #[derive(Debug)]

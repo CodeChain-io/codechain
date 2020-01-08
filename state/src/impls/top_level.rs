@@ -35,9 +35,15 @@
 //! Unconfirmed sub-states are managed with `checkpoint`s which may be canonicalized
 //! or rolled back.
 
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
-
+use crate::cache::{ShardCache, TopCache};
+use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
+use crate::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
+#[cfg(test)]
+use crate::Asset;
+use crate::{
+    Account, ActionData, FindActionHandler, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard,
+    ShardAddress, ShardLevelState, StateDB, StateResult, Text,
+};
 use ccrypto::BLAKE_NULL_RLP;
 use cdb::{AsHashDB, DatabaseError};
 use ckey::{public_to_address, recover, verify_address, Address, NetworkId, Public, Signature};
@@ -55,16 +61,8 @@ use merkle_trie::{Result as TrieResult, TrieError, TrieFactory};
 #[cfg(test)]
 use primitives::H160;
 use primitives::{Bytes, H256};
-
-use crate::cache::{ShardCache, TopCache};
-use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
-use crate::traits::{ShardState, ShardStateView, StateWithCache, TopState, TopStateView};
-#[cfg(test)]
-use crate::Asset;
-use crate::{
-    Account, ActionData, FindActionHandler, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard,
-    ShardAddress, ShardLevelState, StateDB, StateResult, Text,
-};
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
 
 /// Representation of the entire state of all accounts in the system.
 ///

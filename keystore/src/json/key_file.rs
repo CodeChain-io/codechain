@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::io::{Read, Write};
-
+use super::{Crypto, Uuid, Version, H160};
 use serde::{Serialize, Serializer};
 use serde_json;
-
-use super::{Crypto, Uuid, Version, H160};
+use std::io::{Read, Write};
 
 /// Public opaque type representing serializable `KeyFile`.
 #[derive(Debug, PartialEq)]

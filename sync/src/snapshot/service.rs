@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::error::Error;
+use super::snapshot::{Snapshot, WriteSnapshot};
+use ccore::{BlockChainClient, BlockChainTrait, BlockId, ChainNotify, Client, DatabaseClient};
+use ctypes::BlockHash;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread::spawn;
-
-use ccore::{BlockChainClient, BlockChainTrait, BlockId, ChainNotify, Client, DatabaseClient};
-use ctypes::BlockHash;
-
-use super::error::Error;
-use super::snapshot::{Snapshot, WriteSnapshot};
 
 pub struct Service {
     client: Arc<Client>,

@@ -14,12 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp;
-use std::collections::HashMap;
-use std::iter::Iterator;
-use std::sync::Arc;
-use std::time::Duration;
-
+use super::super::BitSet;
+use super::message::*;
+use super::params::TimeoutParams;
+use super::types::{Height, PeerState, Step, View};
+use super::worker;
+use super::{
+    ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL, ENGINE_TIMEOUT_EMPTY_PROPOSAL,
+    ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
+};
+use crate::consensus::EngineError;
 use ckey::SchnorrSignature;
 use cnetwork::{Api, NetworkExtension, NodeId};
 use crossbeam_channel as crossbeam;
@@ -29,18 +33,11 @@ use primitives::Bytes;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use rlp::{Encodable, Rlp};
-
-use super::super::BitSet;
-use super::message::*;
-use super::params::TimeoutParams;
-use super::types::{Height, PeerState, Step, View};
-use super::worker;
-use crate::consensus::EngineError;
-
-use super::{
-    ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL, ENGINE_TIMEOUT_EMPTY_PROPOSAL,
-    ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
-};
+use std::cmp;
+use std::collections::HashMap;
+use std::iter::Iterator;
+use std::sync::Arc;
+use std::time::Duration;
 
 pub struct TendermintExtension {
     inner: crossbeam::Sender<worker::Event>,

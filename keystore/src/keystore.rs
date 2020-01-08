@@ -14,20 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::collections::BTreeMap;
-use std::mem;
-use std::path::PathBuf;
-use std::time::{Duration, Instant};
-
-use ccrypto::KEY_ITERATIONS;
-use ckey::{Address, KeyPair, Password, Secret};
-use parking_lot::{Mutex, RwLock};
-
 use crate::account::{DecryptedAccount, SafeAccount};
 use crate::accounts_dir::KeyDirectory;
 use crate::json::{self, OpaqueKeyFile, Uuid};
 use crate::random::Random;
 use crate::{Error, SecretStore, SimpleSecretStore};
+use ccrypto::KEY_ITERATIONS;
+use ckey::{Address, KeyPair, Password, Secret};
+use parking_lot::{Mutex, RwLock};
+use std::collections::BTreeMap;
+use std::mem;
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 /// Accounts store.
 pub struct KeyStore {

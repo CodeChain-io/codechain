@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::service::{IoChannel, IoContext};
+use crate::IoHandler;
 use crossbeam::deque;
 use std::cell::Cell;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::Arc;
-use std::thread::{self, JoinHandle};
-
-use crate::service::{IoChannel, IoContext};
-use crate::IoHandler;
-
 use std::sync::{Condvar as SCondvar, Mutex as SMutex};
+use std::thread::{self, JoinHandle};
 
 const STACK_SIZE: usize = 16 * 1024 * 1024;
 

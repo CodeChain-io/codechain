@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt::{Display, Formatter, Result as FormatResult};
-use std::io::{Error as FileError, ErrorKind};
-
 use cdb::DatabaseError;
 use primitives::H256;
+use std::fmt::{Display, Formatter, Result as FormatResult};
+use std::io::{Error as FileError, ErrorKind};
 
 #[derive(Debug)]
 pub enum Error {

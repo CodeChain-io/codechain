@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cell::{RefCell, RefMut};
-use std::collections::HashSet;
-use std::iter::{once, FromIterator};
-
+use crate::cache::ShardCache;
+use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
+use crate::traits::{ShardState, ShardStateView};
+use crate::{Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, StateResult};
 use ccrypto::{Blake, BLAKE_NULL_RLP};
 use cdb::AsHashDB;
 use ckey::Address;
@@ -31,11 +31,9 @@ use ctypes::{BlockNumber, ShardId, Tracker};
 use cvm::{decode, execute, ChainTimeInfo, ScriptResult, VMConfig};
 use merkle_trie::{Result as TrieResult, TrieError, TrieFactory};
 use primitives::{Bytes, H160, H256};
-
-use crate::cache::ShardCache;
-use crate::checkpoint::{CheckpointId, StateWithCheckpoint};
-use crate::traits::{ShardState, ShardStateView};
-use crate::{Asset, AssetScheme, AssetSchemeAddress, OwnedAsset, OwnedAssetAddress, StateDB, StateResult};
+use std::cell::{RefCell, RefMut};
+use std::collections::HashSet;
+use std::iter::{once, FromIterator};
 
 
 pub struct ShardLevelState<'db> {

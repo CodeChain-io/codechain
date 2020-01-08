@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use ccrypto::blake256;
-use ckey::NetworkId;
-use rlp::RlpStream;
-
 use super::Action;
 use super::{AssetWrapCCCOutput, ShardTransaction};
 use crate::{Tracker, TxHash};
+use ccrypto::blake256;
+use ckey::NetworkId;
+use rlp::RlpStream;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transaction {

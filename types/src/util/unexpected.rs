@@ -16,9 +16,8 @@
 
 //! Error utils
 
-use std::fmt;
-
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize)]
 /// Error indicating an expected value was not found.

@@ -16,17 +16,15 @@
 
 extern crate test;
 
-use std::sync::Arc;
-
-use ckey::{Generator, KeyPair, Public, Random};
-use ctypes::transaction::{Action, Transaction};
-use rand::prelude::SliceRandom;
-use rand::thread_rng;
-
 use self::test::{black_box, Bencher};
 use super::mem_pool::MemPool;
 use super::mem_pool_types::{AccountDetails, MemPoolInput, PoolingInstant, TxOrigin, TxTimelock};
 use crate::transaction::SignedTransaction;
+use ckey::{Generator, KeyPair, Public, Random};
+use ctypes::transaction::{Action, Transaction};
+use rand::prelude::SliceRandom;
+use rand::thread_rng;
+use std::sync::Arc;
 
 const NUM_TXS: usize = 5000;
 

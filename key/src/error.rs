@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-
+use crate::NetworkId;
 use bech32::Error as Bech32Error;
 use secp256k1::Error as SecpError;
-
-use crate::NetworkId;
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {

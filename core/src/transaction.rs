@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Deref;
-
+use crate::error::Error;
 use ccrypto::blake256;
 use ckey::{self, public_to_address, recover, sign, Private, Public, Signature};
 use ctypes::errors::SyntaxError;
 use ctypes::transaction::Transaction;
 use ctypes::{BlockHash, BlockNumber, CommonParams, TxHash};
 use rlp::{self, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::error::Error;
+use std::ops::Deref;
 
 /// Signed transaction information without verified signature.
 #[derive(Debug, Clone, Eq, PartialEq)]

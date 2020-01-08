@@ -1,6 +1,5 @@
-use std::cmp::Ordering;
-
 use crate::consensus::{Step, VoteOn};
+use std::cmp::Ordering;
 
 pub struct VoteRegressionChecker {
     last_vote: Option<VoteOn>,
