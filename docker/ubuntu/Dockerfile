@@ -12,7 +12,8 @@ RUN apt-get update && \
         binutils \
         libssl-dev \
         pkg-config \
-        libudev-dev
+        libudev-dev \
+        cmake
 
 # install rustup
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
