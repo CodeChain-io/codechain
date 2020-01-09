@@ -14,18 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::mem;
-use std::sync::Arc;
-
-use ctypes::header::{Header, Seal};
-use ctypes::{BlockHash, BlockNumber};
-use kvdb::{DBTransaction, KeyValueDB};
-use lru_cache::LruCache;
-use parking_lot::{Mutex, RwLock};
-use primitives::{Bytes, H256};
-use rlp_compress::{blocks_swapper, compress, decompress};
-
 use super::block_info::BestHeaderChanged;
 use super::extras::BlockDetails;
 use super::route::tree_route;
@@ -33,6 +21,16 @@ use crate::consensus::CodeChainEngine;
 use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
 use crate::encoded;
 use crate::views::HeaderView;
+use ctypes::header::{Header, Seal};
+use ctypes::{BlockHash, BlockNumber};
+use kvdb::{DBTransaction, KeyValueDB};
+use lru_cache::LruCache;
+use parking_lot::{Mutex, RwLock};
+use primitives::{Bytes, H256};
+use rlp_compress::{blocks_swapper, compress, decompress};
+use std::collections::HashMap;
+use std::mem;
+use std::sync::Arc;
 
 const BEST_HEADER_KEY: &[u8] = b"best-header";
 const BEST_PROPOSAL_HEADER_KEY: &[u8] = b"best-proposal-header";

@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use lru_cache::LruCache as LruCacheImpl;
-
 use crate::CacheableItem;
+use lru_cache::LruCache as LruCacheImpl;
 
 pub struct LruCache<Item: CacheableItem> {
     cache: LruCacheImpl<Item::Address, Item>,

@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
-
+use super::super::message::RequestMessage;
 use ccore::UnverifiedTransaction;
 use ctypes::{BlockHash, Header};
-
-use super::super::message::RequestMessage;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone)]
 struct Target {

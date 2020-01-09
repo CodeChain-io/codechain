@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Deref;
-
 use cjson::uint::Uint;
 use cstate::{Asset as AssetType, OwnedAsset as OwnedAssetType};
 use primitives::H160;
 use rustc_serialize::hex::ToHex;
+use std::ops::Deref;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

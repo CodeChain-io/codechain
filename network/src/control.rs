@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::addr::SocketAddr;
+use crate::filters::FilterEntry;
+use cidr::IpCidr;
+use ckey::Public;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::result::Result;
-
-use cidr::IpCidr;
-use ckey::Public;
-
-use crate::addr::SocketAddr;
-use crate::filters::FilterEntry;
 
 pub trait Control: Send + Sync {
     fn local_key_for(&self, address: IpAddr, port: u16) -> Result<Public, Error>;

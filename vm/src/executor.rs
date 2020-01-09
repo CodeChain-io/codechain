@@ -13,24 +13,25 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 use ccrypto::{blake256, keccak256, ripemd160, sha256, Blake};
 use ckey::{verify, Public, Signature, SIGNATURE_LENGTH};
 use ctypes::transaction::{AssetTransferInput, HashingError, PartialHashing};
 use ctypes::util::tag::Tag;
 use ctypes::{BlockNumber, Tracker};
-
 use primitives::{H160, H256};
-
 
 use crate::instruction::{has_expensive_opcodes, is_valid_unlock_script, Instruction};
 
 const DEFAULT_MAX_MEMORY: usize = 1024;
 
-const TIMELOCK_TYPE_BLOCK: u8 = 0x01;
-const TIMELOCK_TYPE_BLOCK_AGE: u8 = 0x02;
-const TIMELOCK_TYPE_TIME: u8 = 0x03;
-const TIMELOCK_TYPE_TIME_AGE: u8 = 0x04;
+#[derive(Debug, Clone, PartialEq)]
+#[repr(u8)]
+pub enum TimelockType {
+    Block = 0x01,
+    BlockAge = 0x02,
+    Time = 0x03,
+    TimeAge = 0x04,
+}
 
 pub struct Config {
     pub max_memory: usize,
@@ -309,27 +310,26 @@ where
                 let value_item = stack.pop()?;
                 let value = read_u64(value_item)?;
                 match *timelock_type {
-                    TIMELOCK_TYPE_BLOCK => {
+                    TimelockType::Block => {
                         stack.push(Item::from(parent_block_number >= value))?;
                     }
-                    TIMELOCK_TYPE_BLOCK_AGE => {
+                    TimelockType::BlockAge => {
                         stack.push(Item::from(
                             client
                                 .transaction_block_age(&cur.prev_out.tracker, parent_block_number)
                                 .map_or(false, |age| age >= value),
                         ))?;
                     }
-                    TIMELOCK_TYPE_TIME => {
+                    TimelockType::Time => {
                         stack.push(Item::from(parent_block_timestamp >= value))?;
                     }
-                    TIMELOCK_TYPE_TIME_AGE => {
+                    TimelockType::TimeAge => {
                         stack.push(Item::from(
                             client
                                 .transaction_time_age(&cur.prev_out.tracker, parent_block_timestamp)
                                 .map_or(false, |age| age >= value),
                         ))?;
                     }
-                    _ => return Err(RuntimeError::InvalidTimelockType),
                 }
             }
         }

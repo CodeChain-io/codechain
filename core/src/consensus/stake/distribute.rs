@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::TryFrom;
-
 use ckey::Address;
-
 use std::collections::hash_map;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 pub fn fee_distribute(total_min_fee: u64, stakes: &HashMap<Address, u64>) -> FeeDistributeIter {
     FeeDistributeIter {

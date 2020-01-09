@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-
+use super::super::BitSet;
+use super::message::VoteStep;
+use crate::block::{IsBlock, SealedBlock};
 use ckey::SchnorrSignature;
 use ctypes::BlockHash;
 use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use super::super::BitSet;
-use super::message::VoteStep;
-use crate::block::{IsBlock, SealedBlock};
+use std::fmt;
 
 pub type Height = u64;
 pub type View = u64;

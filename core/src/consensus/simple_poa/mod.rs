@@ -16,13 +16,6 @@
 
 mod params;
 
-use std::sync::{Arc, Weak};
-
-use ckey::{public_to_address, recover, Address, Signature};
-use ctypes::{CommonParams, Header};
-use parking_lot::RwLock;
-use primitives::H256;
-
 use self::params::SimplePoAParams;
 use super::signer::EngineSigner;
 use super::validator_set::validator_list::RoundRobinValidator;
@@ -34,6 +27,11 @@ use crate::client::ConsensusClient;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::EngineType;
 use crate::error::{BlockError, Error};
+use ckey::{public_to_address, recover, Address, Signature};
+use ctypes::{CommonParams, Header};
+use parking_lot::RwLock;
+use primitives::H256;
+use std::sync::{Arc, Weak};
 
 pub struct SimplePoA {
     machine: CodeChainMachine,

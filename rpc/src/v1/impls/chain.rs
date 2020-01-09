@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::{TryFrom, TryInto};
-use std::sync::Arc;
-
+use super::super::errors;
+use super::super::traits::Chain;
+use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
 use ccore::{
     AccountData, AssetClient, BlockId, EngineInfo, ExecuteClient, MiningBlockChainClient, Shard, TermInfo, TextClient,
 };
@@ -27,13 +27,10 @@ use ckey::{public_to_address, NetworkId, PlatformAddress, Public};
 use cstate::FindActionHandler;
 use ctypes::transaction::{Action, ShardTransaction as ShardTransactionType};
 use ctypes::{BlockHash, BlockNumber, ShardId, Tracker, TxHash};
-use primitives::{Bytes as BytesArray, H160, H256};
-
 use jsonrpc_core::Result;
-
-use super::super::errors;
-use super::super::traits::Chain;
-use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use primitives::{Bytes as BytesArray, H160, H256};
+use std::convert::{TryFrom, TryInto};
+use std::sync::Arc;
 
 pub struct ChainClient<C>
 where

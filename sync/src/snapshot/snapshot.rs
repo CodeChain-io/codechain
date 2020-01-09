@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
-use std::convert::AsRef;
-use std::fs::{create_dir_all, File};
-use std::io::{Read, Write};
-use std::iter::once;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
+use super::error::Error;
 use ccore::COL_STATE;
 use cdb::{new_journaldb, Algorithm, JournalDB};
 use kvdb::KeyValueDB;
@@ -29,8 +22,13 @@ use merkle_trie::Node;
 use primitives::H256;
 use rlp::{Rlp, RlpStream};
 use snap;
-
-use super::error::Error;
+use std::collections::HashSet;
+use std::convert::AsRef;
+use std::fs::{create_dir_all, File};
+use std::io::{Read, Write};
+use std::iter::once;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 pub struct Snapshot {
     path: PathBuf,

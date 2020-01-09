@@ -14,17 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-
-use cio::IoChannel;
-use ctypes::header::Header;
-use ctypes::BlockHash;
-use kvdb::DBTransaction;
-use parking_lot::{Mutex, MutexGuard};
-use rlp::Encodable;
-
 use super::{BlockChainTrait, Client, ClientConfig};
 use crate::block::{enact, IsBlock, LockedBlock};
 use crate::blockchain::{BodyProvider, HeaderProvider, ImportRoute};
@@ -37,6 +26,15 @@ use crate::types::BlockId;
 use crate::verification::queue::{BlockQueue, HeaderQueue};
 use crate::verification::{self, PreverifiedBlock, Verifier};
 use crate::views::{BlockView, HeaderView};
+use cio::IoChannel;
+use ctypes::header::Header;
+use ctypes::BlockHash;
+use kvdb::DBTransaction;
+use parking_lot::{Mutex, MutexGuard};
+use rlp::Encodable;
+use std::borrow::Borrow;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 pub struct Importer {
     /// Lock used during block import

@@ -14,18 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use crate::session::{Nonce, Session};
+use crate::SocketAddr;
 use ccrypto::aes::{self, SymmetricCipherError};
 use ckey::{exchange, Generator, KeyPair, Public, Random, Secret};
 use parking_lot::{Mutex, RwLock};
 use primitives::Bytes;
 use rand::rngs::OsRng;
 use rand::Rng;
-
-use crate::session::{Nonce, Session};
-use crate::SocketAddr;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum SecretOrigin {

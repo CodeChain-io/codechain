@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
 use super::Version;
-
 use super::REQUEST_ID;
 use super::RESPONSE_ID;
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Message {

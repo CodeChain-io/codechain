@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crossbeam_channel as crossbeam;
-use ctypes::BlockHash;
-
 use super::worker;
 use crate::client::ChainNotify;
+use crossbeam_channel as crossbeam;
+use ctypes::BlockHash;
 
 pub struct TendermintChainNotify {
     inner: crossbeam::Sender<worker::Event>,

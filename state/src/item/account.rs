@@ -16,12 +16,10 @@
 
 //! Single account in the system.
 
-use std::fmt;
-
+use crate::CacheableItem;
 use ckey::{self, Public};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use crate::CacheableItem;
+use std::fmt;
 
 /// Single account in the system.
 // Don't forget to sync the field list with PodAccount.

@@ -14,13 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::net::SocketAddr;
-use std::ops::Deref;
-use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
-use std::vec::Vec;
-
+use super::super::errors;
+use super::super::traits::Devel;
+use super::super::types::{TPSTestOption, TPSTestSetting};
 use ccore::{
     BlockId, DatabaseClient, EngineClient, EngineInfo, MinerService, MiningBlockChainClient, SignedTransaction,
     TermInfo, COL_STATE,
@@ -40,11 +36,13 @@ use primitives::{H160, H256};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use rlp::Rlp;
+use std::net::SocketAddr;
+use std::ops::Deref;
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
+use std::vec::Vec;
 use time::PreciseTime;
-
-use super::super::errors;
-use super::super::traits::Devel;
-use super::super::types::{TPSTestOption, TPSTestSetting};
 
 pub struct DevelClient<C, M> {
     client: Arc<C>,

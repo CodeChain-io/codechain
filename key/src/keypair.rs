@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt;
-
+use crate::{Address, Error, Private, Public, SECP256K1};
 use crypto::Blake;
 use primitives::H160;
 use rustc_hex::ToHex;
 use secp256k1::key;
-
-use crate::{Address, Error, Private, Public, SECP256K1};
+use std::fmt;
 
 pub fn public_to_address(public: &Public) -> Address {
     H160::blake(public).into()

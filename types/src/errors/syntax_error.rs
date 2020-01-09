@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt::{Display, Formatter, Result as FormatResult};
-
+use super::TaggedRlp;
+use crate::{ShardId, Tracker};
 use ckey::NetworkId;
 use primitives::H160;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
-use super::TaggedRlp;
-use crate::{ShardId, Tracker};
+use std::fmt::{Display, Formatter, Result as FormatResult};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
@@ -59,52 +57,87 @@ pub enum Error {
     InvalidSignerOfWrapCCC,
 }
 
-const ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT: u8 = 1;
-/// Deprecated
-//const ERROR_ID_EMPTY_INPUT: u8 = 2;
-//const ERROR_ID_EMPTY_OUTPUT: u8 = 3;
-const ERROR_ID_EMPTY_SHARD_OWNERS: u8 = 4;
-const ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT: u8 = 5;
-const ERROR_ID_INSUFFICIENT_FEE: u8 = 7;
-const ERROR_ID_INVALID_ASSET_TYPE: u8 = 8;
-/// Deprecated
-//const ERROR_ID_INVALID_COMPOSED_OUTPUT_AMOUNT: u8 = 9;
-//const ERROR_ID_INVALID_DECOMPOSED_INPUT_AMOUNT: u8 = 10;
-const ERROR_ID_INVALID_NETWORK_ID: u8 = 11;
-const ERROR_ID_INVALID_APPROVAL: u8 = 21;
-const ERROR_ID_METADATA_TOO_BIG: u8 = 22;
-const ERROR_ID_TEXT_CONTENT_TOO_BIG: u8 = 24;
-const ERROR_ID_TOO_MANY_OUTPUTS: u8 = 26;
-const ERROR_ID_TX_IS_TOO_BIG: u8 = 27;
-const ERROR_ID_ZERO_QUANTITY: u8 = 28;
-const ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME: u8 = 29;
-const ERROR_ID_DISABLED_TRANSACTION: u8 = 30;
-const ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC: u8 = 31;
-const ERROR_ID_INVALID_CUSTOM_ACTION: u8 = 32;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum ErrorID {
+    DuplicatedPreviousOutput = 1,
+    /// Deprecated
+    // EMPTY_INPUT = 2,
+    // EMPTY_OUTPUT = 3,
+    EmptyShardOwners = 4,
+    InconsistentTransactionInOut = 5,
+    InsufficientFee = 7,
+    InvalidAssetType = 8,
+    /// Deprecated
+    // INVALID_COMPOSED_OUTPUT_AMOUNT = 9,
+    // INVALID_DECOMPOSED_INPUT_AMOUNT = 10,
+    InvalidNetworkID = 11,
+    InvalidApproval = 21,
+    MetadataTooBig = 22,
+    TextContentTooBig = 24,
+    TooManyOutputs = 26,
+    TxIsTooBig = 27,
+    ZeroQuantity = 28,
+    CannotChangeWCCCAssetScheme = 29,
+    DisabledTransaction = 30,
+    InvalidSignerOfWRAPCCC = 31,
+    InvalidCustomAction = 32,
+}
+
+impl Encodable for ErrorID {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for ErrorID {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            1u8 => Ok(ErrorID::DuplicatedPreviousOutput),
+            4 => Ok(ErrorID::EmptyShardOwners),
+            5 => Ok(ErrorID::InconsistentTransactionInOut),
+            7 => Ok(ErrorID::InsufficientFee),
+            8 => Ok(ErrorID::InvalidAssetType),
+            11 => Ok(ErrorID::InvalidNetworkID),
+            21 => Ok(ErrorID::InvalidApproval),
+            22 => Ok(ErrorID::MetadataTooBig),
+            24 => Ok(ErrorID::TextContentTooBig),
+            26 => Ok(ErrorID::TooManyOutputs),
+            27 => Ok(ErrorID::TxIsTooBig),
+            28 => Ok(ErrorID::ZeroQuantity),
+            29 => Ok(ErrorID::CannotChangeWCCCAssetScheme),
+            30 => Ok(ErrorID::DisabledTransaction),
+            31 => Ok(ErrorID::InvalidSignerOfWRAPCCC),
+            32 => Ok(ErrorID::InvalidCustomAction),
+            _ => Err(DecoderError::Custom("Unexpected ErrorID Value")),
+        }
+    }
+}
+
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
-    type Tag = u8;
+    type Tag = ErrorID;
 
-    fn length_of(tag: u8) -> Result<usize, DecoderError> {
+    fn length_of(tag: ErrorID) -> Result<usize, DecoderError> {
         Ok(match tag {
-            ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => 3,
-            ERROR_ID_EMPTY_SHARD_OWNERS => 2,
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => 1,
-            ERROR_ID_INSUFFICIENT_FEE => 3,
-            ERROR_ID_INVALID_ASSET_TYPE => 2,
-            ERROR_ID_INVALID_CUSTOM_ACTION => 2,
-            ERROR_ID_INVALID_NETWORK_ID => 2,
-            ERROR_ID_INVALID_APPROVAL => 2,
-            ERROR_ID_METADATA_TOO_BIG => 1,
-            ERROR_ID_TEXT_CONTENT_TOO_BIG => 1,
-            ERROR_ID_TOO_MANY_OUTPUTS => 2,
-            ERROR_ID_TX_IS_TOO_BIG => 1,
-            ERROR_ID_ZERO_QUANTITY => 1,
-            ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => 1,
-            ERROR_ID_DISABLED_TRANSACTION => 1,
-            ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => 1,
-            _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
+            ErrorID::DuplicatedPreviousOutput => 3,
+            ErrorID::EmptyShardOwners => 2,
+            ErrorID::InconsistentTransactionInOut => 1,
+            ErrorID::InsufficientFee => 3,
+            ErrorID::InvalidAssetType => 2,
+            ErrorID::InvalidCustomAction => 2,
+            ErrorID::InvalidNetworkID => 2,
+            ErrorID::InvalidApproval => 2,
+            ErrorID::MetadataTooBig => 1,
+            ErrorID::TextContentTooBig => 1,
+            ErrorID::TooManyOutputs => 2,
+            ErrorID::TxIsTooBig => 1,
+            ErrorID::ZeroQuantity => 1,
+            ErrorID::CannotChangeWCCCAssetScheme => 1,
+            ErrorID::DisabledTransaction => 1,
+            ErrorID::InvalidSignerOfWRAPCCC => 1,
         })
     }
 }
@@ -115,66 +148,59 @@ impl Encodable for Error {
             Error::DuplicatedPreviousOutput {
                 tracker,
                 index,
-            } => RlpHelper::new_tagged_list(s, ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT).append(tracker).append(index),
+            } => RlpHelper::new_tagged_list(s, ErrorID::DuplicatedPreviousOutput).append(tracker).append(index),
             Error::EmptyShardOwners(shard_id) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_EMPTY_SHARD_OWNERS).append(shard_id)
+                RlpHelper::new_tagged_list(s, ErrorID::EmptyShardOwners).append(shard_id)
             }
-            Error::InconsistentTransactionInOut => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT)
-            }
+            Error::InconsistentTransactionInOut => RlpHelper::new_tagged_list(s, ErrorID::InconsistentTransactionInOut),
             Error::InsufficientFee {
                 minimal,
                 got,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_FEE).append(minimal).append(got),
-            Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_TYPE).append(addr),
-            Error::InvalidCustomAction(err) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_CUSTOM_ACTION).append(err)
-            }
+            } => RlpHelper::new_tagged_list(s, ErrorID::InsufficientFee).append(minimal).append(got),
+            Error::InvalidAssetType(addr) => RlpHelper::new_tagged_list(s, ErrorID::InvalidAssetType).append(addr),
+            Error::InvalidCustomAction(err) => RlpHelper::new_tagged_list(s, ErrorID::InvalidCustomAction).append(err),
             Error::InvalidNetworkId(network_id) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_NETWORK_ID).append(network_id)
+                RlpHelper::new_tagged_list(s, ErrorID::InvalidNetworkID).append(network_id)
             }
-            Error::InvalidApproval(err) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_APPROVAL).append(err),
-            Error::MetadataTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_METADATA_TOO_BIG),
-            Error::TextContentTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_CONTENT_TOO_BIG),
-            Error::TooManyOutputs(num) => RlpHelper::new_tagged_list(s, ERROR_ID_TOO_MANY_OUTPUTS).append(num),
-            Error::TransactionIsTooBig => RlpHelper::new_tagged_list(s, ERROR_ID_TX_IS_TOO_BIG),
-            Error::ZeroQuantity => RlpHelper::new_tagged_list(s, ERROR_ID_ZERO_QUANTITY),
-            Error::CannotChangeWcccAssetScheme => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME)
-            }
-            Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ERROR_ID_DISABLED_TRANSACTION),
-            Error::InvalidSignerOfWrapCCC => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC),
+            Error::InvalidApproval(err) => RlpHelper::new_tagged_list(s, ErrorID::InvalidApproval).append(err),
+            Error::MetadataTooBig => RlpHelper::new_tagged_list(s, ErrorID::MetadataTooBig),
+            Error::TextContentTooBig => RlpHelper::new_tagged_list(s, ErrorID::TextContentTooBig),
+            Error::TooManyOutputs(num) => RlpHelper::new_tagged_list(s, ErrorID::TooManyOutputs).append(num),
+            Error::TransactionIsTooBig => RlpHelper::new_tagged_list(s, ErrorID::TxIsTooBig),
+            Error::ZeroQuantity => RlpHelper::new_tagged_list(s, ErrorID::ZeroQuantity),
+            Error::CannotChangeWcccAssetScheme => RlpHelper::new_tagged_list(s, ErrorID::CannotChangeWCCCAssetScheme),
+            Error::DisabledTransaction => RlpHelper::new_tagged_list(s, ErrorID::DisabledTransaction),
+            Error::InvalidSignerOfWrapCCC => RlpHelper::new_tagged_list(s, ErrorID::InvalidSignerOfWRAPCCC),
         };
     }
 }
 
 impl Decodable for Error {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        let tag = rlp.val_at::<u8>(0)?;
+        let tag = rlp.val_at(0)?;
         let error = match tag {
-            ERORR_ID_DUPLICATED_PREVIOUS_OUTPUT => Error::DuplicatedPreviousOutput {
+            ErrorID::DuplicatedPreviousOutput => Error::DuplicatedPreviousOutput {
                 tracker: rlp.val_at(1)?,
                 index: rlp.val_at(2)?,
             },
-            ERROR_ID_EMPTY_SHARD_OWNERS => Error::EmptyShardOwners(rlp.val_at(1)?),
-            ERROR_ID_INCONSISTENT_TRANSACTION_IN_OUT => Error::InconsistentTransactionInOut,
-            ERROR_ID_INSUFFICIENT_FEE => Error::InsufficientFee {
+            ErrorID::EmptyShardOwners => Error::EmptyShardOwners(rlp.val_at(1)?),
+            ErrorID::InconsistentTransactionInOut => Error::InconsistentTransactionInOut,
+            ErrorID::InsufficientFee => Error::InsufficientFee {
                 minimal: rlp.val_at(1)?,
                 got: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_ASSET_TYPE => Error::InvalidAssetType(rlp.val_at(1)?),
-            ERROR_ID_INVALID_CUSTOM_ACTION => Error::InvalidCustomAction(rlp.val_at(1)?),
-            ERROR_ID_INVALID_NETWORK_ID => Error::InvalidNetworkId(rlp.val_at(1)?),
-            ERROR_ID_INVALID_APPROVAL => Error::InvalidApproval(rlp.val_at(1)?),
-            ERROR_ID_METADATA_TOO_BIG => Error::MetadataTooBig,
-            ERROR_ID_TEXT_CONTENT_TOO_BIG => Error::TextContentTooBig,
-            ERROR_ID_TOO_MANY_OUTPUTS => Error::TooManyOutputs(rlp.val_at(1)?),
-            ERROR_ID_TX_IS_TOO_BIG => Error::TransactionIsTooBig,
-            ERROR_ID_ZERO_QUANTITY => Error::ZeroQuantity,
-            ERROR_ID_CANNOT_CHANGE_WCCC_ASSET_SCHEME => Error::CannotChangeWcccAssetScheme,
-            ERROR_ID_DISABLED_TRANSACTION => Error::DisabledTransaction,
-            ERROR_ID_INVALID_SIGNER_OF_WRAP_CCC => Error::InvalidSignerOfWrapCCC,
-            _ => return Err(DecoderError::Custom("Invalid SyntaxError")),
+            ErrorID::InvalidAssetType => Error::InvalidAssetType(rlp.val_at(1)?),
+            ErrorID::InvalidCustomAction => Error::InvalidCustomAction(rlp.val_at(1)?),
+            ErrorID::InvalidNetworkID => Error::InvalidNetworkId(rlp.val_at(1)?),
+            ErrorID::InvalidApproval => Error::InvalidApproval(rlp.val_at(1)?),
+            ErrorID::MetadataTooBig => Error::MetadataTooBig,
+            ErrorID::TextContentTooBig => Error::TextContentTooBig,
+            ErrorID::TooManyOutputs => Error::TooManyOutputs(rlp.val_at(1)?),
+            ErrorID::TxIsTooBig => Error::TransactionIsTooBig,
+            ErrorID::ZeroQuantity => Error::ZeroQuantity,
+            ErrorID::CannotChangeWCCCAssetScheme => Error::CannotChangeWcccAssetScheme,
+            ErrorID::DisabledTransaction => Error::DisabledTransaction,
+            ErrorID::InvalidSignerOfWRAPCCC => Error::InvalidSignerOfWrapCCC,
         };
         RlpHelper::check_size(rlp, tag)?;
         Ok(error)

@@ -14,14 +14,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use ctypes::util::unexpected::{Mismatch, OutOfBounds};
-use ctypes::{BlockNumber, CommonParams, Header};
-use merkle_trie::skewed_merkle_root;
-use primitives::{Bytes, H256};
-use rlp::Rlp;
-
 use crate::blockchain::BlockProvider;
 use crate::client::BlockChainTrait;
 use crate::codechain_machine::CodeChainMachine;
@@ -29,6 +21,12 @@ use crate::consensus::CodeChainEngine;
 use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
 use crate::views::BlockView;
+use ctypes::util::unexpected::{Mismatch, OutOfBounds};
+use ctypes::{BlockNumber, CommonParams, Header};
+use merkle_trie::skewed_merkle_root;
+use primitives::{Bytes, H256};
+use rlp::Rlp;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Preprocessed block data gathered in `verify_block_seal` call
 pub struct PreverifiedBlock {

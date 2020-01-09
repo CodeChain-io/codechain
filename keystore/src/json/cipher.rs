@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::fmt;
-
+use super::{Error, H128};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use super::{Error, H128};
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum CipherSer {

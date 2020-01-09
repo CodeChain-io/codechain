@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::verification::{QueueConfig, VerifierType};
+use kvdb_rocksdb::CompactionProfile;
 use std::path::Path;
 use std::str::FromStr;
-
-use kvdb_rocksdb::CompactionProfile;
-
-use crate::verification::{QueueConfig, VerifierType};
 
 /// Client state db compaction profile
 #[derive(Debug, PartialEq, Clone)]

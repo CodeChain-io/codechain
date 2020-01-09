@@ -30,21 +30,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Weak};
-use std::sync::{Condvar as SCondvar, Mutex as SMutex};
-use std::thread::{self, JoinHandle};
-use std::time::Duration;
-
+use super::{IoError, IoHandler};
+use crate::worker::{Work, WorkType, Worker};
 use crossbeam::deque;
 use mio::deprecated::{EventLoop, EventLoopBuilder, Handler, Sender};
 use mio::timer::Timeout;
 use mio::*;
 use parking_lot::{Mutex, RwLock};
-
-use crate::worker::{Work, WorkType, Worker};
-
-use super::{IoError, IoHandler};
+use std::collections::HashMap;
+use std::sync::{Arc, Weak};
+use std::sync::{Condvar as SCondvar, Mutex as SMutex};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 /// Timer ID
 pub type TimerToken = usize;

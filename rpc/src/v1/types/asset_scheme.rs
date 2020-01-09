@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use super::Asset;
 use cjson::uint::Uint;
 use ckey::{NetworkId, PlatformAddress};
 use cstate::AssetScheme as AssetSchemeType;
 use primitives::H160;
-
-use super::Asset;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::convert::{TryFrom, TryInto};
-
+use super::super::errors;
+use super::Action;
 use cjson::uint::Uint;
 use ckey::NetworkId;
 use ctypes::transaction::IncompleteTransaction;
 use jsonrpc_core::Error;
-
-use super::super::errors;
-use super::Action;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

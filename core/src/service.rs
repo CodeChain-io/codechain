@@ -14,20 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use crate::client::{Client, ClientConfig};
+use crate::error::Error;
+use crate::miner::Miner;
+use crate::scheme::Scheme;
+use crate::BlockId;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
 use cnetwork::NodeId;
 use ctimer::TimerApi;
 use ctypes::BlockHash;
 use kvdb::KeyValueDB;
 use primitives::Bytes;
-
-use crate::client::{Client, ClientConfig};
-use crate::error::Error;
-use crate::miner::Miner;
-use crate::scheme::Scheme;
-use crate::BlockId;
+use std::sync::Arc;
 
 /// Client service setup.
 pub struct ClientService {

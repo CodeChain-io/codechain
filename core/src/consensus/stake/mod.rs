@@ -18,10 +18,6 @@ mod action_data;
 mod actions;
 mod distribute;
 
-use std::collections::btree_map::BTreeMap;
-use std::collections::HashMap;
-use std::sync::{Arc, Weak};
-
 use crate::client::ConsensusClient;
 use ccrypto::Blake;
 use ckey::{public_to_address, recover, Address, Public, Signature};
@@ -32,6 +28,9 @@ use ctypes::{CommonParams, Header};
 use parking_lot::RwLock;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, Rlp};
+use std::collections::btree_map::BTreeMap;
+use std::collections::HashMap;
+use std::sync::{Arc, Weak};
 
 pub use self::action_data::{Banned, Validator, Validators};
 use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};

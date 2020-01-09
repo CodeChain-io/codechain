@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Instant;
-
+use super::super::message::RequestMessage;
 use ccore::encoded::Header;
 use ccore::{BlockChainClient, BlockId};
 use ctypes::BlockHash;
 use primitives::U256;
-
-use super::super::message::RequestMessage;
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Instant;
 
 const MAX_HEADER_REQUEST_LENGTH: u64 = 128;
 const MAX_HEADER_QUEUE_LENGTH: usize = 1024;

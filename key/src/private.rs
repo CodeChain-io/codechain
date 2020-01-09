@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::hex::ToHex;
+use crate::Error;
+use primitives::H256;
+use secp256k1::key;
 use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
-
-use primitives::H256;
-use secp256k1::key;
-
-use crate::hex::ToHex;
-use crate::Error;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Private(H256);

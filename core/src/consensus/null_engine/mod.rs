@@ -16,15 +16,14 @@
 
 mod params;
 
-use ckey::Address;
-use ctypes::CommonParams;
-
 use self::params::NullEngineParams;
 use super::ConsensusEngine;
 use crate::block::ExecutedBlock;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{EngineError, EngineType};
 use crate::error::Error;
+use ckey::Address;
+use ctypes::CommonParams;
 
 /// An engine which does not provide any consensus mechanism and does not seal blocks.
 pub struct NullEngine {

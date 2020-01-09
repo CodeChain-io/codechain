@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+use crate::executor::TimelockType;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Instruction {
@@ -39,7 +40,7 @@ pub enum Instruction {
     Ripemd160,
     Keccak256,
     Blake160,
-    ChkTimelock(u8),
+    ChkTimelock(TimelockType),
 }
 
 pub fn is_valid_unlock_script(instrs: &[Instruction]) -> bool {

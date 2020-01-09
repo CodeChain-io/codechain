@@ -44,9 +44,8 @@ pub fn init(config: &LoggerConfig, email_alarm: Option<EmailAlarm>) -> Result<()
     log::set_boxed_logger(Box::new(logger))
 }
 
-use structured_logger::StructuredLogger;
-
 use lazy_static::lazy_static;
+use structured_logger::StructuredLogger;
 
 lazy_static! {
     pub static ref SLOGGER: StructuredLogger = StructuredLogger::create();

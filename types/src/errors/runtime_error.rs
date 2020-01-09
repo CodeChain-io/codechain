@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::fmt::{Display, Formatter, Result as FormatResult};
-
-use ckey::Address;
-use primitives::H160;
-use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-
 use super::TaggedRlp;
 use crate::util::unexpected::Mismatch;
 use crate::{ShardId, Tracker};
+use ckey::Address;
+use primitives::H160;
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
+use std::fmt::{Display, Formatter, Result as FormatResult};
 
 #[derive(Debug, PartialEq, Clone, Eq, Serialize)]
 #[serde(tag = "type", content = "content")]
@@ -109,78 +107,124 @@ pub enum Error {
     },
 }
 
-const ERROR_ID_ASSET_NOT_FOUND: u8 = 1;
-const ERROR_ID_ASSET_SCHEME_DUPLICATED: u8 = 2;
-const ERROR_ID_ASSET_SCHEME_NOT_FOUND: u8 = 3;
-const ERROR_ID_CANNOT_BURN_REGULATED_ASSET: u8 = 4;
-/// Deprecated
-//const ERROR_ID_CANNOT_COMPOSE_REGULATED_ASSET: u8 = 5;
-const ERROR_ID_FAILED_TO_UNLOCK: u8 = 6;
-const ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME: u8 = 7;
-const ERROR_ID_INSUFFICIENT_BALANCE: u8 = 8;
-const ERROR_ID_INSUFFICIENT_PERMISSION: u8 = 9;
-const ERROR_ID_INVALID_ASSET_QUANTITY: u8 = 10;
-const ERROR_ID_UNEXPECTED_ASSET_TYPE: u8 = 11;
-/// Deprecated
-//const ERROR_ID_INVALID_DECOMPOSED_INPUT: u8 = 13;
-/// Deprecated
-//const ERROR_ID_INVALID_DECOMPOSED_OUTPUT: u8 = 14;
-const ERROR_ID_INVALID_SHARD_ID: u8 = 15;
-const ERROR_ID_INVALID_TRANSFER_DESTINATION: u8 = 16;
-const ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER: u8 = 17;
-const ERROR_ID_NOT_APPROVED: u8 = 18;
-const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE: u8 = 19;
-const ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM: u8 = 20;
-const ERROR_ID_SCRIPT_HASH_MISMATCH: u8 = 21;
-const ERROR_ID_SCRIPT_NOT_ALLOWED: u8 = 22;
-const ERROR_ID_TEXT_NOT_EXIST: u8 = 23;
-const ERROR_ID_TEXT_VERIFICATION_FAIL: u8 = 24;
-const ERROR_ID_CANNOT_USE_MASTER_KEY: u8 = 25;
-const ERROR_ID_INVALID_SCRIPT: u8 = 27;
-const ERROR_ID_INVALID_SEQ: u8 = 28;
-const ERROR_ID_ASSET_SUPPLY_OVERFLOW: u8 = 29;
-const ERROR_ID_NON_ACTIVE_ACCOUNT: u8 = 30;
-const ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION: u8 = 31;
-const ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT: u8 = 32;
-const ERROR_ID_INSUFFICIENT_STAKES: u8 = 33;
-const ERROR_ID_INVALID_VALIDATOR_INDEX: u8 = 34;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum ErrorID {
+    AssetNotFound = 1,
+    AssetSchemeDuplicated = 2,
+    AssetSchemeNotFound = 3,
+    CannotBurnRegulatedAsset = 4,
+    /// Deprecated
+    // CANNOT_COMPOSE_REGULATED_ASSET = 5,
+    FailedToUnlock = 6,
+    InvalidSeqOfAssetScheme = 7,
+    InsufficientBalance = 8,
+    InsufficientPermission = 9,
+    InvalidAssetQuantity = 10,
+    UnexpectedAssetType = 11,
+    /// Deprecated
+    // INVALID_DECOMPOSED_INPUT = 13,
+    // INVALID_DECOMPOSED_OUTPUT = 14,
+    InvalidShardID = 15,
+    InvalidTransferDestination = 16,
+    NewOwnersMustContainSender = 17,
+    NotApproved = 18,
+    RegularKeyAlreadyInUse = 19,
+    RegularKeyAlreadyInUseAsPlatform = 20,
+    ScriptHashMismatch = 21,
+    ScriptNotAllowed = 22,
+    TextNotExist = 23,
+    TextVerificationFail = 24,
+    CannotUseMasterKey = 25,
+    InvalidScript = 27,
+    InvalidSeq = 28,
+    AssetSupplyOverflow = 29,
+    NonActiveAccount = 30,
+    FailedToHandleCustomAction = 31,
+    SignatureOfInvalid = 32,
+    InsufficientStakes = 33,
+    InvalidValidatorIndex = 34,
+}
+
+impl Encodable for ErrorID {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for ErrorID {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            1u8 => Ok(ErrorID::AssetNotFound),
+            2 => Ok(ErrorID::AssetSchemeDuplicated),
+            3 => Ok(ErrorID::AssetSchemeNotFound),
+            4 => Ok(ErrorID::InvalidSeqOfAssetScheme),
+            6 => Ok(ErrorID::AssetSupplyOverflow),
+            7 => Ok(ErrorID::CannotBurnRegulatedAsset),
+            8 => Ok(ErrorID::FailedToHandleCustomAction),
+            9 => Ok(ErrorID::FailedToUnlock),
+            10 => Ok(ErrorID::InsufficientBalance),
+            11 => Ok(ErrorID::InsufficientPermission),
+            15 => Ok(ErrorID::InvalidAssetQuantity),
+            16 => Ok(ErrorID::UnexpectedAssetType),
+            17 => Ok(ErrorID::InvalidScript),
+            18 => Ok(ErrorID::InvalidSeq),
+            19 => Ok(ErrorID::InvalidShardID),
+            20 => Ok(ErrorID::InvalidTransferDestination),
+            21 => Ok(ErrorID::NewOwnersMustContainSender),
+            22 => Ok(ErrorID::NotApproved),
+            23 => Ok(ErrorID::RegularKeyAlreadyInUse),
+            24 => Ok(ErrorID::RegularKeyAlreadyInUseAsPlatform),
+            25 => Ok(ErrorID::ScriptHashMismatch),
+            27 => Ok(ErrorID::ScriptNotAllowed),
+            28 => Ok(ErrorID::TextNotExist),
+            29 => Ok(ErrorID::TextVerificationFail),
+            30 => Ok(ErrorID::CannotUseMasterKey),
+            31 => Ok(ErrorID::NonActiveAccount),
+            32 => Ok(ErrorID::SignatureOfInvalid),
+            33 => Ok(ErrorID::InsufficientStakes),
+            34 => Ok(ErrorID::InvalidValidatorIndex),
+            _ => Err(DecoderError::Custom("Unexpected ActionTag Value")),
+        }
+    }
+}
 
 struct RlpHelper;
 impl TaggedRlp for RlpHelper {
-    type Tag = u8;
+    type Tag = ErrorID;
 
-    fn length_of(tag: u8) -> Result<usize, DecoderError> {
+    fn length_of(tag: ErrorID) -> Result<usize, DecoderError> {
         Ok(match tag {
-            ERROR_ID_ASSET_NOT_FOUND => 4,
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => 3,
-            ERROR_ID_ASSET_SCHEME_NOT_FOUND => 3,
-            ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME => 5,
-            ERROR_ID_ASSET_SUPPLY_OVERFLOW => 1,
-            ERROR_ID_CANNOT_BURN_REGULATED_ASSET => 1,
-            ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION => 2,
-            ERROR_ID_FAILED_TO_UNLOCK => 5,
-            ERROR_ID_INSUFFICIENT_BALANCE => 4,
-            ERROR_ID_INSUFFICIENT_PERMISSION => 1,
-            ERROR_ID_INVALID_ASSET_QUANTITY => 6,
-            ERROR_ID_UNEXPECTED_ASSET_TYPE => 3,
-            ERROR_ID_INVALID_SCRIPT => 1,
-            ERROR_ID_INVALID_SEQ => 2,
-            ERROR_ID_INVALID_SHARD_ID => 2,
-            ERROR_ID_INVALID_TRANSFER_DESTINATION => 1,
-            ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => 1,
-            ERROR_ID_NOT_APPROVED => 2,
-            ERROR_ID_REGULAR_KEY_ALREADY_IN_USE => 1,
-            ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM => 1,
-            ERROR_ID_SCRIPT_HASH_MISMATCH => 2,
-            ERROR_ID_SCRIPT_NOT_ALLOWED => 2,
-            ERROR_ID_TEXT_NOT_EXIST => 1,
-            ERROR_ID_TEXT_VERIFICATION_FAIL => 2,
-            ERROR_ID_CANNOT_USE_MASTER_KEY => 1,
-            ERROR_ID_NON_ACTIVE_ACCOUNT => 3,
-            ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT => 2,
-            ERROR_ID_INSUFFICIENT_STAKES => 3,
-            ERROR_ID_INVALID_VALIDATOR_INDEX => 3,
-            _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
+            ErrorID::AssetNotFound => 4,
+            ErrorID::AssetSchemeDuplicated => 3,
+            ErrorID::AssetSchemeNotFound => 3,
+            ErrorID::InvalidSeqOfAssetScheme => 5,
+            ErrorID::AssetSupplyOverflow => 1,
+            ErrorID::CannotBurnRegulatedAsset => 1,
+            ErrorID::FailedToHandleCustomAction => 2,
+            ErrorID::FailedToUnlock => 5,
+            ErrorID::InsufficientBalance => 4,
+            ErrorID::InsufficientPermission => 1,
+            ErrorID::InvalidAssetQuantity => 6,
+            ErrorID::UnexpectedAssetType => 3,
+            ErrorID::InvalidScript => 1,
+            ErrorID::InvalidSeq => 2,
+            ErrorID::InvalidShardID => 2,
+            ErrorID::InvalidTransferDestination => 1,
+            ErrorID::NewOwnersMustContainSender => 1,
+            ErrorID::NotApproved => 2,
+            ErrorID::RegularKeyAlreadyInUse => 1,
+            ErrorID::RegularKeyAlreadyInUseAsPlatform => 1,
+            ErrorID::ScriptHashMismatch => 2,
+            ErrorID::ScriptNotAllowed => 2,
+            ErrorID::TextNotExist => 1,
+            ErrorID::TextVerificationFail => 2,
+            ErrorID::CannotUseMasterKey => 1,
+            ErrorID::NonActiveAccount => 3,
+            ErrorID::SignatureOfInvalid => 2,
+            ErrorID::InsufficientStakes => 3,
+            ErrorID::InvalidValidatorIndex => 3,
         })
     }
 }
@@ -192,36 +236,36 @@ impl Encodable for Error {
                 shard_id,
                 tracker,
                 index,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_NOT_FOUND).append(shard_id).append(tracker).append(index),
+            } => RlpHelper::new_tagged_list(s, ErrorID::AssetNotFound).append(shard_id).append(tracker).append(index),
             Error::AssetSchemeDuplicated {
                 tracker,
                 shard_id,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_DUPLICATED).append(tracker).append(shard_id),
+            } => RlpHelper::new_tagged_list(s, ErrorID::AssetSchemeDuplicated).append(tracker).append(shard_id),
             Error::AssetSchemeNotFound {
                 asset_type,
                 shard_id,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SCHEME_NOT_FOUND).append(asset_type).append(shard_id),
+            } => RlpHelper::new_tagged_list(s, ErrorID::AssetSchemeNotFound).append(asset_type).append(shard_id),
             Error::InvalidSeqOfAssetScheme {
                 asset_type,
                 shard_id,
                 expected,
                 actual,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME)
+            } => RlpHelper::new_tagged_list(s, ErrorID::InvalidSeqOfAssetScheme)
                 .append(asset_type)
                 .append(shard_id)
                 .append(expected)
                 .append(actual),
-            Error::AssetSupplyOverflow => RlpHelper::new_tagged_list(s, ERROR_ID_ASSET_SUPPLY_OVERFLOW),
-            Error::CannotBurnRegulatedAsset => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_BURN_REGULATED_ASSET),
+            Error::AssetSupplyOverflow => RlpHelper::new_tagged_list(s, ErrorID::AssetSupplyOverflow),
+            Error::CannotBurnRegulatedAsset => RlpHelper::new_tagged_list(s, ErrorID::CannotBurnRegulatedAsset),
             Error::FailedToHandleCustomAction(detail) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION).append(detail)
+                RlpHelper::new_tagged_list(s, ErrorID::FailedToHandleCustomAction).append(detail)
             }
             Error::FailedToUnlock {
                 shard_id,
                 tracker,
                 index,
                 reason,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_FAILED_TO_UNLOCK)
+            } => RlpHelper::new_tagged_list(s, ErrorID::FailedToUnlock)
                 .append(shard_id)
                 .append(tracker)
                 .append(index)
@@ -230,18 +274,17 @@ impl Encodable for Error {
                 address,
                 balance,
                 cost,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_BALANCE)
-                .append(address)
-                .append(balance)
-                .append(cost),
-            Error::InsufficientPermission => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_PERMISSION),
+            } => {
+                RlpHelper::new_tagged_list(s, ErrorID::InsufficientBalance).append(address).append(balance).append(cost)
+            }
+            Error::InsufficientPermission => RlpHelper::new_tagged_list(s, ErrorID::InsufficientPermission),
             Error::InvalidAssetQuantity {
                 shard_id,
                 tracker,
                 index,
                 expected,
                 got,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_ASSET_QUANTITY)
+            } => RlpHelper::new_tagged_list(s, ErrorID::InvalidAssetQuantity)
                 .append(shard_id)
                 .append(tracker)
                 .append(index)
@@ -250,123 +293,120 @@ impl Encodable for Error {
             Error::UnexpectedAssetType {
                 index,
                 mismatch,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_UNEXPECTED_ASSET_TYPE).append(index).append(mismatch),
-            Error::InvalidScript => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SCRIPT),
-            Error::InvalidSeq(mismatch) => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SEQ).append(mismatch),
-            Error::InvalidShardId(shard_id) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_SHARD_ID).append(shard_id)
-            }
-            Error::InvalidTransferDestination => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_TRANSFER_DESTINATION),
-            Error::NewOwnersMustContainSender => RlpHelper::new_tagged_list(s, ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER),
-            Error::NotApproved(address) => RlpHelper::new_tagged_list(s, ERROR_ID_NOT_APPROVED).append(address),
-            Error::RegularKeyAlreadyInUse => RlpHelper::new_tagged_list(s, ERROR_ID_REGULAR_KEY_ALREADY_IN_USE),
+            } => RlpHelper::new_tagged_list(s, ErrorID::UnexpectedAssetType).append(index).append(mismatch),
+            Error::InvalidScript => RlpHelper::new_tagged_list(s, ErrorID::InvalidScript),
+            Error::InvalidSeq(mismatch) => RlpHelper::new_tagged_list(s, ErrorID::InvalidSeq).append(mismatch),
+            Error::InvalidShardId(shard_id) => RlpHelper::new_tagged_list(s, ErrorID::InvalidShardID).append(shard_id),
+            Error::InvalidTransferDestination => RlpHelper::new_tagged_list(s, ErrorID::InvalidTransferDestination),
+            Error::NewOwnersMustContainSender => RlpHelper::new_tagged_list(s, ErrorID::NewOwnersMustContainSender),
+            Error::NotApproved(address) => RlpHelper::new_tagged_list(s, ErrorID::NotApproved).append(address),
+            Error::RegularKeyAlreadyInUse => RlpHelper::new_tagged_list(s, ErrorID::RegularKeyAlreadyInUse),
             Error::RegularKeyAlreadyInUseAsPlatformAccount => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM)
+                RlpHelper::new_tagged_list(s, ErrorID::RegularKeyAlreadyInUseAsPlatform)
             }
             Error::ScriptHashMismatch(mismatch) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_SCRIPT_HASH_MISMATCH).append(mismatch)
+                RlpHelper::new_tagged_list(s, ErrorID::ScriptHashMismatch).append(mismatch)
             }
-            Error::ScriptNotAllowed(hash) => RlpHelper::new_tagged_list(s, ERROR_ID_SCRIPT_NOT_ALLOWED).append(hash),
-            Error::TextNotExist => RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_NOT_EXIST),
+            Error::ScriptNotAllowed(hash) => RlpHelper::new_tagged_list(s, ErrorID::ScriptNotAllowed).append(hash),
+            Error::TextNotExist => RlpHelper::new_tagged_list(s, ErrorID::TextNotExist),
             Error::TextVerificationFail(err) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_TEXT_VERIFICATION_FAIL).append(err)
+                RlpHelper::new_tagged_list(s, ErrorID::TextVerificationFail).append(err)
             }
-            Error::CannotUseMasterKey => RlpHelper::new_tagged_list(s, ERROR_ID_CANNOT_USE_MASTER_KEY),
+            Error::CannotUseMasterKey => RlpHelper::new_tagged_list(s, ErrorID::CannotUseMasterKey),
             Error::NonActiveAccount {
                 address,
                 name,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_NON_ACTIVE_ACCOUNT).append(address).append(name),
+            } => RlpHelper::new_tagged_list(s, ErrorID::NonActiveAccount).append(address).append(name),
             Error::SignatureOfInvalidAccount(address) => {
-                RlpHelper::new_tagged_list(s, ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT).append(address)
+                RlpHelper::new_tagged_list(s, ErrorID::SignatureOfInvalid).append(address)
             }
             Error::InsufficientStakes(Mismatch {
                 expected,
                 found,
-            }) => RlpHelper::new_tagged_list(s, ERROR_ID_INSUFFICIENT_STAKES).append(expected).append(found),
+            }) => RlpHelper::new_tagged_list(s, ErrorID::InsufficientStakes).append(expected).append(found),
             Error::InvalidValidatorIndex {
                 idx,
                 parent_height,
-            } => RlpHelper::new_tagged_list(s, ERROR_ID_INVALID_VALIDATOR_INDEX).append(idx).append(parent_height),
+            } => RlpHelper::new_tagged_list(s, ErrorID::InvalidValidatorIndex).append(idx).append(parent_height),
         };
     }
 }
 
 impl Decodable for Error {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        let tag = rlp.val_at::<u8>(0)?;
+        let tag = rlp.val_at(0)?;
         let error = match tag {
-            ERROR_ID_ASSET_NOT_FOUND => Error::AssetNotFound {
+            ErrorID::AssetNotFound => Error::AssetNotFound {
                 shard_id: rlp.val_at(1)?,
                 tracker: rlp.val_at(2)?,
                 index: rlp.val_at(3)?,
             },
-            ERROR_ID_ASSET_SCHEME_DUPLICATED => Error::AssetSchemeDuplicated {
+            ErrorID::AssetSchemeDuplicated => Error::AssetSchemeDuplicated {
                 tracker: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
             },
-            ERROR_ID_ASSET_SCHEME_NOT_FOUND => Error::AssetSchemeNotFound {
+            ErrorID::AssetSchemeNotFound => Error::AssetSchemeNotFound {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_SEQ_OF_ASSET_SCHEME => Error::InvalidSeqOfAssetScheme {
+            ErrorID::InvalidSeqOfAssetScheme => Error::InvalidSeqOfAssetScheme {
                 asset_type: rlp.val_at(1)?,
                 shard_id: rlp.val_at(2)?,
                 expected: rlp.val_at(3)?,
                 actual: rlp.val_at(4)?,
             },
-            ERROR_ID_ASSET_SUPPLY_OVERFLOW => Error::AssetSupplyOverflow,
-            ERROR_ID_CANNOT_BURN_REGULATED_ASSET => Error::CannotBurnRegulatedAsset,
-            ERROR_ID_FAILED_TO_HANDLE_CUSTOM_ACTION => Error::FailedToHandleCustomAction(rlp.val_at(1)?),
-            ERROR_ID_FAILED_TO_UNLOCK => Error::FailedToUnlock {
+            ErrorID::AssetSupplyOverflow => Error::AssetSupplyOverflow,
+            ErrorID::CannotBurnRegulatedAsset => Error::CannotBurnRegulatedAsset,
+            ErrorID::FailedToHandleCustomAction => Error::FailedToHandleCustomAction(rlp.val_at(1)?),
+            ErrorID::FailedToUnlock => Error::FailedToUnlock {
                 shard_id: rlp.val_at(1)?,
                 tracker: rlp.val_at(2)?,
                 index: rlp.val_at(3)?,
                 reason: rlp.val_at(4)?,
             },
-            ERROR_ID_INSUFFICIENT_BALANCE => Error::InsufficientBalance {
+            ErrorID::InsufficientBalance => Error::InsufficientBalance {
                 address: rlp.val_at(1)?,
                 balance: rlp.val_at(2)?,
                 cost: rlp.val_at(3)?,
             },
-            ERROR_ID_INSUFFICIENT_PERMISSION => Error::InsufficientPermission,
-            ERROR_ID_INVALID_ASSET_QUANTITY => Error::InvalidAssetQuantity {
+            ErrorID::InsufficientPermission => Error::InsufficientPermission,
+            ErrorID::InvalidAssetQuantity => Error::InvalidAssetQuantity {
                 shard_id: rlp.val_at(1)?,
                 tracker: rlp.val_at(2)?,
                 index: rlp.val_at(3)?,
                 expected: rlp.val_at(4)?,
                 got: rlp.val_at(5)?,
             },
-            ERROR_ID_UNEXPECTED_ASSET_TYPE => Error::UnexpectedAssetType {
+            ErrorID::UnexpectedAssetType => Error::UnexpectedAssetType {
                 index: rlp.val_at(1)?,
                 mismatch: rlp.val_at(2)?,
             },
-            ERROR_ID_INVALID_SCRIPT => Error::InvalidScript,
-            ERROR_ID_INVALID_SEQ => Error::InvalidSeq(rlp.val_at(1)?),
-            ERROR_ID_INVALID_SHARD_ID => Error::InvalidShardId(rlp.val_at(1)?),
-            ERROR_ID_INVALID_TRANSFER_DESTINATION => Error::InvalidTransferDestination,
-            ERROR_ID_NEW_OWNERS_MUST_CONTAIN_SENDER => Error::NewOwnersMustContainSender,
-            ERROR_ID_NOT_APPROVED => Error::NotApproved(rlp.val_at(1)?),
-            ERROR_ID_REGULAR_KEY_ALREADY_IN_USE => Error::RegularKeyAlreadyInUse,
-            ERROR_ID_REGULAR_KEY_ALREADY_IN_USE_AS_PLATFORM => Error::RegularKeyAlreadyInUseAsPlatformAccount,
-            ERROR_ID_SCRIPT_HASH_MISMATCH => Error::ScriptHashMismatch(rlp.val_at(1)?),
-            ERROR_ID_SCRIPT_NOT_ALLOWED => Error::ScriptNotAllowed(rlp.val_at(1)?),
-            ERROR_ID_TEXT_NOT_EXIST => Error::TextNotExist,
-            ERROR_ID_TEXT_VERIFICATION_FAIL => Error::TextVerificationFail(rlp.val_at(1)?),
-            ERROR_ID_CANNOT_USE_MASTER_KEY => Error::CannotUseMasterKey,
-            ERROR_ID_NON_ACTIVE_ACCOUNT => Error::NonActiveAccount {
+            ErrorID::InvalidScript => Error::InvalidScript,
+            ErrorID::InvalidSeq => Error::InvalidSeq(rlp.val_at(1)?),
+            ErrorID::InvalidShardID => Error::InvalidShardId(rlp.val_at(1)?),
+            ErrorID::InvalidTransferDestination => Error::InvalidTransferDestination,
+            ErrorID::NewOwnersMustContainSender => Error::NewOwnersMustContainSender,
+            ErrorID::NotApproved => Error::NotApproved(rlp.val_at(1)?),
+            ErrorID::RegularKeyAlreadyInUse => Error::RegularKeyAlreadyInUse,
+            ErrorID::RegularKeyAlreadyInUseAsPlatform => Error::RegularKeyAlreadyInUseAsPlatformAccount,
+            ErrorID::ScriptHashMismatch => Error::ScriptHashMismatch(rlp.val_at(1)?),
+            ErrorID::ScriptNotAllowed => Error::ScriptNotAllowed(rlp.val_at(1)?),
+            ErrorID::TextNotExist => Error::TextNotExist,
+            ErrorID::TextVerificationFail => Error::TextVerificationFail(rlp.val_at(1)?),
+            ErrorID::CannotUseMasterKey => Error::CannotUseMasterKey,
+            ErrorID::NonActiveAccount => Error::NonActiveAccount {
                 address: rlp.val_at(1)?,
                 name: rlp.val_at(2)?,
             },
-            ERROR_ID_SIGNATURE_OF_INVALID_ACCOUNT => Error::SignatureOfInvalidAccount(rlp.val_at(1)?),
-            ERROR_ID_INSUFFICIENT_STAKES => Error::InsufficientStakes(Mismatch {
+            ErrorID::SignatureOfInvalid => Error::SignatureOfInvalidAccount(rlp.val_at(1)?),
+            ErrorID::InsufficientStakes => Error::InsufficientStakes(Mismatch {
                 expected: rlp.val_at(1)?,
                 found: rlp.val_at(2)?,
             }),
-            ERROR_ID_INVALID_VALIDATOR_INDEX => Error::InvalidValidatorIndex {
+            ErrorID::InvalidValidatorIndex => Error::InvalidValidatorIndex {
                 idx: rlp.val_at(1)?,
                 parent_height: rlp.val_at(2)?,
             },
-            _ => return Err(DecoderError::Custom("Invalid RuntimeError")),
         };
         RlpHelper::check_size(rlp, tag)?;
         Ok(error)
@@ -458,16 +498,38 @@ pub enum UnlockFailureReason {
     ScriptError,
 }
 
-const FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT: u8 = 1u8;
-const FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT: u8 = 2u8;
-const FAILURE_REASON_ID_SCRIPT_ERROR: u8 = 3u8;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum ScriptFailureReasonID {
+    ShouldBeBurnt = 1u8,
+    ShouldNotBeBurnt = 2u8,
+    Error = 3u8,
+}
+
+impl Encodable for ScriptFailureReasonID {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for ScriptFailureReasonID {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            1u8 => Ok(ScriptFailureReasonID::ShouldBeBurnt),
+            2 => Ok(ScriptFailureReasonID::ShouldNotBeBurnt),
+            3 => Ok(ScriptFailureReasonID::Error),
+            _ => Err(DecoderError::Custom("Unexpected ScriptFailureReasonID Value")),
+        }
+    }
+}
 
 impl Encodable for UnlockFailureReason {
     fn rlp_append(&self, s: &mut RlpStream) {
         match self {
-            UnlockFailureReason::ScriptShouldBeBurnt => FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT.rlp_append(s),
-            UnlockFailureReason::ScriptShouldNotBeBurnt => FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT.rlp_append(s),
-            UnlockFailureReason::ScriptError => FAILURE_REASON_ID_SCRIPT_ERROR.rlp_append(s),
+            UnlockFailureReason::ScriptShouldBeBurnt => (ScriptFailureReasonID::ShouldBeBurnt).rlp_append(s),
+            UnlockFailureReason::ScriptShouldNotBeBurnt => (ScriptFailureReasonID::ShouldNotBeBurnt).rlp_append(s),
+            UnlockFailureReason::ScriptError => (ScriptFailureReasonID::Error).rlp_append(s),
         };
     }
 }
@@ -475,10 +537,9 @@ impl Encodable for UnlockFailureReason {
 impl Decodable for UnlockFailureReason {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         Ok(match Decodable::decode(rlp)? {
-            FAILURE_REASON_ID_SCRIPT_SHOULD_BE_BURNT => UnlockFailureReason::ScriptShouldBeBurnt,
-            FAILURE_REASON_ID_SCRIPT_SHOULD_NOT_BE_BURNT => UnlockFailureReason::ScriptShouldNotBeBurnt,
-            FAILURE_REASON_ID_SCRIPT_ERROR => UnlockFailureReason::ScriptError,
-            _ => return Err(DecoderError::Custom("Invalid failure reason tag")),
+            ScriptFailureReasonID::ShouldBeBurnt => UnlockFailureReason::ScriptShouldBeBurnt,
+            ScriptFailureReasonID::ShouldNotBeBurnt => UnlockFailureReason::ScriptShouldNotBeBurnt,
+            ScriptFailureReasonID::Error => UnlockFailureReason::ScriptError,
         })
     }
 }

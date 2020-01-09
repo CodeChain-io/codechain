@@ -14,12 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{BTreeSet, HashMap, VecDeque};
-use std::iter::FromIterator;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
+use super::connection::{
+    EstablishedConnection, IncomingConnection, IncomingMessage, OutgoingConnection, OutgoingMessage,
+};
+use super::listener::Listener;
+use super::{NegotiationMessage, NetworkMessage};
+use crate::client::Client;
+use crate::session::Session;
+use crate::stream::Stream;
+use crate::{FiltersControl, NodeId, RoutingTable, SocketAddr};
 use ccrypto::aes::SymmetricCipherError;
 use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::NetworkId;
@@ -31,17 +34,12 @@ use primitives::Bytes;
 use rand::prelude::SliceRandom;
 use rand::rngs::OsRng;
 use rand::Rng;
+use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::iter::FromIterator;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 use token_generator::TokenGenerator;
-
-use super::connection::{
-    EstablishedConnection, IncomingConnection, IncomingMessage, OutgoingConnection, OutgoingMessage,
-};
-use super::listener::Listener;
-use super::{NegotiationMessage, NetworkMessage};
-use crate::client::Client;
-use crate::session::Session;
-use crate::stream::Stream;
-use crate::{FiltersControl, NodeId, RoutingTable, SocketAddr};
 
 pub const MAX_INBOUND_CONNECTIONS: usize = 1000;
 pub const MAX_OUTBOUND_CONNECTIONS: usize = 1000;

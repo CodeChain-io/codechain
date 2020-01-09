@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::net::IpAddr;
-
 use cidr::IpCidr;
 use ckey::Public;
 use cnetwork::{FilterEntry, NetworkControl, NetworkControlError, SocketAddr};
+use std::collections::HashMap;
+use std::net::IpAddr;
 
 pub struct DummyNetworkService {}
 

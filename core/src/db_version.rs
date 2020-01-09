@@ -13,9 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-use kvdb::{DBTransaction, KeyValueDB};
-
 use crate::db;
+use kvdb::{DBTransaction, KeyValueDB};
 
 pub const VERSION_KEY_PREFIX: &[u8] = b"version_";
 /// Save the version of Tendermint backup where the key below is pointing

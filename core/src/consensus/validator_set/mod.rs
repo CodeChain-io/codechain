@@ -14,15 +14,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::Weak;
-
-use ckey::{Address, Public};
-use ctypes::BlockHash;
-
 use self::validator_list::RoundRobinValidator;
 use super::BitSet;
 use crate::client::ConsensusClient;
 use crate::consensus::EngineError;
+use ckey::{Address, Public};
+use ctypes::BlockHash;
+use std::sync::Weak;
 
 mod dynamic_validator;
 pub mod validator_list;

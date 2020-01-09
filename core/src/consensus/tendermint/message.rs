@@ -14,17 +14,15 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::cmp;
-
+use super::super::BitSet;
+use super::{Height, Step, View};
 use ccrypto::blake256;
 use ckey::{verify_schnorr, Error as KeyError, Public, SchnorrSignature};
 use ctypes::BlockHash;
 use primitives::{Bytes, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use snap;
-
-use super::super::BitSet;
-use super::{Height, Step, View};
+use std::cmp;
 
 /// Complete step of the consensus process.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, RlpDecodable, RlpEncodable)]
@@ -72,13 +70,39 @@ impl Ord for VoteStep {
     }
 }
 
-const MESSAGE_ID_CONSENSUS_MESSAGE: u8 = 0x01;
-const MESSAGE_ID_PROPOSAL_BLOCK: u8 = 0x02;
-const MESSAGE_ID_STEP_STATE: u8 = 0x03;
-const MESSAGE_ID_REQUEST_MESSAGE: u8 = 0x04;
-const MESSAGE_ID_REQUEST_PROPOSAL: u8 = 0x05;
-const MESSAGE_ID_REQUEST_COMMIT: u8 = 0x06;
-const MESSAGE_ID_COMMIT: u8 = 0x07;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum MessageID {
+    ConsensusMessage = 0x01,
+    ProposalBlock = 0x02,
+    StepState = 0x03,
+    RequsetMessage = 0x04,
+    RequestProposal = 0x05,
+    RequestCommit = 0x06,
+    Commit = 0x07,
+}
+
+impl Encodable for MessageID {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        s.append_single_value(&(*self as u8));
+    }
+}
+
+impl Decodable for MessageID {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            0x01u8 => Ok(MessageID::ConsensusMessage),
+            0x02 => Ok(MessageID::ProposalBlock),
+            0x03 => Ok(MessageID::StepState),
+            0x04 => Ok(MessageID::RequsetMessage),
+            0x05 => Ok(MessageID::RequestProposal),
+            0x06 => Ok(MessageID::RequestCommit),
+            0x07 => Ok(MessageID::Commit),
+            _ => Err(DecoderError::Custom("Unexpected MessageID Value")),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum TendermintMessage {
@@ -116,7 +140,7 @@ impl Encodable for TendermintMessage {
         match self {
             TendermintMessage::ConsensusMessage(messages) => {
                 s.begin_list(2);
-                s.append(&MESSAGE_ID_CONSENSUS_MESSAGE);
+                s.append(&MessageID::ConsensusMessage);
                 s.append_list::<Bytes, Bytes>(messages);
             }
             TendermintMessage::ProposalBlock {
@@ -125,7 +149,7 @@ impl Encodable for TendermintMessage {
                 message,
             } => {
                 s.begin_list(4);
-                s.append(&MESSAGE_ID_PROPOSAL_BLOCK);
+                s.append(&MessageID::ProposalBlock);
                 s.append(signature);
                 s.append(view);
 
@@ -143,7 +167,7 @@ impl Encodable for TendermintMessage {
                 known_votes,
             } => {
                 s.begin_list(5);
-                s.append(&MESSAGE_ID_STEP_STATE);
+                s.append(&MessageID::StepState);
                 s.append(vote_step);
                 s.append(proposal);
                 s.append(lock_view);
@@ -154,7 +178,7 @@ impl Encodable for TendermintMessage {
                 requested_votes,
             } => {
                 s.begin_list(3);
-                s.append(&MESSAGE_ID_REQUEST_MESSAGE);
+                s.append(&MessageID::RequsetMessage);
                 s.append(vote_step);
                 s.append(requested_votes);
             }
@@ -163,7 +187,7 @@ impl Encodable for TendermintMessage {
                 view,
             } => {
                 s.begin_list(3);
-                s.append(&MESSAGE_ID_REQUEST_PROPOSAL);
+                s.append(&MessageID::RequestProposal);
                 s.append(height);
                 s.append(view);
             }
@@ -171,7 +195,7 @@ impl Encodable for TendermintMessage {
                 height,
             } => {
                 s.begin_list(2);
-                s.append(&MESSAGE_ID_REQUEST_COMMIT);
+                s.append(&MessageID::RequestCommit);
                 s.append(height);
             }
             TendermintMessage::Commit {
@@ -179,7 +203,7 @@ impl Encodable for TendermintMessage {
                 votes,
             } => {
                 s.begin_list(3);
-                s.append(&MESSAGE_ID_COMMIT);
+                s.append(&MessageID::Commit);
                 s.append(block);
                 s.append_list(votes);
             }
@@ -191,7 +215,7 @@ impl Decodable for TendermintMessage {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         let id = rlp.val_at(0)?;
         Ok(match id {
-            MESSAGE_ID_CONSENSUS_MESSAGE => {
+            MessageID::ConsensusMessage => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -201,7 +225,7 @@ impl Decodable for TendermintMessage {
                 }
                 TendermintMessage::ConsensusMessage(rlp.list_at(1)?)
             }
-            MESSAGE_ID_PROPOSAL_BLOCK => {
+            MessageID::ProposalBlock => {
                 let item_count = rlp.item_count()?;
                 if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -227,7 +251,7 @@ impl Decodable for TendermintMessage {
                     message: uncompressed_message,
                 }
             }
-            MESSAGE_ID_STEP_STATE => {
+            MessageID::StepState => {
                 let item_count = rlp.item_count()?;
                 if item_count != 5 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -246,7 +270,7 @@ impl Decodable for TendermintMessage {
                     known_votes,
                 }
             }
-            MESSAGE_ID_REQUEST_MESSAGE => {
+            MessageID::RequsetMessage => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -261,7 +285,7 @@ impl Decodable for TendermintMessage {
                     requested_votes,
                 }
             }
-            MESSAGE_ID_REQUEST_PROPOSAL => {
+            MessageID::RequestProposal => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -276,7 +300,7 @@ impl Decodable for TendermintMessage {
                     view,
                 }
             }
-            MESSAGE_ID_REQUEST_COMMIT => {
+            MessageID::RequestCommit => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -289,7 +313,7 @@ impl Decodable for TendermintMessage {
                     height,
                 }
             }
-            MESSAGE_ID_COMMIT => {
+            MessageID::Commit => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -304,7 +328,6 @@ impl Decodable for TendermintMessage {
                     votes,
                 }
             }
-            _ => return Err(DecoderError::Custom("Unknown message id detected")),
         })
     }
 }

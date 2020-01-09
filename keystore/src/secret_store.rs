@@ -30,12 +30,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::PathBuf;
-
-use ckey::{Address, Password, Secret};
-
 use crate::json::{OpaqueKeyFile, Uuid};
 use crate::{DecryptedAccount, Error};
+use ckey::{Address, Password, Secret};
+use std::path::PathBuf;
 
 
 /// Simple Secret Store API

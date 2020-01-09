@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::io;
-
+use crate::stream::Stream;
+use crate::SocketAddr;
 use mio::event::Evented;
 use mio::net::TcpListener;
 use mio::{Poll, PollOpt, Ready, Token};
-
-use crate::stream::Stream;
-use crate::SocketAddr;
+use std::io;
 
 pub struct Listener {
     listener: TcpListener,

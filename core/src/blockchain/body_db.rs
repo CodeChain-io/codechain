@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
-use std::mem;
-use std::sync::Arc;
-
+use super::block_info::BestBlockChanged;
+use super::extras::{TransactionAddress, TransactionAddresses};
+use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
+use crate::views::BlockView;
+use crate::{encoded, UnverifiedTransaction};
 use ctypes::{BlockHash, Tracker, TxHash};
 use kvdb::{DBTransaction, KeyValueDB};
 use lru_cache::LruCache;
@@ -25,12 +26,9 @@ use parking_lot::{Mutex, RwLock};
 use primitives::Bytes;
 use rlp::RlpStream;
 use rlp_compress::{blocks_swapper, compress, decompress};
-
-use super::block_info::BestBlockChanged;
-use super::extras::{TransactionAddress, TransactionAddresses};
-use crate::db::{self, CacheUpdatePolicy, Readable, Writable};
-use crate::views::BlockView;
-use crate::{encoded, UnverifiedTransaction};
+use std::collections::{HashMap, HashSet};
+use std::mem;
+use std::sync::Arc;
 
 const BODY_CACHE_SIZE: usize = 1000;
 

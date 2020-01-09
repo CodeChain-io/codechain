@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
-
+use super::super::types::FilterStatus;
 use cidr::IpCidr;
 use ckey::Public;
 use jsonrpc_core::Result;
-
-use super::super::types::FilterStatus;
+use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
 
 #[rpc(server)]
 pub trait Net {

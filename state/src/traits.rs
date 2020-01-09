@@ -14,17 +14,16 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{
+    Account, ActionData, AssetScheme, CacheableItem, Metadata, OwnedAsset, RegularAccount, Shard, StateDB, StateResult,
+    Text,
+};
 use ckey::{public_to_address, Address, Public, Signature};
 use ctypes::transaction::ShardTransaction;
 use ctypes::{BlockNumber, CommonParams, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use merkle_trie::Result as TrieResult;
 use primitives::{Bytes, H160, H256};
-
-use crate::{
-    Account, ActionData, AssetScheme, CacheableItem, Metadata, OwnedAsset, RegularAccount, Shard, StateDB, StateResult,
-    Text,
-};
 
 
 pub trait TopStateView {
