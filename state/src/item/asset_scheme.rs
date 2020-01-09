@@ -148,7 +148,7 @@ impl AssetScheme {
     }
 }
 
-const PREFIX: u8 = super::ASSET_SCHEME_PREFIX;
+const PREFIX: u8 = super::Prefix::AssetScheme as u8;
 
 impl Default for AssetScheme {
     fn default() -> Self {

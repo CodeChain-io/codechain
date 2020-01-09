@@ -62,7 +62,7 @@ impl CacheableItem for Text {
     }
 }
 
-const PREFIX: u8 = super::TEXT_PREFIX;
+const PREFIX: u8 = super::Prefix::Text as u8;
 
 impl Encodable for Text {
     fn rlp_append(&self, s: &mut RlpStream) {
