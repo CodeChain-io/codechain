@@ -26,10 +26,14 @@ pub mod regular_account;
 pub mod shard;
 pub mod text;
 
-const OWNED_ASSET_PREFIX: u8 = b'A';
-const ADDRESS_PREFIX: u8 = b'C';
-const SHARD_PREFIX: u8 = b'H';
-const METADATA_PREFIX: u8 = b'M';
-const REGULAR_ACCOUNT_PREFIX: u8 = b'R';
-const ASSET_SCHEME_PREFIX: u8 = b'S';
-const TEXT_PREFIX: u8 = b'T';
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum Prefix {
+    OwnedAsset = b'A',
+    Account = b'C',
+    Shard = b'H',
+    Metadata = b'M',
+    RegularAccount = b'R',
+    AssetScheme = b'S',
+    Text = b'T',
+}

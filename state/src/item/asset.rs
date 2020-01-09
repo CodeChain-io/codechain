@@ -99,7 +99,7 @@ impl CacheableItem for OwnedAsset {
     }
 }
 
-const PREFIX: u8 = super::OWNED_ASSET_PREFIX;
+const PREFIX: u8 = super::Prefix::OwnedAsset as u8;
 
 impl Encodable for OwnedAsset {
     fn rlp_append(&self, s: &mut RlpStream) {

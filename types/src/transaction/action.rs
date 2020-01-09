@@ -23,25 +23,57 @@ use primitives::{Bytes, H160, H256};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::collections::{HashMap, HashSet};
 
-const PAY: u8 = 0x02;
-const SET_REGULAR_KEY: u8 = 0x03;
-const CREATE_SHARD: u8 = 0x04;
-const SET_SHARD_OWNERS: u8 = 0x05;
-const SET_SHARD_USERS: u8 = 0x06;
-const WRAP_CCC: u8 = 0x07;
-const STORE: u8 = 0x08;
-const REMOVE: u8 = 0x09;
-const UNWRAP_CCC: u8 = 0x11;
-const MINT_ASSET: u8 = 0x13;
-const TRANSFER_ASSET: u8 = 0x14;
-const CHANGE_ASSET_SCHEME: u8 = 0x15;
-// Derepcated
-//const COMPOSE_ASSET: u8 = 0x16;
-// Derepcated
-//const DECOMPOSE_ASSET: u8 = 0x17;
-const INCREASE_ASSET_SUPPLY: u8 = 0x18;
+#[derive(Clone, Copy)]
+#[repr(u8)]
+enum ActionTag {
+    Pay = 0x02,
+    SetRegularKey = 0x03,
+    CreateShard = 0x04,
+    SetShardOwners = 0x05,
+    SetShardUsers = 0x06,
+    WrapCcc = 0x07,
+    Store = 0x08,
+    Remove = 0x09,
+    UnwrapCcc = 0x11,
+    MintAsset = 0x13,
+    TransferAsset = 0x14,
+    ChangeAssetScheme = 0x15,
+    // Derepcated
+    // ComposeAsset = 0x16,
+    // Derepcated
+    // DecomposeAsset = 0x17,
+    IncreaseAssetSupply = 0x18,
+    Custom = 0xFF,
+}
 
-const CUSTOM: u8 = 0xFF;
+impl Encodable for ActionTag {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        (*self as u8).rlp_append(s)
+    }
+}
+
+impl Decodable for ActionTag {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let tag = rlp.as_val()?;
+        match tag {
+            0x02u8 => Ok(Self::Pay),
+            0x03u8 => Ok(Self::SetRegularKey),
+            0x04u8 => Ok(Self::CreateShard),
+            0x05u8 => Ok(Self::SetShardOwners),
+            0x06u8 => Ok(Self::SetShardUsers),
+            0x07u8 => Ok(Self::WrapCcc),
+            0x08u8 => Ok(Self::Store),
+            0x09u8 => Ok(Self::Remove),
+            0x11u8 => Ok(Self::UnwrapCcc),
+            0x13u8 => Ok(Self::MintAsset),
+            0x14u8 => Ok(Self::TransferAsset),
+            0x15u8 => Ok(Self::ChangeAssetScheme),
+            0x18u8 => Ok(Self::IncreaseAssetSupply),
+            0xFFu8 => Ok(Self::Custom),
+            _ => Err(DecoderError::Custom("Unexpected action prefix")),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
@@ -464,7 +496,7 @@ impl Encodable for Action {
                 approvals,
             } => {
                 s.begin_list(11)
-                    .append(&MINT_ASSET)
+                    .append(&ActionTag::MintAsset)
                     .append(network_id)
                     .append(shard_id)
                     .append(metadata)
@@ -487,7 +519,7 @@ impl Encodable for Action {
             } => {
                 let empty: Vec<AssetTransferOutput> = vec![];
                 s.begin_list(9)
-                    .append(&TRANSFER_ASSET)
+                    .append(&ActionTag::TransferAsset)
                     .append(network_id)
                     .append_list(burns)
                     .append_list(inputs)
@@ -510,7 +542,7 @@ impl Encodable for Action {
                 approvals,
             } => {
                 s.begin_list(10)
-                    .append(&CHANGE_ASSET_SCHEME)
+                    .append(&ActionTag::ChangeAssetScheme)
                     .append(network_id)
                     .append(shard_id)
                     .append(asset_type)
@@ -530,7 +562,7 @@ impl Encodable for Action {
                 approvals,
             } => {
                 s.begin_list(9)
-                    .append(&INCREASE_ASSET_SUPPLY)
+                    .append(&ActionTag::IncreaseAssetSupply)
                     .append(network_id)
                     .append(shard_id)
                     .append(asset_type)
@@ -545,14 +577,14 @@ impl Encodable for Action {
                 burn,
                 receiver,
             } => {
-                s.begin_list(4).append(&UNWRAP_CCC).append(network_id).append(burn).append(receiver);
+                s.begin_list(4).append(&ActionTag::UnwrapCcc).append(network_id).append(burn).append(receiver);
             }
             Action::Pay {
                 receiver,
                 quantity,
             } => {
                 s.begin_list(3);
-                s.append(&PAY);
+                s.append(&ActionTag::Pay);
                 s.append(receiver);
                 s.append(quantity);
             }
@@ -560,14 +592,14 @@ impl Encodable for Action {
                 key,
             } => {
                 s.begin_list(2);
-                s.append(&SET_REGULAR_KEY);
+                s.append(&ActionTag::SetRegularKey);
                 s.append(key);
             }
             Action::CreateShard {
                 users,
             } => {
                 s.begin_list(2);
-                s.append(&CREATE_SHARD);
+                s.append(&ActionTag::CreateShard);
                 s.append_list(users);
             }
             Action::SetShardOwners {
@@ -575,7 +607,7 @@ impl Encodable for Action {
                 owners,
             } => {
                 s.begin_list(3);
-                s.append(&SET_SHARD_OWNERS);
+                s.append(&ActionTag::SetShardOwners);
                 s.append(shard_id);
                 s.append_list(owners);
             }
@@ -584,7 +616,7 @@ impl Encodable for Action {
                 users,
             } => {
                 s.begin_list(3);
-                s.append(&SET_SHARD_USERS);
+                s.append(&ActionTag::SetShardUsers);
                 s.append(shard_id);
                 s.append_list(users);
             }
@@ -596,7 +628,7 @@ impl Encodable for Action {
                 payer,
             } => {
                 s.begin_list(6);
-                s.append(&WRAP_CCC);
+                s.append(&ActionTag::WrapCcc);
                 s.append(shard_id);
                 s.append(lock_script_hash);
                 s.append(parameters);
@@ -609,7 +641,7 @@ impl Encodable for Action {
                 signature,
             } => {
                 s.begin_list(4);
-                s.append(&STORE);
+                s.append(&ActionTag::Store);
                 s.append(content);
                 s.append(certifier);
                 s.append(signature);
@@ -619,7 +651,7 @@ impl Encodable for Action {
                 signature,
             } => {
                 s.begin_list(3);
-                s.append(&REMOVE);
+                s.append(&ActionTag::Remove);
                 s.append(hash);
                 s.append(signature);
             }
@@ -628,7 +660,7 @@ impl Encodable for Action {
                 bytes,
             } => {
                 s.begin_list(3);
-                s.append(&CUSTOM);
+                s.append(&ActionTag::Custom);
                 s.append(handler_id);
                 s.append(bytes);
             }
@@ -639,7 +671,7 @@ impl Encodable for Action {
 impl Decodable for Action {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         match rlp.val_at(0)? {
-            MINT_ASSET => {
+            ActionTag::MintAsset => {
                 let item_count = rlp.item_count()?;
                 if item_count != 11 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -662,7 +694,7 @@ impl Decodable for Action {
                     approvals: rlp.list_at(10)?,
                 })
             }
-            TRANSFER_ASSET => {
+            ActionTag::TransferAsset => {
                 let item_count = rlp.item_count()?;
                 if item_count != 9 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -680,7 +712,7 @@ impl Decodable for Action {
                     expiration: rlp.val_at(8)?,
                 })
             }
-            CHANGE_ASSET_SCHEME => {
+            ActionTag::ChangeAssetScheme => {
                 let item_count = rlp.item_count()?;
                 if item_count != 10 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -700,7 +732,7 @@ impl Decodable for Action {
                     approvals: rlp.list_at(9)?,
                 })
             }
-            INCREASE_ASSET_SUPPLY => {
+            ActionTag::IncreaseAssetSupply => {
                 let item_count = rlp.item_count()?;
                 if item_count != 9 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -721,7 +753,7 @@ impl Decodable for Action {
                     approvals: rlp.list_at(8)?,
                 })
             }
-            UNWRAP_CCC => {
+            ActionTag::UnwrapCcc => {
                 let item_count = rlp.item_count()?;
                 if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -735,7 +767,7 @@ impl Decodable for Action {
                     receiver: rlp.val_at(3)?,
                 })
             }
-            PAY => {
+            ActionTag::Pay => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -748,7 +780,7 @@ impl Decodable for Action {
                     quantity: rlp.val_at(2)?,
                 })
             }
-            SET_REGULAR_KEY => {
+            ActionTag::SetRegularKey => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -760,7 +792,7 @@ impl Decodable for Action {
                     key: rlp.val_at(1)?,
                 })
             }
-            CREATE_SHARD => {
+            ActionTag::CreateShard => {
                 let item_count = rlp.item_count()?;
                 if item_count != 2 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -772,7 +804,7 @@ impl Decodable for Action {
                     users: rlp.list_at(1)?,
                 })
             }
-            SET_SHARD_OWNERS => {
+            ActionTag::SetShardOwners => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -785,7 +817,7 @@ impl Decodable for Action {
                     owners: rlp.list_at(2)?,
                 })
             }
-            SET_SHARD_USERS => {
+            ActionTag::SetShardUsers => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -798,7 +830,7 @@ impl Decodable for Action {
                     users: rlp.list_at(2)?,
                 })
             }
-            WRAP_CCC => {
+            ActionTag::WrapCcc => {
                 let item_count = rlp.item_count()?;
                 if item_count != 6 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -814,7 +846,7 @@ impl Decodable for Action {
                     payer: rlp.val_at(5)?,
                 })
             }
-            STORE => {
+            ActionTag::Store => {
                 let item_count = rlp.item_count()?;
                 if item_count != 4 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -828,7 +860,7 @@ impl Decodable for Action {
                     signature: rlp.val_at(3)?,
                 })
             }
-            REMOVE => {
+            ActionTag::Remove => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -841,7 +873,7 @@ impl Decodable for Action {
                     signature: rlp.val_at(2)?,
                 })
             }
-            CUSTOM => {
+            ActionTag::Custom => {
                 let item_count = rlp.item_count()?;
                 if item_count != 3 {
                     return Err(DecoderError::RlpIncorrectListLen {
@@ -854,7 +886,6 @@ impl Decodable for Action {
                     bytes: rlp.val_at(2)?,
                 })
             }
-            _ => Err(DecoderError::Custom("Unexpected action prefix")),
         }
     }
 }

@@ -78,7 +78,7 @@ impl CacheableItem for Shard {
     }
 }
 
-const PREFIX: u8 = super::SHARD_PREFIX;
+const PREFIX: u8 = super::Prefix::Shard as u8;
 
 impl Encodable for Shard {
     fn rlp_append(&self, s: &mut RlpStream) {

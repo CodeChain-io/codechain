@@ -123,7 +123,7 @@ impl CacheableItem for Account {
     }
 }
 
-const PREFIX: u8 = super::ADDRESS_PREFIX;
+const PREFIX: u8 = super::Prefix::Account as u8;
 
 impl Encodable for Account {
     fn rlp_append(&self, s: &mut RlpStream) {
