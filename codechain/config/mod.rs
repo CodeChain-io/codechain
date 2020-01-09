@@ -498,7 +498,7 @@ impl Mining {
             println!("This option was deprecated. PoW type engine with no engine signer and PBFT or PoA type engine with no author implicitly means no-miner.");
         }
         if let Some(mem_pool_fee_bump_shift) = matches.value_of("mem-pool-fee-bump-shift") {
-            self.mem_pool_mem_limit =
+            self.mem_pool_fee_bump_shift =
                 Some(mem_pool_fee_bump_shift.parse().map_err(|_| "Invalid mem pool fee bump shift")?);
         }
         if let Some(mem_pool_mem_limit) = matches.value_of("mem-pool-mem-limit") {
