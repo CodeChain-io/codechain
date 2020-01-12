@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -69,22 +69,6 @@ impl StateDB {
         let records = self.db.journal_under(batch, now, &id)?;
         self.current_hash = Some(id);
         Ok(records)
-    }
-
-    /// Mark a given candidate from an ancient era as canonical, enacting its removals from the
-    /// backing database and reverting any non-canonical historical commit's insertions.
-    pub fn mark_canonical(
-        &mut self,
-        batch: &mut DBTransaction,
-        end_era: u64,
-        canon_id: &H256,
-    ) -> Result<u32, DatabaseError> {
-        self.db.mark_canonical(batch, end_era, canon_id)
-    }
-
-    /// Check if pruning is enabled on the database.
-    pub fn is_pruned(&self) -> bool {
-        self.db.is_pruned()
     }
 
     /// Check if the database is empty.
