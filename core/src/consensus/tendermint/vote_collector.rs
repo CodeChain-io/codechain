@@ -14,25 +14,89 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::iter::Iterator;
 
 use ckey::SchnorrSignature;
 use ctypes::BlockHash;
 use rlp::{Encodable, RlpStream};
 
+use super::super::PriorityInfo;
 use super::stake::Action;
-use super::{ConsensusMessage, VoteStep};
+use super::{ConsensusMessage, SortitionRound, Step, VoteStep};
 use crate::consensus::BitSet;
 
 /// Storing all Proposals, Prevotes and Precommits.
+/// Invariant: Proposal step links to StepCollector::PP variant
+///             and Other steps link to StepCollector::PVPC variant
 #[derive(Debug)]
 pub struct VoteCollector {
     votes: BTreeMap<VoteStep, StepCollector>,
 }
 
+#[derive(Debug)]
+enum StepCollector {
+    PP(PpCollector),
+    PVPC(PvPcCollector),
+}
+
+impl StepCollector {
+    fn new_pp() -> Self {
+        StepCollector::PP(Default::default())
+    }
+
+    fn new_pvpc() -> Self {
+        StepCollector::PVPC(Default::default())
+    }
+
+    fn insert_message(&mut self, message: ConsensusMessage) -> Result<bool, DoubleVote> {
+        match self {
+            StepCollector::PP(pp_collector) => pp_collector.message_collector.insert(message),
+            StepCollector::PVPC(pv_pc_collector) => pv_pc_collector.message_collector.insert(message),
+        }
+    }
+
+    fn insert_priority(&mut self, info: PriorityInfo) -> bool {
+        match self {
+            StepCollector::PP(pp_collector) => pp_collector.priority_collector.insert(info),
+            _ => panic!("Invariant violated: propose step must be linked to PpCollector"),
+        }
+    }
+
+    fn message_collector(&self) -> &MessageCollector {
+        match self {
+            StepCollector::PP(pp_collector) => &pp_collector.message_collector,
+            StepCollector::PVPC(pv_pc_collector) => &pv_pc_collector.message_collector,
+        }
+    }
+
+    fn priority_collector(&self) -> &PriorityCollector {
+        match self {
+            StepCollector::PP(pp_collector) => &pp_collector.priority_collector,
+            _ => panic!("Invariant violated: propose step must be linked to PpCollector"),
+        }
+    }
+}
+
+// Struct for propose step vote and priority collecting
 #[derive(Debug, Default)]
-struct StepCollector {
+struct PpCollector {
+    message_collector: MessageCollector,
+    priority_collector: PriorityCollector,
+}
+
+#[derive(Debug, Default)]
+struct PvPcCollector {
+    message_collector: MessageCollector,
+}
+
+#[derive(Debug, Default)]
+struct PriorityCollector {
+    priorities: BTreeSet<PriorityInfo>,
+}
+
+#[derive(Debug, Default)]
+struct MessageCollector {
     voted: HashMap<usize, ConsensusMessage>,
     block_votes: HashMap<Option<BlockHash>, BTreeMap<usize, SchnorrSignature>>,
     messages: Vec<ConsensusMessage>,
@@ -60,7 +124,15 @@ impl Encodable for DoubleVote {
     }
 }
 
-impl StepCollector {
+impl PriorityCollector {
+    // true: a priority is new
+    // false: a priority is duplicated
+    fn insert(&mut self, info: PriorityInfo) -> bool {
+        self.priorities.insert(info)
+    }
+}
+
+impl MessageCollector {
     /// Some(true): a message is new
     /// Some(false): a message is duplicated
     /// Err(DoubleVote): a double vote
@@ -114,7 +186,7 @@ impl Default for VoteCollector {
     fn default() -> Self {
         let mut collector = BTreeMap::new();
         // Insert dummy entry to fulfill invariant: "only messages newer than the oldest are inserted".
-        collector.insert(Default::default(), Default::default());
+        collector.insert(Default::default(), StepCollector::new_pp());
         VoteCollector {
             votes: collector,
         }
@@ -124,12 +196,18 @@ impl Default for VoteCollector {
 impl VoteCollector {
     /// Insert vote if it is newer than the oldest one.
     pub fn collect(&mut self, message: ConsensusMessage) -> Result<bool, DoubleVote> {
-        self.votes.entry(*message.round()).or_insert_with(Default::default).insert(message)
+        match message.round().step {
+            Step::Propose => {
+                self.votes.entry(*message.round()).or_insert_with(StepCollector::new_pp).insert_message(message)
+            }
+            _ => self.votes.entry(*message.round()).or_insert_with(StepCollector::new_pvpc).insert_message(message),
+        }
     }
 
     /// Checks if the message should be ignored.
     pub fn is_old_or_known(&self, message: &ConsensusMessage) -> bool {
-        let is_known = self.votes.get(&message.round()).map_or(false, |c| c.messages.contains(message));
+        let is_known =
+            self.votes.get(&message.round()).map_or(false, |c| c.message_collector().messages.contains(message));
         if is_known {
             cdebug!(ENGINE, "Known message: {:?}.", message);
             return true
@@ -161,7 +239,7 @@ impl VoteCollector {
     ) -> (Vec<SchnorrSignature>, Vec<usize>) {
         self.votes
             .get(round)
-            .and_then(|c| c.block_votes.get(&Some(*block_hash)))
+            .and_then(|c| c.message_collector().block_votes.get(&Some(*block_hash)))
             .map(|votes| {
                 let (indices, sigs) = votes.iter().unzip();
                 (sigs, indices)
@@ -174,14 +252,14 @@ impl VoteCollector {
     pub fn round_signature(&self, round: &VoteStep, block_hash: &BlockHash) -> Option<SchnorrSignature> {
         self.votes
             .get(round)
-            .and_then(|c| c.block_votes.get(&Some(*block_hash)))
+            .and_then(|c| c.message_collector().block_votes.get(&Some(*block_hash)))
             .and_then(|votes| votes.values().next().cloned())
     }
 
     /// Count votes which agree with the given message.
     pub fn aligned_votes(&self, message: &ConsensusMessage) -> BitSet {
         if let Some(votes) = self.votes.get(&message.round()) {
-            votes.count_block(&message.block_hash())
+            votes.message_collector().count_block(&message.block_hash())
         } else {
             Default::default()
         }
@@ -189,7 +267,7 @@ impl VoteCollector {
 
     pub fn block_round_votes(&self, round: &VoteStep, block_hash: &Option<BlockHash>) -> BitSet {
         if let Some(votes) = self.votes.get(round) {
-            votes.count_block(block_hash)
+            votes.message_collector().count_block(block_hash)
         } else {
             Default::default()
         }
@@ -198,7 +276,7 @@ impl VoteCollector {
     /// Count all votes collected for a given round.
     pub fn round_votes(&self, vote_round: &VoteStep) -> BitSet {
         if let Some(votes) = self.votes.get(vote_round) {
-            votes.count()
+            votes.message_collector().count()
         } else {
             Default::default()
         }
@@ -215,20 +293,27 @@ impl VoteCollector {
         let votes = self
             .votes
             .get(round)
-            .map(|c| c.block_votes.keys().cloned().filter_map(|x| x).collect())
+            .map(|c| c.message_collector().block_votes.keys().cloned().filter_map(|x| x).collect())
             .unwrap_or_else(Vec::new);
         votes.into_iter().any(|vote_block_hash| vote_block_hash == block_hash)
     }
 
+    pub fn fetch_by_idx(&self, round: &VoteStep, idx: usize) -> Option<ConsensusMessage> {
+        self.votes.get(round).and_then(|collector| collector.message_collector().fetch_by_idx(idx))
+    }
+
     pub fn get_all(&self) -> Vec<ConsensusMessage> {
-        self.votes.iter().flat_map(|(_round, collector)| collector.messages.clone()).collect()
+        self.votes.iter().flat_map(|(_round, collector)| collector.message_collector().messages.clone()).collect()
     }
 
     pub fn get_all_votes_in_round(&self, round: &VoteStep) -> Vec<ConsensusMessage> {
-        self.votes.get(round).map(|c| c.messages.clone()).unwrap_or_default()
+        self.votes.get(round).map(|c| c.message_collector().messages.clone()).unwrap_or_default()
     }
 
     pub fn get_all_votes_and_indices_in_round(&self, round: &VoteStep) -> Vec<(usize, ConsensusMessage)> {
-        self.votes.get(round).map(|c| c.voted.iter().map(|(k, v)| (*k, v.clone())).collect()).unwrap_or_default()
+        self.votes
+            .get(round)
+            .map(|c| c.message_collector().voted.iter().map(|(k, v)| (*k, v.clone())).collect())
+            .unwrap_or_default()
     }
 }
