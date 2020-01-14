@@ -82,7 +82,7 @@ pub enum BlockError {
     InvalidSealArity(Mismatch<usize>),
     /// State root header field is invalid.
     InvalidStateRoot(Mismatch<H256>),
-    /// Tranasctions root header field is invalid.
+    /// Transactions root header field is invalid.
     InvalidTransactionsRoot(Mismatch<H256>),
     /// Score is out of range; this can be used as an looser error prior to getting a definitive
     /// value for score. This error needs only provide bounds of which it is out.
