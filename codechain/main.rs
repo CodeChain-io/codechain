@@ -54,6 +54,7 @@ extern crate primitives;
 extern crate rpassword;
 extern crate toml;
 
+mod auto_self_nominate;
 mod config;
 mod constants;
 mod dummy_network_service;

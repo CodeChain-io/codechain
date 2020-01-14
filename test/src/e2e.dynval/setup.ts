@@ -37,6 +37,7 @@ interface ValidatorConfig {
     signer: Signer;
     deposit?: U64Value;
     delegation?: U64Value;
+    autoSelfNominate?: boolean;
 }
 
 export function withNodes(
@@ -127,15 +128,29 @@ async function createNodes(options: {
     const nodes: CodeChain[] = [];
     for (let i = 0; i < validators.length; i++) {
         const { signer: validator } = validators[i];
+        const argv = [
+            "--engine-signer",
+            validator.platformAddress.value,
+            "--password-path",
+            `test/tendermint.dynval/${validator.platformAddress.value}/password.json`,
+            "--force-sealing"
+        ];
+
+        if (validators[i].autoSelfNominate) {
+            argv.push(
+                "--enable-auto-self-nomination",
+                "--self-nomination-metadata",
+                "",
+                "--self-nomination-target-deposit",
+                "10",
+                "--self-nomination-interval",
+                "10"
+            );
+        }
+
         nodes[i] = new CodeChain({
             chain,
-            argv: [
-                "--engine-signer",
-                validator.platformAddress.value,
-                "--password-path",
-                `test/tendermint.dynval/${validator.platformAddress.value}/password.json`,
-                "--force-sealing"
-            ],
+            argv,
             additionalKeysPath: `tendermint.dynval/${validator.platformAddress.value}/keys`
         });
         nodes[i].signer = validator;

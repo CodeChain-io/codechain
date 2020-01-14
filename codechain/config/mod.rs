@@ -236,6 +236,10 @@ pub struct Mining {
     pub engine_signer: Option<PlatformAddress>,
     pub mem_pool_size: Option<usize>,
     pub mem_pool_mem_limit: Option<usize>,
+    pub self_nomination_metadata: Option<String>,
+    pub self_target_deposit: Option<u64>,
+    pub self_nomination_enable: bool,
+    pub self_nomination_interval: Option<u64>,
     pub mem_pool_fee_bump_shift: Option<usize>,
     pub allow_create_shard: Option<bool>,
     pub notify_work: Option<Vec<String>>,
@@ -411,6 +415,15 @@ impl Mining {
         if other.engine_signer.is_some() {
             self.engine_signer = other.engine_signer;
         }
+        if other.self_nomination_metadata.is_some() {
+            self.self_nomination_metadata = other.self_nomination_metadata.clone();
+        }
+        if other.self_target_deposit.is_some() {
+            self.self_target_deposit = other.self_target_deposit;
+        }
+        if other.self_nomination_interval.is_some() {
+            self.self_nomination_interval = other.self_nomination_interval;
+        }
         if other.mem_pool_size.is_some() {
             self.mem_pool_size = other.mem_pool_size;
         }
@@ -491,6 +504,22 @@ impl Mining {
         }
         if let Some(engine_signer) = matches.value_of("engine-signer") {
             self.engine_signer = Some(engine_signer.parse().map_err(|_| "Invalid address format")?);
+        }
+        if let Some(self_nomination_metadata) = matches.value_of("self-nomination-metadata") {
+            self.self_nomination_metadata =
+                Some(self_nomination_metadata.parse().map_err(|_| "Invalid self nomination metadata format")?);
+        }
+        if let Some(self_nomination_target_deposit) = matches.value_of("self-nomination-target-deposit") {
+            self.self_target_deposit = Some(
+                self_nomination_target_deposit.parse().map_err(|_| "Invalid self nomination target deposit format")?,
+            );
+        }
+        if let Some(self_nomination_interval) = matches.value_of("self-nomination-interval") {
+            self.self_nomination_interval =
+                Some(self_nomination_interval.parse().map_err(|_| "Invalid self nomination interval format")?);
+        }
+        if matches.is_present("enable-auto-self-nomination") {
+            self.self_nomination_enable = true;
         }
         if matches.is_present("no-miner") {
             self.author = None;

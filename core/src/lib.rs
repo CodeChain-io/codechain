@@ -82,10 +82,11 @@ mod tests;
 pub use crate::account_provider::{AccountProvider, Error as AccountProviderError};
 pub use crate::block::Block;
 pub use crate::client::{
-    AccountData, AssetClient, BlockChainClient, BlockChainTrait, ChainNotify, Client, ClientConfig, DatabaseClient,
-    EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Shard, StateInfo, TermInfo,
-    TestBlockChainClient, TextClient,
+    AccountData, AssetClient, BlockChainClient, BlockChainTrait, ChainNotify, Client, ClientConfig, ConsensusClient,
+    DatabaseClient, EngineClient, EngineInfo, ExecuteClient, ImportBlock, MiningBlockChainClient, Shard, StateInfo,
+    TermInfo, TestBlockChainClient, TextClient,
 };
+pub use crate::consensus::stake;
 pub use crate::consensus::{EngineType, TimeGapParams};
 pub use crate::db::{COL_STATE, NUM_COLUMNS};
 pub use crate::error::{BlockImportError, Error, ImportError};

@@ -281,6 +281,7 @@ dependencies = [
  "panic_hook",
  "parking_lot 0.6.4",
  "primitives",
+ "rlp",
  "rpassword",
  "rustc-serialize",
  "serde",
