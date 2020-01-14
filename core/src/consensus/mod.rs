@@ -18,7 +18,7 @@ mod bit_set;
 mod blake_pow;
 mod cuckoo;
 mod null_engine;
-mod signer;
+pub(crate) mod signer;
 mod simple_poa;
 mod solo;
 pub mod stake;

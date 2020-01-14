@@ -32,8 +32,8 @@ use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use std::sync::{Arc, Weak};
 
-pub use self::action_data::{Banned, Validator, Validators};
-use self::action_data::{Candidates, Delegation, IntermediateRewards, Jail, ReleaseResult, StakeAccount, Stakeholders};
+pub use self::action_data::{Banned, Candidates, Jail, Validator, Validators};
+use self::action_data::{Delegation, IntermediateRewards, ReleaseResult, StakeAccount, Stakeholders};
 pub use self::actions::Action;
 pub use self::distribute::fee_distribute;
 use super::ValidatorSet;

@@ -6,6 +6,7 @@ chain = "mainnet"
 [mining]
 mem_pool_mem_limit = 512 # MB
 mem_pool_size = 524288
+self_nomination_enable = false
 mem_pool_fee_bump_shift = 3 # 12.5%
 allow_create_shard = false
 notify_work = []

@@ -19,6 +19,7 @@ use ckey::{
 };
 
 /// An opaque wrapper for secret.
+#[derive(Clone)]
 pub struct DecryptedAccount {
     secret: Secret,
 }

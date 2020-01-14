@@ -160,6 +160,21 @@ args:
         long: engine-signer
         help: Specify the address which should be used to sign consensus messages and issue blocks.
         takes_value: true
+    - self-nomination-metadata:
+        long: self-nomination-metadata
+        help: Specify metadata which should be used to do self nomination.
+        takes_value: true
+    - self-nomination-target-deposit:
+        long: self-nomination-target-deposit
+        help: Specify the amount of deposit need to provide deposite for candidatory in the process of self nomination.
+        takes_value: true
+    - self-nomination-interval:
+        long: self-nomination-interval
+        help: Specify the time(ms) interval for self nomination process.
+        takes_value: true
+    - enable-auto-self-nomination:
+        long: enable-auto-self-nomination
+        help: Run auto self nomination thread.
     - password-path:
         long: password-path
         help: Specify the password file path.

@@ -15,6 +15,7 @@ reseal_min_period = 0
 reseal_max_period = 120000
 no_reseal_timer = false
 work_queue_size = 20
+self_nomination_enable = false
 allowed_past_gap = 30000
 allowed_future_gap = 5000
 

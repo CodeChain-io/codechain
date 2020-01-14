@@ -2,6 +2,7 @@
 
 [mining]
 min_pay_transaction_cost = 200
+self_nomination_enable = false
 
 [network]
 
