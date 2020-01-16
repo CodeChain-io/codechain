@@ -27,6 +27,7 @@ use ctimer::TimerToken;
 use ctypes::header::{Header, Seal};
 use ctypes::transaction::Action;
 use ctypes::{BlockHash, BlockNumber};
+use merkle_trie::skewed_merkle_root;
 use primitives::{H256, U256};
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -706,10 +707,30 @@ impl Extension {
         }
     }
 
-    fn import_blocks(&self, blocks: Vec<(BlockHash, Vec<UnverifiedTransaction>)>) {
+    fn import_blocks(&mut self, blocks: Vec<(BlockHash, Vec<UnverifiedTransaction>)>) {
+        let mut remains = Vec::new();
+        let mut error_target = None;
         for (hash, transactions) in blocks {
+            if error_target.is_some() {
+                remains.push((hash, transactions));
+                continue
+            }
             let header =
                 self.client.block_header(&BlockId::Hash(hash)).expect("Downloaded body's header must exist").decode();
+            let parent_transactions_root = self
+                .client
+                .block_header(&(*header.parent_hash()).into())
+                .expect("The parent header must exist")
+                .view()
+                .transactions_root();
+            let calculated_transactions_root =
+                skewed_merkle_root(parent_transactions_root, transactions.iter().map(Encodable::rlp_bytes));
+            if *header.transactions_root() != calculated_transactions_root {
+                cwarn!(SYNC, "Received corrupted body for ${}({}", header.number(), hash);
+                error_target = Some((hash, transactions.is_empty()));
+                continue
+            }
+
             let block = Block {
                 header,
                 transactions,
@@ -729,6 +750,9 @@ impl Extension {
                 }
                 Ok(_) => {}
             }
+        }
+        if let Some((hash, is_empty)) = error_target {
+            self.body_downloader.re_request(hash, is_empty, remains);
         }
     }
 
