@@ -118,4 +118,26 @@ impl BodyDownloader {
         self.targets.shrink_to_fit();
         result
     }
+
+    pub fn re_request(
+        &mut self,
+        hash: BlockHash,
+        is_empty: bool,
+        remains: Vec<(BlockHash, Vec<UnverifiedTransaction>)>,
+    ) {
+        let mut new_targets = vec![Target {
+            hash,
+            is_empty,
+        }];
+        new_targets.extend(remains.into_iter().map(|(hash, transactions)| {
+            let is_empty = transactions.is_empty();
+            self.downloaded.insert(hash, transactions);
+            Target {
+                hash,
+                is_empty,
+            }
+        }));
+        new_targets.append(&mut self.targets);
+        self.targets = new_targets;
+    }
 }
