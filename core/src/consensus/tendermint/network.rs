@@ -38,8 +38,7 @@ use super::worker;
 use crate::consensus::EngineError;
 
 use super::{
-    ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL, ENGINE_TIMEOUT_EMPTY_PROPOSAL,
-    ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
+    ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE,
 };
 
 pub struct TendermintExtension {
@@ -204,17 +203,9 @@ impl TendermintExtension {
     }
 
     fn set_timer_step(&self, step: Step, view: View, expired_token_nonce: TimerToken) {
-        self.api.clear_timer(ENGINE_TIMEOUT_EMPTY_PROPOSAL).expect("Timer clear succeeds");
         self.api.clear_timer(expired_token_nonce).expect("Timer clear succeeds");
         self.api
             .set_timer_once(expired_token_nonce + 1, self.timeouts.timeout(step, view))
-            .expect("Timer set succeeds");
-    }
-
-    fn set_timer_empty_proposal(&self, view: View) {
-        self.api.clear_timer(ENGINE_TIMEOUT_EMPTY_PROPOSAL).expect("Timer clear succeeds");
-        self.api
-            .set_timer_once(ENGINE_TIMEOUT_EMPTY_PROPOSAL, self.timeouts.timeout(Step::Propose, view) / 2)
             .expect("Timer set succeeds");
     }
 }
@@ -403,11 +394,7 @@ impl NetworkExtension<Event> for TendermintExtension {
     }
 
     fn on_timeout(&mut self, token: TimerToken) {
-        debug_assert!(
-            token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE
-                || token == ENGINE_TIMEOUT_EMPTY_PROPOSAL
-                || token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE
-        );
+        debug_assert!(token >= ENGINE_TIMEOUT_TOKEN_NONCE_BASE || token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE);
         self.inner.send(worker::Event::OnTimeout(token)).unwrap();
     }
 
@@ -443,11 +430,6 @@ impl NetworkExtension<Event> for TendermintExtension {
                 view,
                 expired_token_nonce,
             } => self.set_timer_step(step, view, expired_token_nonce),
-            Event::SetTimerEmptyProposal {
-                view,
-            } => {
-                self.set_timer_empty_proposal(view);
-            }
             Event::BroadcastProposalBlock {
                 signature,
                 view,
@@ -481,9 +463,6 @@ pub enum Event {
         step: Step,
         view: View,
         expired_token_nonce: TimerToken,
-    },
-    SetTimerEmptyProposal {
-        view: View,
     },
     BroadcastProposalBlock {
         signature: SchnorrSignature,
