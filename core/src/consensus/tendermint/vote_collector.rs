@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::iter::Iterator;
+use std::collections::{btree_set::Iter, BTreeMap, BTreeSet, HashMap};
+use std::iter::{Iterator, Rev};
 
 use ckey::SchnorrSignature;
 use ctypes::BlockHash;
@@ -23,7 +23,7 @@ use rlp::{Encodable, RlpStream};
 
 use super::super::PriorityInfo;
 use super::stake::Action;
-use super::{ConsensusMessage, SortitionRound, Step, VoteStep};
+use super::{ConsensusMessage, ProposalSummary, SortitionRound, Step, VoteStep};
 use crate::consensus::BitSet;
 
 /// Storing all Proposals, Prevotes and Precommits.
@@ -129,6 +129,14 @@ impl PriorityCollector {
     // false: a priority is duplicated
     fn insert(&mut self, info: PriorityInfo) -> bool {
         self.priorities.insert(info)
+    }
+
+    fn get_highest(&self) -> Option<PriorityInfo> {
+        self.priorities.iter().rev().next().cloned()
+    }
+
+    fn iter_from_highest(&self) -> Rev<Iter<'_, PriorityInfo>> {
+        self.priorities.iter().rev()
     }
 }
 
@@ -315,5 +323,56 @@ impl VoteCollector {
             .get(round)
             .map(|c| c.message_collector().voted.iter().map(|(k, v)| (*k, v.clone())).collect())
             .unwrap_or_default()
+    }
+}
+
+impl VoteCollector {
+    pub fn collect_priority(&mut self, sortition_round: SortitionRound, info: PriorityInfo) -> bool {
+        self.votes.entry(sortition_round.into()).or_insert_with(StepCollector::new_pp).insert_priority(info)
+    }
+
+    pub fn get_highest_priority_info(&self, sortition_round: SortitionRound) -> Option<PriorityInfo> {
+        self.votes
+            .get(&sortition_round.into())
+            .and_then(|step_collector| step_collector.priority_collector().get_highest())
+    }
+
+    pub fn get_highest_proposal_hash(&self, sortition_round: SortitionRound) -> Option<BlockHash> {
+        self.votes.get(&sortition_round.into()).and_then(|step_collector| {
+            let highest_priority_idx =
+                step_collector.priority_collector().get_highest().map(|priority_info| priority_info.signer_idx())?;
+            step_collector
+                .message_collector()
+                .fetch_by_idx(highest_priority_idx)
+                .and_then(|priority_message| priority_message.block_hash())
+        })
+    }
+
+    pub fn get_highest_proposal_summary(&self, sortition_round: SortitionRound) -> Option<ProposalSummary> {
+        let block_hash = self.get_highest_proposal_hash(sortition_round)?;
+        let priority_info = self.get_highest_priority_info(sortition_round)?;
+        Some(ProposalSummary {
+            priority_info,
+            block_hash,
+        })
+    }
+
+    pub fn block_hashes_from_highest(&self, sortition_round: SortitionRound) -> Vec<BlockHash> {
+        match self.votes.get(&sortition_round.into()) {
+            Some(step_collector) => {
+                let message_collector = step_collector.message_collector();
+                let priority_iter_from_highest = step_collector.priority_collector().iter_from_highest();
+                priority_iter_from_highest
+                    .map(|priority_info| {
+                        message_collector
+                            .fetch_by_idx(priority_info.signer_idx())
+                            .expect("Signer index was verified")
+                            .block_hash()
+                            .expect("Proposal vote always have BlockHash")
+                    })
+                    .collect()
+            }
+            None => vec![],
+        }
     }
 }

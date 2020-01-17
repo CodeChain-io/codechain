@@ -36,7 +36,7 @@ use super::message::*;
 use super::network;
 use super::params::TimeGapParams;
 use super::stake::CUSTOM_ACTION_HANDLER_ID;
-use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
+use super::types::{Height, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::vote_collector::{DoubleVote, VoteCollector};
 use super::vote_regression_checker::VoteRegressionChecker;
 use super::{ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_TOKEN_NONCE_BASE, SEAL_FIELDS};
@@ -52,6 +52,7 @@ use crate::consensus::{
 use crate::encoded;
 use crate::error::{BlockError, Error};
 use crate::transaction::{SignedTransaction, UnverifiedTransaction};
+use crate::types::BlockStatus;
 use crate::views::BlockView;
 use crate::BlockId;
 use std::cell::Cell;
@@ -84,8 +85,6 @@ struct Worker {
     signer: EngineSigner,
     /// Last majority
     last_two_thirds_majority: TwoThirdsMajority,
-    /// hash of the proposed block, used for seal submission.
-    proposal: Proposal,
     /// The finalized view of the previous height's block.
     /// The signatures for the previous block is signed for the view below.
     finalized_view_of_previous_block: View,
@@ -192,7 +191,6 @@ impl Worker {
             votes: Default::default(),
             signer: Default::default(),
             last_two_thirds_majority: TwoThirdsMajority::Empty,
-            proposal: Proposal::None,
             finalized_view_of_previous_block: 0,
             finalized_view_of_current_block: None,
             validators,
@@ -637,7 +635,6 @@ impl Worker {
     fn increment_view(&mut self, n: View) {
         cinfo!(ENGINE, "increment_view: New view.");
         self.view += n;
-        self.proposal = Proposal::None;
         self.votes_received = MutTrigger::new(BitSet::new());
     }
 
@@ -654,7 +651,6 @@ impl Worker {
         self.last_two_thirds_majority = TwoThirdsMajority::Empty;
         self.height += 1;
         self.view = 0;
-        self.proposal = Proposal::None;
         self.votes_received = MutTrigger::new(BitSet::new());
         self.finalized_view_of_previous_block =
             self.finalized_view_of_current_block.expect("self.step == Step::Commit");
@@ -672,7 +668,6 @@ impl Worker {
         self.last_two_thirds_majority = TwoThirdsMajority::Empty;
         self.height = height;
         self.view = 0;
-        self.proposal = Proposal::None;
         self.votes_received = MutTrigger::new(BitSet::new());
         self.finalized_view_of_previous_block = finalized_view_of_previous_height;
         self.finalized_view_of_current_block = None;
@@ -708,7 +703,7 @@ impl Worker {
         // need to reset vote
         self.broadcast_state(
             vote_step,
-            self.proposal.block_hash(),
+            self.votes.get_highest_proposal_summary(self.current_sortition_round()),
             self.last_two_thirds_majority.view(),
             self.votes_received.borrow_anyway(),
         );
@@ -723,9 +718,6 @@ impl Worker {
                         // Wait for verification.
                         return
                     }
-                    self.proposal = Proposal::new_imported(*hash);
-                    self.move_to_step(TendermintState::Prevote, is_restoring);
-                    return
                 }
                 let parent_block_hash = self.prev_block_hash();
                 if !self.is_signer_proposer(&parent_block_hash) {
@@ -754,8 +746,8 @@ impl Worker {
                 self.request_messages_to_all(vote_step, &BitSet::all_set() - &self.votes_received);
                 if !self.already_generated_message() {
                     let block_hash_candidate = match &self.last_two_thirds_majority {
-                        TwoThirdsMajority::Empty => self.proposal.imported_block_hash(),
-                        TwoThirdsMajority::Unlock(_) => self.proposal.imported_block_hash(),
+                        TwoThirdsMajority::Empty => self.highest_imported_block_hash(),
+                        TwoThirdsMajority::Unlock(_) => self.highest_imported_block_hash(),
                         TwoThirdsMajority::Lock(_, block_hash) => Some(*block_hash),
                     };
                     let block_hash = block_hash_candidate.filter(|hash| {
@@ -823,6 +815,21 @@ impl Worker {
                     self.client().update_best_as_committed(block_hash);
                 }
             }
+        }
+    }
+
+    fn highest_imported_block_hash(&self) -> Option<BlockHash> {
+        match self.step {
+            TendermintState::Prevote => {
+                self.votes.block_hashes_from_highest(self.current_sortition_round()).into_iter().find(|block_hash| {
+                    if let BlockStatus::InChain = self.client().block_status(&(*block_hash).into()) {
+                        true
+                    } else {
+                        false
+                    }
+                })
+            }
+            _ => panic!(),
         }
     }
 
@@ -988,7 +995,6 @@ impl Worker {
         let current_vote_step = VoteStep::new(self.height, self.view, self.step.to_step());
         let proposal_is_for_current = self.votes.has_votes_for(&current_vote_step, proposal.hash());
         if proposal_is_for_current {
-            self.proposal = Proposal::new_imported(proposal.hash());
             let current_step = self.step.clone();
             match current_step {
                 TendermintState::Propose => {
@@ -1008,19 +1014,7 @@ impl Worker {
                 TendermintSealView::new(proposal.seal()).parent_block_finalized_view().unwrap();
 
             self.jump_to_height(height, finalized_view_of_previous_height);
-
-            let proposal_is_for_view0 = self.votes.has_votes_for(
-                &VoteStep {
-                    height,
-                    view: 0,
-                    step: Step::Propose,
-                },
-                proposal.hash(),
-            );
-            if proposal_is_for_view0 {
-                self.proposal = Proposal::new_imported(proposal.hash())
-            }
-            self.move_to_step(TendermintState::Prevote, false);
+            self.move_to_step(TendermintState::new_propose_step(), false);
         }
     }
 
@@ -1054,12 +1048,6 @@ impl Worker {
             self.finalized_view_of_previous_block = backup.finalized_view_of_previous_block;
             self.finalized_view_of_current_block = backup.finalized_view_of_current_block;
 
-            if let Some(proposal) = backup.proposal {
-                if client.block(&BlockId::Hash(proposal)).is_some() {
-                    self.proposal = Proposal::ProposalImported(proposal);
-                }
-            }
-
             for vote in backup.votes {
                 let bytes = rlp::encode(&vote);
                 if let Err(err) = self.handle_message(&bytes, true) {
@@ -1086,7 +1074,6 @@ impl Worker {
             return Seal::None
         }
 
-        assert_eq!(Proposal::None, self.proposal);
         assert_eq!(height, self.height);
 
         let view = self.view;
@@ -1274,7 +1261,7 @@ impl Worker {
             if let Some(votes_received) = self.votes_received.borrow_if_mutated() {
                 self.broadcast_state(
                     self.vote_step(),
-                    self.proposal.block_hash(),
+                    self.votes.get_highest_proposal_summary(self.current_sortition_round()),
                     self.last_two_thirds_majority.view(),
                     votes_received,
                 );
@@ -1490,7 +1477,7 @@ impl Worker {
     fn repropose_block(&mut self, block: encoded::Block) {
         let header = block.decode_header();
         self.vote_on_header_for_proposal(&header).expect("I am proposer");
-        self.proposal = Proposal::new_imported(header.hash());
+        debug_assert_eq!(self.client().block_status(&header.hash().into()), BlockStatus::InChain);
         self.broadcast_proposal_block(self.view, block);
     }
 
@@ -1799,13 +1786,21 @@ impl Worker {
                         proposed_view,
                         author_view
                     );
-                    self.proposal = Proposal::new_imported(header_view.hash());
-                } else {
-                    self.proposal = Proposal::new_received(header_view.hash(), bytes.clone(), signature);
+                } else if Some(priority_info.priority())
+                    >= self
+                        .votes
+                        .get_highest_priority_info(self.current_sortition_round())
+                        .map(|priority_info| priority_info.priority())
+                {
+                    cdebug!(
+                        ENGINE,
+                        "Received a proposal with the priority {}. Replace the highest proposal",
+                        priority_info.priority()
+                    );
                 }
                 self.broadcast_state(
                     VoteStep::new(self.height, self.view, self.step.to_step()),
-                    self.proposal.block_hash(),
+                    self.votes.get_highest_proposal_summary(self.current_sortition_round()),
                     self.last_two_thirds_majority.view(),
                     self.votes_received.borrow_anyway(),
                 );
@@ -1862,9 +1857,12 @@ impl Worker {
             || self.view < peer_vote_step.view
             || self.height < peer_vote_step.height;
 
-        let need_proposal = self.need_proposal();
-        if need_proposal && peer_has_proposal {
-            self.send_request_proposal(token, self.height, self.view, &result);
+        let is_not_commit_step = !self.step.is_commit();
+        let peer_has_higher =
+            self.votes.get_highest_priority(peer_vote_step.into()) < peer_proposal.map(|summary| summary.priority());
+
+        if is_not_commit_step && peer_has_proposal && peer_has_higher {
+            self.send_request_proposal(token, self.current_sortition_round(), &result);
         }
 
         let current_step = current_vote_step.step;
@@ -1945,20 +1943,15 @@ impl Worker {
             return
         }
 
-        if request_height == self.height && request_view > self.view {
-            return
-        }
-
-        if let Some((signature, _signer_index, block)) = self.first_proposal_at(request_height, request_view) {
-            ctrace!(ENGINE, "Send proposal {}-{} to {:?}", request_height, request_view, token);
-            self.send_proposal_block(signature, request_view, block, result);
-            return
-        }
-
-        if request_height == self.height && request_view == self.view {
-            if let Proposal::ProposalReceived(_hash, block, signature) = &self.proposal {
-                self.send_proposal_block(*signature, request_view, block.clone(), result);
-            }
+        if let Some((signature, highest_priority_info, block)) = self.highest_proposal_at(requested_round) {
+            ctrace!(
+                ENGINE,
+                "Send proposal of priority {:?} in a round {:?} to {:?}",
+                highest_priority_info.priority(),
+                requested_round,
+                token
+            );
+            self.send_proposal_block(signature, highest_priority_info, requested_round.view, block, result);
         }
     }
 
@@ -2155,8 +2148,6 @@ impl Worker {
             }
         }
 
-        // Since we don't have proposal vote, set proposal = None
-        self.proposal = Proposal::None;
         self.view = commit_view;
         self.votes_received = MutTrigger::new(vote_bitset);
         self.last_two_thirds_majority = TwoThirdsMajority::Empty;
