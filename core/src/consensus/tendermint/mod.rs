@@ -45,11 +45,8 @@ use crate::ChainNotify;
 
 /// Timer token representing the consensus step timeouts.
 const ENGINE_TIMEOUT_TOKEN_NONCE_BASE: TimerToken = 23;
-/// Timer token for empty proposal blocks.
-const ENGINE_TIMEOUT_EMPTY_PROPOSAL: TimerToken = 22;
 /// Timer token for broadcasting step state.
 const ENGINE_TIMEOUT_BROADCAST_STEP_STATE: TimerToken = 21;
-
 /// Unit: second
 const ENGINE_TIMEOUT_BROADCAT_STEP_STATE_INTERVAL: u64 = 1;
 

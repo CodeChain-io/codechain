@@ -38,9 +38,6 @@ pub enum TendermintState {
     ProposeWaitImported {
         block: Box<SealedBlock>,
     },
-    ProposeWaitEmptyBlockTimer {
-        block: Box<SealedBlock>,
-    },
     Prevote,
     Precommit,
     Commit {
@@ -63,9 +60,6 @@ impl TendermintState {
             TendermintState::ProposeWaitImported {
                 ..
             } => Step::Propose,
-            TendermintState::ProposeWaitEmptyBlockTimer {
-                ..
-            } => Step::Propose,
             TendermintState::Prevote => Step::Prevote,
             TendermintState::Precommit => Step::Precommit,
             TendermintState::Commit {
@@ -74,15 +68,6 @@ impl TendermintState {
             TendermintState::CommitTimedout {
                 ..
             } => Step::Commit,
-        }
-    }
-
-    pub fn is_propose_wait_empty_block_timer(&self) -> bool {
-        match self {
-            TendermintState::ProposeWaitEmptyBlockTimer {
-                ..
-            } => true,
-            _ => false,
         }
     }
 
@@ -124,9 +109,6 @@ impl TendermintState {
             TendermintState::ProposeWaitImported {
                 ..
             } => None,
-            TendermintState::ProposeWaitEmptyBlockTimer {
-                ..
-            } => None,
             TendermintState::Prevote => None,
             TendermintState::Precommit => None,
         }
@@ -143,9 +125,6 @@ impl fmt::Debug for TendermintState {
             TendermintState::ProposeWaitImported {
                 block,
             } => write!(f, "TendermintState::ProposeWaitImported({})", block.header().hash()),
-            TendermintState::ProposeWaitEmptyBlockTimer {
-                block,
-            } => write!(f, "TendermintState::ProposeWaitEmptyBlockTimer({})", block.header().hash()),
             TendermintState::Prevote => write!(f, "TendermintState::Prevote"),
             TendermintState::Precommit => write!(f, "TendermintState::Precommit"),
             TendermintState::Commit {

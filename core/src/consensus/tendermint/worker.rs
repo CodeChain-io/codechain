@@ -39,9 +39,7 @@ use super::stake::CUSTOM_ACTION_HANDLER_ID;
 use super::types::{Height, Proposal, Step, TendermintSealView, TendermintState, TwoThirdsMajority, View};
 use super::vote_collector::{DoubleVote, VoteCollector};
 use super::vote_regression_checker::VoteRegressionChecker;
-use super::{
-    ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_EMPTY_PROPOSAL, ENGINE_TIMEOUT_TOKEN_NONCE_BASE, SEAL_FIELDS,
-};
+use super::{ENGINE_TIMEOUT_BROADCAST_STEP_STATE, ENGINE_TIMEOUT_TOKEN_NONCE_BASE, SEAL_FIELDS};
 use crate::account_provider::AccountProvider;
 use crate::block::*;
 use crate::client::ConsensusClient;
@@ -999,25 +997,10 @@ impl Worker {
                 TendermintState::ProposeWaitImported {
                     block,
                 } => {
-                    if !block.transactions().is_empty() {
-                        cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
-                        self.move_to_step(TendermintState::Prevote, false);
-                        self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
-                    } else {
-                        ctrace!(ENGINE, "Empty proposal is generated, set timer");
-                        self.step = TendermintState::ProposeWaitEmptyBlockTimer {
-                            block,
-                        };
-                        self.extension
-                            .send(network::Event::SetTimerEmptyProposal {
-                                view: self.view,
-                            })
-                            .unwrap();
-                    }
+                    cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
+                    self.move_to_step(TendermintState::Prevote, false);
+                    self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
                 }
-                TendermintState::ProposeWaitEmptyBlockTimer {
-                    ..
-                } => unreachable!(),
                 _ => {}
             };
         } else if current_height < height {
@@ -1287,35 +1270,6 @@ impl Worker {
     }
 
     fn on_timeout(&mut self, token: usize) {
-        // Timeout from empty block generation
-        if token == ENGINE_TIMEOUT_EMPTY_PROPOSAL {
-            let block = if self.step.is_propose_wait_empty_block_timer() {
-                let previous = mem::replace(&mut self.step, TendermintState::Propose);
-                match previous {
-                    TendermintState::ProposeWaitEmptyBlockTimer {
-                        block,
-                    } => block,
-                    _ => unreachable!(),
-                }
-            } else {
-                cwarn!(ENGINE, "Empty proposal timer was not cleared.");
-                return
-            };
-
-            // When self.height != block.header().number() && "propose timeout" is already called,
-            // the state is stuck and can't move to Prevote. We should change the step to Prevote.
-            self.move_to_step(TendermintState::Prevote, false);
-            if self.height == block.header().number() {
-                cdebug!(ENGINE, "Empty proposal timer is finished, go to the prevote step and broadcast the block");
-                cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
-                self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
-            } else {
-                cwarn!(ENGINE, "Empty proposal timer was for previous height.");
-            }
-
-            return
-        }
-
         if token == ENGINE_TIMEOUT_BROADCAST_STEP_STATE {
             if let Some(votes_received) = self.votes_received.borrow_if_mutated() {
                 self.broadcast_state(
@@ -1348,12 +1302,6 @@ impl Worker {
                 ..
             } => {
                 cwarn!(ENGINE, "Propose timed out but still waiting for the block imported");
-                return
-            }
-            TendermintState::ProposeWaitEmptyBlockTimer {
-                ..
-            } => {
-                cwarn!(ENGINE, "Propose timed out but still waiting for the empty block");
                 return
             }
             TendermintState::Prevote if self.has_enough_any_votes() => {
