@@ -242,7 +242,7 @@ impl Handler {
         let mut result = HashMap::with_capacity(network_usage_in_10_seconds.len());
         let now = Instant::now();
         for (name, times) in &mut *network_usage_in_10_seconds {
-            remove_outdated_network_usage(times, &now);
+            remove_outdated_network_usage(times, now);
             let total = times.iter().map(|(_, usage)| usage).sum();
             if total != 0 {
                 result.insert(name.clone(), total);
@@ -1198,9 +1198,9 @@ impl ::std::fmt::Display for Error {
     }
 }
 
-fn remove_outdated_network_usage(usage_per_extension: &mut VecDeque<(Instant, usize)>, now: &Instant) {
+fn remove_outdated_network_usage(usage_per_extension: &mut VecDeque<(Instant, usize)>, now: Instant) {
     while let Some((time, size)) = usage_per_extension.pop_front() {
-        if *now < time {
+        if now < time {
             usage_per_extension.push_front((time, size));
             break
         }
@@ -1209,6 +1209,6 @@ fn remove_outdated_network_usage(usage_per_extension: &mut VecDeque<(Instant, us
 
 fn insert_network_usage(usage_per_extension: &mut VecDeque<(Instant, usize)>, network_message_size: usize) {
     let now = Instant::now();
-    remove_outdated_network_usage(usage_per_extension, &now);
+    remove_outdated_network_usage(usage_per_extension, now);
     usage_per_extension.push_back((now + Duration::from_secs(10), network_message_size));
 }

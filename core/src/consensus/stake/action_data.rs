@@ -510,6 +510,9 @@ impl Candidates {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.0.len() == 0
+    }
 
     #[cfg(test)]
     pub fn get_index(&self, account: &Address) -> Option<usize> {
@@ -627,6 +630,9 @@ impl Jail {
     #[cfg(test)]
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.len() == 0
     }
 
     pub fn add(&mut self, candidate: Candidate, custody_until: u64, released_at: u64) {
