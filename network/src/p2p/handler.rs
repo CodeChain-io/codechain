@@ -78,6 +78,11 @@ const RETRY_SYNC_MAX: Duration = Duration::from_secs(10); // T1
 const RTT: Duration = Duration::from_secs(10); // T2
 const WAIT_SYNC: Duration = Duration::from_secs(30); // T3 >> T1 + RTT
 
+pub trait ManagingPeerdb: Send + Sync {
+    fn insert(&self, key: &SocketAddr);
+    fn delete(&self, key: &SocketAddr);
+}
+
 pub struct Handler {
     connecting_lock: Mutex<()>,
     channel: IoChannel<Message>,
@@ -86,6 +91,7 @@ pub struct Handler {
     socket_address: SocketAddr,
     listener: Listener,
 
+    peer_db: Arc<dyn (ManagingPeerdb)>,
     inbound_connections: RwLock<HashMap<StreamToken, EstablishedConnection>>,
     outbound_connections: RwLock<HashMap<StreamToken, EstablishedConnection>>,
     incoming_connections: RwLock<HashMap<StreamToken, IncomingConnection>>,
@@ -127,6 +133,7 @@ impl Handler {
         filters: Arc<dyn FiltersControl>,
         bootstrap_addresses: Vec<SocketAddr>,
         min_peers: usize,
+        db: Arc<dyn ManagingPeerdb>,
         max_peers: usize,
     ) -> ::std::result::Result<Self, String> {
         if MAX_INBOUND_CONNECTIONS + MAX_OUTBOUND_CONNECTIONS < max_peers {
@@ -165,6 +172,7 @@ impl Handler {
 
             bootstrap_addresses,
             min_peers,
+            peer_db: db,
             max_peers,
 
             rng: Mutex::new(OsRng::new().unwrap()),
@@ -491,6 +499,8 @@ impl IoHandler<Message> for Handler {
                 is_inbound: true,
             } => {
                 let mut inbound_connections = self.inbound_connections.write();
+                let target = connection.peer_addr();
+                self.peer_db.insert(&target);
                 if let Some(token) = self.inbound_tokens.lock().gen() {
                     let remote_node_id = connection.peer_addr().into();
                     assert_eq!(
@@ -1055,6 +1065,9 @@ impl IoHandler<Message> for Handler {
                     self.routing_table.remove(con.peer_addr());
                     self.inbound_tokens.lock().restore(stream);
                     ctrace!(NETWORK, "Inbound connect({}) removed", stream);
+
+                    let remove_target = con.peer_addr();
+                    self.peer_db.delete(&remove_target);
                 } else {
                     cdebug!(NETWORK, "Invalid inbound token({}) on deregister", stream);
                 }
@@ -1069,6 +1082,8 @@ impl IoHandler<Message> for Handler {
                         unreachable!("{} has no node id", stream);
                     }
                     con.deregister(event_loop)?;
+                    let remove_target = con.peer_addr();
+                    self.peer_db.delete(&remove_target);
                     self.routing_table.remove(con.peer_addr());
                     self.outbound_tokens.lock().restore(stream);
                     ctrace!(NETWORK, "Outbound connect({}) removed", stream);

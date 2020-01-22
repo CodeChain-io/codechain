@@ -34,8 +34,10 @@ pub const COL_EXTRA: Option<u32> = Some(3);
 pub const COL_MEMPOOL: Option<u32> = Some(4);
 /// Column for Transaction error hints
 pub const COL_ERROR_HINT: Option<u32> = Some(5);
+/// Column for Storing Peer list
+pub const COL_PEER: Option<u32> = Some(6);
 /// Number of columns in DB
-pub const NUM_COLUMNS: Option<u32> = Some(6);
+pub const NUM_COLUMNS: Option<u32> = Some(7);
 
 /// Modes for updating caches.
 #[derive(Clone, Copy)]

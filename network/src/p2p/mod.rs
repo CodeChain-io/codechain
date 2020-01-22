@@ -20,5 +20,5 @@ mod listener;
 mod message;
 mod stream;
 
-pub use self::handler::{Handler, Message};
+pub use self::handler::{Handler, ManagingPeerdb, Message};
 use self::message::{ExtensionMessage, Message as NetworkMessage, NegotiationMessage, SignedMessage};
