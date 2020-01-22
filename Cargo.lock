@@ -469,6 +469,7 @@ dependencies = [
  "codechain-types",
  "crossbeam-channel",
  "finally-block",
+ "kvdb",
  "log 0.4.6",
  "mio",
  "never-type",

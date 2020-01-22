@@ -36,6 +36,7 @@ extern crate rand;
 extern crate rlp;
 #[macro_use]
 extern crate rlp_derive;
+extern crate kvdb;
 extern crate never_type;
 extern crate table as ctable;
 extern crate time;
@@ -64,6 +65,7 @@ pub use crate::extension::{
 pub use crate::node_id::{IntoSocketAddr, NodeId};
 pub use crate::service::{Error as NetworkServiceError, Service as NetworkService};
 
+pub use self::p2p::{Handler, ManagingPeerdb};
 pub use crate::filters::{FilterEntry, Filters, FiltersControl};
 pub use crate::routing_table::RoutingTable;
 

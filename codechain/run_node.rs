@@ -21,8 +21,8 @@ use crate::json::PasswordFile;
 use crate::rpc::{rpc_http_start, rpc_ipc_start, rpc_ws_start};
 use crate::rpc_apis::ApiDependencies;
 use ccore::{
-    AccountProvider, AccountProviderError, BlockId, ChainNotify, Client, ClientConfig, ClientService, EngineInfo,
-    EngineType, Miner, MinerService, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
+    AccountProvider, AccountProviderError, BlockId, ChainNotify, Client, ClientConfig, ClientService, EngineClient,
+    EngineInfo, EngineType, Miner, MinerService, PeerDb, Scheme, Stratum, StratumConfig, StratumError, NUM_COLUMNS,
 };
 use cdiscovery::{Config, Discovery};
 use ckey::{Address, NetworkId, PlatformAddress};
@@ -30,7 +30,7 @@ use ckeystore::accounts_dir::RootDiskDirectory;
 use ckeystore::KeyStore;
 use clap::ArgMatches;
 use clogger::{self, EmailAlarm, LoggerConfig};
-use cnetwork::{Filters, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
+use cnetwork::{Filters, ManagingPeerdb, NetworkConfig, NetworkControl, NetworkService, RoutingTable, SocketAddr};
 use csync::{BlockSyncExtension, BlockSyncSender, SnapshotService, TransactionSyncExtension};
 use ctimer::TimerLoop;
 use ctrlc::CtrlC;
@@ -48,6 +48,7 @@ fn network_start(
     timer_loop: TimerLoop,
     cfg: &NetworkConfig,
     routing_table: Arc<RoutingTable>,
+    peer_db: Arc<dyn ManagingPeerdb>,
 ) -> Result<Arc<NetworkService>, String> {
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
@@ -61,6 +62,7 @@ fn network_start(
         cfg.max_peers,
         filters,
         routing_table,
+        peer_db,
     )
     .map_err(|e| format!("Network service error: {:?}", e))?;
 
@@ -282,8 +284,10 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             // XXX: What should we do if the network id has been changed.
             let c = client.client();
             let network_id = c.network_id();
+
+            let peer_db = PeerDb::new(c.get_kvdb());
             let routing_table = RoutingTable::new();
-            let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table))?;
+            let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table), peer_db)?;
 
             if config.network.discovery.unwrap() {
                 discovery_start(&service, &config.network, routing_table)?;

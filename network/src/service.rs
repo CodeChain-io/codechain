@@ -18,7 +18,7 @@ use crate::client::Client;
 use crate::control::{Control, Error as ControlError};
 use crate::filters::{FilterEntry, FiltersControl};
 use crate::routing_table::RoutingTable;
-use crate::{p2p, Api, NetworkExtension, SocketAddr};
+use crate::{p2p, Api, ManagingPeerdb, NetworkExtension, SocketAddr};
 use cidr::IpCidr;
 use cio::{IoError, IoService};
 use ckey::{NetworkId, Public};
@@ -46,6 +46,7 @@ impl Service {
         max_peers: usize,
         filters_control: Arc<dyn FiltersControl>,
         routing_table: Arc<RoutingTable>,
+        peer_db: Arc<dyn ManagingPeerdb>,
     ) -> Result<Arc<Self>, Error> {
         let p2p = IoService::start("P2P")?;
 
@@ -60,6 +61,7 @@ impl Service {
             Arc::clone(&filters_control),
             bootstrap_addresses,
             min_peers,
+            peer_db,
             max_peers,
         )?);
         p2p.register_handler(p2p_handler.clone())?;
