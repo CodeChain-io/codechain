@@ -193,6 +193,16 @@ impl Extension {
 
         debug_assert!(!has_error);
     }
+
+    fn send_body_requests(&mut self, peer_ids: &[NodeId], best_score: &U256) {
+        for id in peer_ids {
+            let peer_score = self.header_downloaders.get(id).map_or_else(Default::default, |peer| peer.total_score());
+            if peer_score <= *best_score {
+                continue
+            }
+            self.send_body_request(id);
+        }
+    }
 }
 
 impl NetworkExtension<Event> for Extension {
@@ -297,17 +307,7 @@ impl NetworkExtension<Event> for Extension {
                     }
                 }
 
-                for id in peer_ids {
-                    let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
-                        peer.total_score()
-                    } else {
-                        U256::zero()
-                    };
-
-                    if peer_score > best_proposal_score {
-                        self.send_body_request(&id);
-                    }
-                }
+                self.send_body_requests(&peer_ids, &best_proposal_score);
             }
             SYNC_EXPIRE_TOKEN_BEGIN..=SYNC_EXPIRE_TOKEN_END => {
                 self.check_sync_variable();
@@ -743,17 +743,7 @@ impl Extension {
         let mut peer_ids: Vec<_> = self.header_downloaders.keys().cloned().collect();
         peer_ids.shuffle(&mut thread_rng());
 
-        for id in peer_ids {
-            let peer_score = if let Some(peer) = self.header_downloaders.get(&id) {
-                peer.total_score()
-            } else {
-                U256::zero()
-            };
-
-            if peer_score > total_score {
-                self.send_body_request(&id);
-            }
-        }
+        self.send_body_requests(&peer_ids, &total_score);
     }
 }
 
