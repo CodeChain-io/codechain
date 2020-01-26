@@ -391,6 +391,7 @@ impl Extension {
                 peer.mark_as_imported(imported.clone());
             }
         }
+
         let mut headers_to_download: Vec<_> = enacted
             .into_iter()
             .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
@@ -404,6 +405,7 @@ impl Extension {
             .into_iter()
             .filter(|header| self.client.block_body(&BlockId::Hash(header.hash())).is_none())
             .collect(); // FIXME: No need to collect here if self is not borrowed.
+
         for header in headers {
             let parent = self
                 .client
@@ -412,12 +414,12 @@ impl Extension {
             let is_empty = header.transactions_root() == parent.transactions_root();
             self.body_downloader.add_target(&header.decode(), is_empty);
         }
-        self.body_downloader.remove_target(&retracted);
+        self.body_downloader.remove_targets(&retracted);
     }
 
     fn new_blocks(&mut self, imported: Vec<BlockHash>, invalid: Vec<BlockHash>) {
-        self.body_downloader.remove_target(&imported);
-        self.body_downloader.remove_target(&invalid);
+        self.body_downloader.remove_targets(&imported);
+        self.body_downloader.remove_targets(&invalid);
 
 
         let chain_info = self.client.chain_info();
@@ -708,6 +710,7 @@ impl Extension {
     }
 
     fn import_blocks(&mut self, blocks: Vec<(BlockHash, Vec<UnverifiedTransaction>)>) {
+        let mut imported = Vec::new();
         let mut remains = Vec::new();
         let mut error_target = None;
         for (hash, transactions) in blocks {
@@ -727,7 +730,7 @@ impl Extension {
                 skewed_merkle_root(parent_transactions_root, transactions.iter().map(Encodable::rlp_bytes));
             if *header.transactions_root() != calculated_transactions_root {
                 cwarn!(SYNC, "Received corrupted body for ${}({}", header.number(), hash);
-                error_target = Some((hash, transactions.is_empty()));
+                error_target = Some(hash);
                 continue
             }
 
@@ -748,12 +751,15 @@ impl Extension {
                     cwarn!(SYNC, "Cannot import block({}): {:?}", hash, err);
                     break
                 }
-                Ok(_) => {}
+                Ok(_) => {
+                    imported.push(hash);
+                }
             }
         }
-        if let Some((hash, is_empty)) = error_target {
-            self.body_downloader.re_request(hash, is_empty, remains);
+        if let Some(hash) = error_target {
+            self.body_downloader.re_request(hash, remains);
         }
+        self.body_downloader.remove_targets(&imported);
     }
 
     fn on_body_response(&mut self, hashes: Vec<BlockHash>, bodies: Vec<Vec<UnverifiedTransaction>>) {
