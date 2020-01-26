@@ -17,7 +17,25 @@
 use super::super::message::RequestMessage;
 use ccore::UnverifiedTransaction;
 use ctypes::{BlockHash, Header};
-use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::mem::replace;
+
+#[derive(Debug, PartialEq)]
+enum State {
+    Queued,
+    Downloading,
+    Downloaded {
+        transactions: Vec<UnverifiedTransaction>,
+    },
+    Drained,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State::Queued
+    }
+}
 
 #[derive(Clone)]
 struct Target {
@@ -28,8 +46,7 @@ struct Target {
 #[derive(Default)]
 pub struct BodyDownloader {
     targets: Vec<Target>,
-    downloading: HashSet<BlockHash>,
-    downloaded: HashMap<BlockHash, Vec<UnverifiedTransaction>>,
+    states: HashMap<BlockHash, State>,
 }
 
 impl BodyDownloader {
@@ -37,9 +54,12 @@ impl BodyDownloader {
         const MAX_BODY_REQEUST_LENGTH: usize = 128;
         let mut hashes = Vec::new();
         for t in &self.targets {
-            if !self.downloading.contains(&t.hash) && !self.downloaded.contains_key(&t.hash) {
-                hashes.push(t.hash);
+            let state = self.states.entry(t.hash).or_default();
+            if *state != State::Queued {
+                continue
             }
+            *state = State::Downloading;
+            hashes.push(t.hash);
             if hashes.len() >= MAX_BODY_REQEUST_LENGTH {
                 break
             }
@@ -47,97 +67,96 @@ impl BodyDownloader {
         if hashes.is_empty() {
             None
         } else {
-            self.downloading.extend(&hashes);
             Some(RequestMessage::Bodies(hashes))
         }
     }
 
     pub fn import_bodies(&mut self, hashes: Vec<BlockHash>, bodies: Vec<Vec<UnverifiedTransaction>>) {
-        for (hash, body) in hashes.into_iter().zip(bodies) {
-            if self.downloading.remove(&hash) {
-                let target = self.targets.iter().find(|t| t.hash == hash).expect("Downloading target must exist");
-                if body.is_empty() {
-                    if !target.is_empty {
-                        cwarn!(SYNC, "Invalid body of {}. It should be not empty.", hash);
-                        continue
-                    }
-                } else if target.is_empty {
-                    cwarn!(SYNC, "Invalid body of {}. It should be empty.", hash);
+        assert_eq!(hashes.len(), bodies.len());
+        for (hash, transactions) in hashes.into_iter().zip(bodies) {
+            if let Some(state) = self.states.get_mut(&hash) {
+                if state != &State::Downloading {
                     continue
                 }
-                self.downloaded.insert(hash, body);
+                *state = State::Downloaded {
+                    transactions,
+                }
             }
         }
-        self.downloading.shrink_to_fit();
     }
 
     pub fn add_target(&mut self, header: &Header, is_empty: bool) {
         cdebug!(SYNC, "Add download target: {}", header.hash());
+        self.states.insert(header.hash(), State::Queued);
         self.targets.push(Target {
             hash: header.hash(),
             is_empty,
         });
     }
 
-    pub fn remove_target(&mut self, targets: &[BlockHash]) {
+    pub fn remove_targets(&mut self, targets: &[BlockHash]) {
         if targets.is_empty() {
             return
         }
         cdebug!(SYNC, "Remove download targets: {:?}", targets);
-        for hash in targets {
-            if let Some(index) = self.targets.iter().position(|t| t.hash == *hash) {
-                self.targets.remove(index);
-            }
-            self.downloading.remove(hash);
-            self.downloaded.remove(hash);
-        }
+        // XXX: It can be slow.
+        self.states.retain(|hash, _| !targets.contains(hash));
+        self.targets.retain(|target| !targets.contains(&target.hash));
+        self.states.shrink_to_fit();
         self.targets.shrink_to_fit();
-        self.downloading.shrink_to_fit();
-        self.downloaded.shrink_to_fit();
     }
 
     pub fn reset_downloading(&mut self, hashes: &[BlockHash]) {
         cdebug!(SYNC, "Remove downloading by timeout {:?}", hashes);
         for hash in hashes {
-            self.downloading.remove(&hash);
+            if let Some(state) = self.states.get_mut(hash) {
+                if *state == State::Downloading {
+                    *state = State::Queued;
+                }
+            }
         }
-        self.downloading.shrink_to_fit();
     }
 
     pub fn drain(&mut self) -> Vec<(BlockHash, Vec<UnverifiedTransaction>)> {
         let mut result = Vec::new();
         for t in &self.targets {
-            if let Some(body) = self.downloaded.remove(&t.hash) {
-                result.push((t.hash, body));
-            } else {
-                break
+            let entry = self.states.entry(t.hash);
+            let state = match entry {
+                Entry::Vacant(_) => unreachable!(),
+                Entry::Occupied(mut entry) => match entry.get_mut() {
+                    state @ State::Downloaded {
+                        ..
+                    } => replace(state, State::Drained),
+                    _ => break,
+                },
+            };
+            match state {
+                State::Downloaded {
+                    transactions,
+                } => {
+                    result.push((t.hash, transactions));
+                }
+                _ => unreachable!(),
             }
         }
-        self.downloaded.shrink_to_fit();
-        self.targets.drain(0..result.len());
-        self.targets.shrink_to_fit();
         result
     }
 
-    pub fn re_request(
-        &mut self,
-        hash: BlockHash,
-        is_empty: bool,
-        remains: Vec<(BlockHash, Vec<UnverifiedTransaction>)>,
-    ) {
-        let mut new_targets = vec![Target {
-            hash,
-            is_empty,
-        }];
-        new_targets.extend(remains.into_iter().map(|(hash, transactions)| {
-            let is_empty = transactions.is_empty();
-            self.downloaded.insert(hash, transactions);
-            Target {
-                hash,
-                is_empty,
-            }
-        }));
-        new_targets.append(&mut self.targets);
-        self.targets = new_targets;
+    pub fn re_request(&mut self, hash: BlockHash, remains: Vec<(BlockHash, Vec<UnverifiedTransaction>)>) {
+        #[inline]
+        fn insert(states: &mut HashMap<BlockHash, State>, hash: BlockHash, state: State) {
+            let old = states.insert(hash, state);
+            debug_assert_ne!(None, old);
+        }
+        // The implementation of extend method allocates an additional memory for new items.
+        // However, our implementation guarantees that new items are already in the map and it just
+        // update the states. So iterating over new items and calling the insert method is faster
+        // than using the extend method and uses less memory.
+        for (hash, transactions) in remains {
+            insert(&mut self.states, hash, State::Downloaded {
+                transactions,
+            });
+        }
+        insert(&mut self.states, hash, State::Queued);
     }
 }
