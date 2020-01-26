@@ -55,11 +55,15 @@ impl BodyDownloader {
     pub fn import_bodies(&mut self, hashes: Vec<BlockHash>, bodies: Vec<Vec<UnverifiedTransaction>>) {
         for (hash, body) in hashes.into_iter().zip(bodies) {
             if self.downloading.remove(&hash) {
+                let target = self.targets.iter().find(|t| t.hash == hash).expect("Downloading target must exist");
                 if body.is_empty() {
-                    let target = self.targets.iter().find(|t| t.hash == hash).expect("Downloading target must exist");
                     if !target.is_empty {
+                        cwarn!(SYNC, "Invalid body of {}. It should be not empty.", hash);
                         continue
                     }
+                } else if target.is_empty {
+                    cwarn!(SYNC, "Invalid body of {}. It should be empty.", hash);
+                    continue
                 }
                 self.downloaded.insert(hash, body);
             }
