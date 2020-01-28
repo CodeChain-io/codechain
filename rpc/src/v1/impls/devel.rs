@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ use csync::BlockSyncEvent;
 use ctypes::transaction::{
     Action, AssetMintOutput, AssetOutPoint, AssetTransferInput, AssetTransferOutput, Transaction,
 };
-use ctypes::{Tracker, TxHash};
+use ctypes::{BlockHash, Tracker, TxHash};
 use jsonrpc_core::Result;
 use kvdb::KeyValueDB;
 use primitives::{H160, H256};
@@ -101,6 +101,26 @@ where
             let (sender, receiver) = unbounded_event_callback();
             block_sync.send(BlockSyncEvent::GetPeers(sender)).unwrap();
             Ok(receiver.iter().map(|node_id| node_id.into_addr().into()).collect())
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    fn get_peer_best_block_hashes(&self) -> Result<Vec<(SocketAddr, BlockHash)>> {
+        if let Some(block_sync) = self.block_sync.as_ref() {
+            let (sender, receiver) = unbounded_event_callback();
+            block_sync.send(BlockSyncEvent::GetPeerBestBlockHashes(sender)).unwrap();
+            Ok(receiver.iter().collect())
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    fn get_target_block_hashes(&self) -> Result<Vec<BlockHash>> {
+        if let Some(block_sync) = self.block_sync.as_ref() {
+            let (sender, receiver) = unbounded_event_callback();
+            block_sync.send(BlockSyncEvent::GetTargetBlockHashes(sender)).unwrap();
+            Ok(receiver.iter().collect())
         } else {
             Ok(Vec::new())
         }
