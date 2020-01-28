@@ -370,7 +370,8 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [devel_startSealing](#devel_startsealing)
  * [devel_stopSealing](#devel_stopsealing)
  * [devel_getBlockSyncPeers](#devel_getblocksyncpeers)
-
+ * [devel_getPeerBestBlockHashes](#devel_getpeerbestblockhases)
+ * [devel_getTargetBlockHashes](#devel_gettargetblockhashes)
 
 # Specification
 
@@ -3087,6 +3088,76 @@ No parameters
 {
   "jsonrpc":"2.0",
   "result": ["1.2.3.4:3485", "1.2.3.5:3485"],
+  "id":3
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## devel_getPeerBestBlockHashes
+
+Get IP address and best block hash of each peer.
+
+### Params
+
+No parameters
+
+### Returns
+
+[ 'string', 'H256' ][]
+
+### Request Example
+
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "devel_getPeerBestBlockHashes", "params": [], "id": 3}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": [
+    ["1.2.3.4:3485", "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077"],
+    ["1.2.3.5:3485", "0x7f7104b580f9418d444560009e5a92a4573d42d2c51cd0c6045afdc761826249"]
+  ],
+  "id":3
+}
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## devel_getTargetBlockHashes
+
+Get hashes of target blocks
+
+### Params
+
+No parameters
+
+### Returns
+
+'`H256[]`
+
+### Request Example
+
+```
+  curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "devel_getTargetBlockHashes", "params": [], "id": 3}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result": [
+    "0x56642f04d519ae3262c7ba6facf1c5b11450ebaeb7955337cfbc45420d573077",
+    "0x7f7104b580f9418d444560009e5a92a4573d42d2c51cd0c6045afdc761826249"
+    ],
   "id":3
 }
 ```

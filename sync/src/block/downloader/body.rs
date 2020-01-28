@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -83,6 +83,10 @@ impl BodyDownloader {
                 }
             }
         }
+    }
+
+    pub fn get_target_hashes(&self) -> Vec<BlockHash> {
+        self.targets.iter().map(|t| t.hash).collect()
     }
 
     pub fn add_target(&mut self, header: &Header, is_empty: bool) {

@@ -119,6 +119,10 @@ impl HeaderDownloader {
         self.pivot.total_score
     }
 
+    pub fn best_hash(&self) -> BlockHash {
+        self.best_hash
+    }
+
     pub fn is_idle(&self) -> bool {
         let can_request = self.request_time.is_none() && self.total_score > self.pivot.total_score;
 
