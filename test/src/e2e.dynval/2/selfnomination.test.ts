@@ -62,16 +62,13 @@ describe("Auto Self Nomination", function() {
             });
 
             const aliceNode = findNode(nodes, alice);
-            const bobNode = findNode(nodes, bob);
             const selfNominationHash = await selfNominate(
                 aliceNode.sdk,
                 alice,
                 10
             );
-            const bobselfNomination = await selfNominate(bobNode.sdk, bob, 10);
             await aliceNode.waitForTx(selfNominationHash);
-            await bobNode.waitForTx(bobselfNomination);
-
+            // bob will send self-nomination transaction automatically.
             const beforeCandidates = await stake.getCandidates(nodes[0].sdk);
 
             expect(
