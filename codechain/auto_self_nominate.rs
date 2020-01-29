@@ -31,7 +31,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-const NEED_NOMINATION_UNDER_TERM_LEFT: u64 = 1;
+const NEED_NOMINATION_UNDER_TERM_LEFT: u64 = 3;
 #[derive(Clone)]
 struct SelfSigner {
     account_provider: Arc<AccountProvider>,
