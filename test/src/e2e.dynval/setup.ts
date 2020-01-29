@@ -144,7 +144,7 @@ async function createNodes(options: {
                 "--self-nomination-target-deposit",
                 "10",
                 "--self-nomination-interval",
-                "10"
+                "1000"
             );
         }
 
