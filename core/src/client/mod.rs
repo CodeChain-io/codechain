@@ -32,6 +32,7 @@ use crate::blockchain_info::BlockChainInfo;
 use crate::consensus::EngineError;
 use crate::encoded;
 use crate::error::{BlockImportError, Error as GenericError};
+use crate::miner::MemPoolMinFees;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
 use cdb::DatabaseError;
@@ -294,6 +295,8 @@ pub trait MiningBlockChainClient: BlockChainClient + BlockProducer + FindActionH
 
     /// Append designated users to the immune user list.
     fn register_immune_users(&self, immune_user_vec: Vec<Address>);
+
+    fn mem_pool_min_fees(&self) -> MemPoolMinFees;
 }
 
 /// Provides methods to access database.

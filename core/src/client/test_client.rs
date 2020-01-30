@@ -41,7 +41,7 @@ use crate::consensus::EngineError;
 use crate::db::{COL_STATE, NUM_COLUMNS};
 use crate::encoded;
 use crate::error::{BlockImportError, Error as GenericError};
-use crate::miner::{Miner, MinerService, TransactionImportResult};
+use crate::miner::{MemPoolMinFees, Miner, MinerService, TransactionImportResult};
 use crate::scheme::Scheme;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction};
 use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
@@ -377,6 +377,10 @@ impl MiningBlockChainClient for TestBlockChainClient {
 
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
         self.miner.register_immune_users(immune_user_vec)
+    }
+
+    fn mem_pool_min_fees(&self) -> MemPoolMinFees {
+        self.miner.get_options().mem_pool_min_fees
     }
 }
 
