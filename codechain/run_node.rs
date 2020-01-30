@@ -48,7 +48,7 @@ fn network_start(
     timer_loop: TimerLoop,
     cfg: &NetworkConfig,
     routing_table: Arc<RoutingTable>,
-    peer_db: Arc<dyn ManagingPeerdb>,
+    peer_db: Box<dyn ManagingPeerdb>,
 ) -> Result<Arc<NetworkService>, String> {
     let addr = cfg.address.parse().map_err(|_| format!("Invalid NETWORK listen host given: {}", cfg.address))?;
     let sockaddress = SocketAddr::new(addr, cfg.port);
