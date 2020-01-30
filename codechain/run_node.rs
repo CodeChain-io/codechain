@@ -284,7 +284,6 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
             // XXX: What should we do if the network id has been changed.
             let c = client.client();
             let network_id = c.network_id();
-
             let peer_db = PeerDb::new(c.get_kvdb());
             let routing_table = RoutingTable::new();
             let service = network_start(network_id, timer_loop, &network_config, Arc::clone(&routing_table), peer_db)?;
