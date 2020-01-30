@@ -28,8 +28,8 @@ pub struct PeerDb {
 }
 
 impl PeerDb {
-    pub fn new(database: Arc<dyn KeyValueDB>) -> Arc<Self> {
-        Arc::new(Self {
+    pub fn new(database: Arc<dyn KeyValueDB>) -> Box<Self> {
+        Box::new(Self {
             db: database,
             peers_and_count: Default::default(),
         })
