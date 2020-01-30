@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use super::super::types::PendingTransactions;
+use super::super::types::{MemPoolMinFees, PendingTransactions};
 use cjson::bytes::Bytes;
 use ckey::PlatformAddress;
 use ctypes::{Tracker, TxHash};
@@ -70,4 +70,7 @@ pub trait Mempool {
 
     #[rpc(name = "mempool_registerImmuneAccounts")]
     fn register_immune_accounts(&self, immune_user_list: Vec<PlatformAddress>) -> Result<()>;
+
+    #[rpc(name = "mempool_getMachineMinimumFees")]
+    fn get_machine_minimum_fees(&self) -> Result<MemPoolMinFees>;
 }

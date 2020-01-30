@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,7 @@ mod asset_input;
 mod asset_output;
 mod asset_scheme;
 mod block;
+mod mem_pool;
 mod text;
 mod transaction;
 mod unsigned_transaction;
@@ -34,6 +35,7 @@ pub use self::asset::OwnedAsset;
 pub use self::asset_scheme::AssetScheme;
 pub use self::block::Block;
 pub use self::block::BlockNumberAndHash;
+pub use self::mem_pool::MemPoolMinFees;
 pub use self::text::Text;
 pub use self::transaction::{PendingTransactions, Transaction};
 pub use self::unsigned_transaction::UnsignedTransaction;

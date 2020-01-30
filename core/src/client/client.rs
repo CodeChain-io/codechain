@@ -31,6 +31,7 @@ use crate::scheme::Scheme;
 use crate::service::ClientIoMessage;
 use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, SignedTransaction, UnverifiedTransaction};
 use crate::types::{BlockId, BlockStatus, TransactionId, VerificationQueueInfo as BlockQueueInfo};
+use crate::MemPoolMinFees;
 use cdb::{new_journaldb, Algorithm, AsHashDB, DatabaseError};
 use cio::IoChannel;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
@@ -924,6 +925,10 @@ impl MiningBlockChainClient for Client {
 
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
         self.importer.miner.register_immune_users(immune_user_vec)
+    }
+
+    fn mem_pool_min_fees(&self) -> MemPoolMinFees {
+        self.importer.miner.get_options().mem_pool_min_fees
     }
 }
 

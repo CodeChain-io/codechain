@@ -328,6 +328,7 @@ When `Transaction` is included in any response, there will be an additional fiel
  * [mempool_banAccounts](#mempool_banaccounts)
  * [mempool_registerImmuneAccounts](#mempool_registerimmuneaccounts)
  * [mempool_getRegisteredImmuneAccounts](#mempool_getregisteredimmuneaccounts)
+ * [mempool_getMachineMinimumFees](#mempool_getmachineminimumfees)
 ***
  * [engine_getCoinbase](#engine_getcoinbase)
  * [engine_getBlockReward](#engine_getblockreward)
@@ -1984,6 +1985,65 @@ curl \
   ],
   "id": null
 }
+```
+
+[Back to **List of methods**](#list-of-methods)
+
+## mempool_getMachineMinimumFees
+Get minimum fees configured by the machine.
+
+### Params
+No parameters
+
+### Returns
+{
+  "minAssetMintCost": `number`,
+  "minAssetSchemeChangeCost":`number`,
+  "minAssetSupplyIncreaseCost": `number`,
+  "minAssetTransferCost":`number`,
+  "minAssetUnwrapCccCost":`number`,
+  "minCreateShardTransactionCost":`number`,
+  "minCustomTransactionCost":`number`,
+  "minStoreTransactionCost": `number`,
+  "minRemoveTransactionCost": `number`,
+  "minPayTransactionCost":`number`,
+  "minSetRegularKeyTransactionCost":`number`,
+  "minSetShardOwnersTransactionCost":`number`,
+  "minSetShardUsersTransactionCost":`number`,
+  "minWrapCccTransactionCost":`number`
+}
+
+### Request Example
+```
+curl \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc": "2.0", "method": "mempool_getMachineMinimumFees", "params": [], "id": null}' \
+    localhost:8080
+```
+
+### Response Example
+```
+{
+  "jsonrpc":"2.0",
+  "result":{
+    "minAssetMintCost":0,
+    "minAssetSchemeChangeCost":0,
+    "minAssetSupplyIncreaseCost":0,
+    "minAssetTransferCost":0,
+    "minAssetUnwrapCccCost":0,
+    "minCreateShardTransactionCost":0,
+    "minCustomTransactionCost":0,
+    "minStoreTransactionCost": 0,
+    "minRemoveTransactionCost": 0,
+    "minPayTransactionCost":0,
+    "minSetRegularKeyTransactionCost":0,
+    "minSetShardOwnersTransactionCost":0,
+    "minSetShardUsersTransactionCost":0,
+    "minWrapCccTransactionCost":0
+    },
+  "id":null
+}
+
 ```
 
 [Back to **List of methods**](#list-of-methods)
