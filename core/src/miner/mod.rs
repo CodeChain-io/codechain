@@ -123,7 +123,7 @@ pub trait MinerService: Send + Sync {
     ) -> Vec<Result<TransactionImportResult, Error>>;
 
     /// Imports own (node owner) transaction to mem pool.
-    fn import_own_transaction<C: MiningBlockChainClient + EngineInfo + TermInfo + TermInfo>(
+    fn import_own_transaction<C: MiningBlockChainClient + EngineInfo + TermInfo>(
         &self,
         chain: &C,
         tx: SignedTransaction,
