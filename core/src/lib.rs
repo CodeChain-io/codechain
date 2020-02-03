@@ -90,7 +90,7 @@ pub use crate::consensus::stake;
 pub use crate::consensus::{EngineType, TimeGapParams};
 pub use crate::db::{COL_STATE, NUM_COLUMNS};
 pub use crate::error::{BlockImportError, Error, ImportError};
-pub use crate::miner::{MemPoolFees, Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
+pub use crate::miner::{MemPoolMinFees, Miner, MinerOptions, MinerService, Stratum, StratumConfig, StratumError};
 pub use crate::peer_db::PeerDb;
 pub use crate::scheme::Scheme;
 pub use crate::service::ClientService;

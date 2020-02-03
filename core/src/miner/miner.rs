@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::mem_pool::{Error as MemPoolError, MemPool};
-pub use super::mem_pool_types::MemPoolFees;
+pub use super::mem_pool_types::MemPoolMinFees;
 use super::mem_pool_types::{MemPoolInput, TxOrigin, TxTimelock};
 use super::sealing_queue::SealingQueue;
 use super::work_notify::{NotifyWork, WorkPoster};
@@ -78,7 +78,7 @@ pub struct MinerOptions {
     /// How many historical work packages can we store before running out?
     pub work_queue_size: usize,
     /// Minimum fees configured by the machine.
-    pub mem_pool_fees: MemPoolFees,
+    pub mem_pool_min_fees: MemPoolMinFees,
 }
 
 impl Default for MinerOptions {
@@ -96,7 +96,7 @@ impl Default for MinerOptions {
             mem_pool_fee_bump_shift: 3,
             allow_create_shard: false,
             work_queue_size: 20,
-            mem_pool_fees: Default::default(),
+            mem_pool_min_fees: Default::default(),
         }
     }
 }
@@ -288,7 +288,7 @@ impl Miner {
             mem_limit,
             options.mem_pool_fee_bump_shift,
             db,
-            options.mem_pool_fees,
+            options.mem_pool_min_fees,
         )));
 
         let notifiers: Vec<Box<dyn NotifyWork>> = if options.new_work_notify.is_empty() {
