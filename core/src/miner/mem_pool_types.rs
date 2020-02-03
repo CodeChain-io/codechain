@@ -440,7 +440,7 @@ pub struct AccountDetails {
 
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
 /// Minimum fee thresholds defined not by network but by Mempool
-pub struct MemPoolFees {
+pub struct MemPoolMinFees {
     min_pay_transaction_cost: u64,
     min_set_regular_key_transaction_cost: u64,
     min_create_shard_transaction_cost: u64,
@@ -457,7 +457,7 @@ pub struct MemPoolFees {
     min_asset_unwrap_ccc_cost: u64,
 }
 
-impl MemPoolFees {
+impl MemPoolMinFees {
     #[allow(clippy::too_many_arguments)]
     pub fn create_from_options(
         min_pay_cost_option: Option<u64>,
@@ -475,7 +475,7 @@ impl MemPoolFees {
         min_asset_supply_increase_cost_option: Option<u64>,
         min_asset_unwrap_ccc_cost_option: Option<u64>,
     ) -> Self {
-        MemPoolFees {
+        MemPoolMinFees {
             min_pay_transaction_cost: min_pay_cost_option.unwrap_or_default(),
             min_set_regular_key_transaction_cost: min_set_regular_key_cost_option.unwrap_or_default(),
             min_create_shard_transaction_cost: min_create_shard_cost_option.unwrap_or_default(),

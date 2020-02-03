@@ -16,8 +16,8 @@
 
 use super::backup;
 use super::mem_pool_types::{
-    AccountDetails, CurrentQueue, FutureQueue, MemPoolFees, MemPoolInput, MemPoolItem, MemPoolStatus, PoolingInstant,
-    QueueTag, TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
+    AccountDetails, CurrentQueue, FutureQueue, MemPoolInput, MemPoolItem, MemPoolMinFees, MemPoolStatus,
+    PoolingInstant, QueueTag, TransactionOrder, TransactionOrderWithTag, TxOrigin, TxTimelock,
 };
 use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChainTrait};
@@ -74,7 +74,7 @@ impl From<SyntaxError> for Error {
 
 pub struct MemPool {
     /// Fee threshold for transactions that can be imported to this pool
-    minimum_fees: MemPoolFees,
+    minimum_fees: MemPoolMinFees,
     /// A value which is used to check whether a new transaciton can replace a transaction in the memory pool with the same signer and seq.
     /// If the fee of the new transaction is `new_fee` and the fee of the transaction in the memory pool is `old_fee`,
     /// then `new_fee > old_fee + old_fee >> mem_pool_fee_bump_shift` should be satisfied to replace.
@@ -119,7 +119,7 @@ impl MemPool {
         memory_limit: usize,
         fee_bump_shift: usize,
         db: Arc<dyn KeyValueDB>,
-        minimum_fees: MemPoolFees,
+        minimum_fees: MemPoolMinFees,
     ) -> Self {
         MemPool {
             minimum_fees,
@@ -1669,7 +1669,7 @@ pub mod test {
         let test_client = TestBlockChainClient::new();
 
         // Set the pay transaction minimum fee
-        let fees = MemPoolFees::create_from_options(
+        let fees = MemPoolMinFees::create_from_options(
             Some(150),
             None,
             None,
@@ -1724,7 +1724,7 @@ pub mod test {
     fn external_transactions_whose_fees_are_under_the_mem_pool_min_fee_are_rejected() {
         let test_client = TestBlockChainClient::new();
         // Set the pay transaction minimum fee
-        let fees = MemPoolFees::create_from_options(
+        let fees = MemPoolMinFees::create_from_options(
             Some(150),
             None,
             None,

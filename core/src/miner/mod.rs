@@ -24,7 +24,7 @@ mod stratum;
 mod work_notify;
 
 use self::mem_pool_types::AccountDetails;
-pub use self::mem_pool_types::MemPoolFees;
+pub use self::mem_pool_types::MemPoolMinFees;
 pub use self::miner::{AuthoringParams, Miner, MinerOptions};
 pub use self::stratum::{Config as StratumConfig, Error as StratumError, Stratum};
 use crate::account_provider::{AccountProvider, Error as AccountProviderError};
