@@ -84,8 +84,8 @@ impl AutoSelfNomination {
     pub fn send_self_nominate_transaction(&self, matches: &ArgMatches) {
         let config = load_config(matches).unwrap();
         let account_address = config.mining.engine_signer.unwrap();
-        let defualt_metadata = config.mining.self_nomination_metadata.unwrap();
-        let target_deposite = config.mining.self_target_deposit.unwrap();
+        let default_metadata = config.mining.self_nomination_metadata.unwrap();
+        let target_deposit = config.mining.self_target_deposit.unwrap();
         let interval = config.mining.self_nomination_interval.unwrap();
         let self_client = self.client.clone();
         let self_signer = self.signer.clone();
@@ -96,8 +96,8 @@ impl AutoSelfNomination {
                     &self_client,
                     &self_signer,
                     &account_address,
-                    &defualt_metadata,
-                    target_deposite,
+                    &default_metadata,
+                    target_deposit,
                 );
                 thread::sleep(Duration::from_millis(interval));
             })
