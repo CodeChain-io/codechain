@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,8 @@
 use super::ENCRYPTED_ID;
 use super::UNENCRYPTED_ID;
 use crate::session::Session;
-use ccrypto::aes::{self, SymmetricCipherError};
+use ccrypto::aes;
+use ccrypto::error::SymmError;
 use primitives::Bytes;
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use std::sync::Arc;
@@ -47,7 +48,7 @@ impl Message {
         extension_name: String,
         unencrypted_data: &[u8],
         session: &Session,
-    ) -> Result<Self, SymmetricCipherError> {
+    ) -> Result<Self, SymmError> {
         let encrypted = aes::encrypt(unencrypted_data, session.secret(), &session.nonce())?;
         Ok(Self::encrypted(extension_name, encrypted))
     }
@@ -73,7 +74,7 @@ impl Message {
         }
     }
 
-    pub fn unencrypted_data(&self, session: &Session) -> Result<Arc<Bytes>, SymmetricCipherError> {
+    pub fn unencrypted_data(&self, session: &Session) -> Result<Arc<Bytes>, SymmError> {
         match self {
             Message::Encrypted {
                 encrypted,

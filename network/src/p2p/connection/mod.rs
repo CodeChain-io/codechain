@@ -1,4 +1,4 @@
-// Copyright 2019 Kodebox, Inc.
+// Copyright 2019-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ mod incoming;
 mod message;
 mod outgoing;
 
-use ccrypto::aes::SymmetricCipherError;
+use ccrypto::error::SymmError;
 use rlp::DecoderError;
 use std::fmt;
 use std::io;
@@ -36,7 +36,7 @@ use super::stream::Error as P2pStreamError;
 
 #[derive(Debug)]
 pub enum Error {
-    SymmetricCipher(SymmetricCipherError),
+    SymmetricCipher(SymmError),
     IoError(io::Error),
     Decoder(DecoderError),
     InvalidSign,
@@ -78,8 +78,8 @@ impl From<P2pStreamError> for Error {
     }
 }
 
-impl From<SymmetricCipherError> for Error {
-    fn from(err: SymmetricCipherError) -> Self {
+impl From<SymmError> for Error {
+    fn from(err: SymmError) -> Self {
         Error::SymmetricCipher(err)
     }
 }

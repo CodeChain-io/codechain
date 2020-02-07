@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 
 [dependencies]
-codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.2" }
 codechain-key = { path = "../key" }
 codechain-types = { path = "../types" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

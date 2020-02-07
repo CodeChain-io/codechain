@@ -7,7 +7,7 @@ authors = ["Parity Technologies <admin@parity.io>", "CodeChain Team <hi@codechai
 edition = "2018"
 
 [dependencies]
-codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
+codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.2" }
 codechain-logger = { path = "../util/logger" }
 codechain-json = { path = "../json" }
 jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.3" }
