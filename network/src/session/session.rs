@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use super::Nonce;
-use ccrypto::aes::{self, SymmetricCipherError};
+use ccrypto::aes;
+use ccrypto::error::SymmError;
 use ccrypto::Blake;
 use ckey::Secret;
 use primitives::H256;
@@ -25,8 +26,6 @@ pub struct Session {
     secret: Secret,
     nonce: Nonce,
 }
-
-type Error = SymmetricCipherError;
 
 impl Session {
     pub fn new_with_zero_nonce(secret: Secret) -> Self {
@@ -52,11 +51,11 @@ impl Session {
         self.nonce
     }
 
-    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, SymmError> {
         Ok(aes::encrypt(&data, &self.secret, &self.nonce())?)
     }
 
-    pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, Error> {
+    pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, SymmError> {
         Ok(aes::decrypt(&data, &self.secret, &self.nonce())?)
     }
 

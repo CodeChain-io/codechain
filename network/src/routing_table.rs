@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,8 @@
 
 use crate::session::{Nonce, Session};
 use crate::SocketAddr;
-use ccrypto::aes::{self, SymmetricCipherError};
+use ccrypto::aes;
+use ccrypto::error::SymmError;
 use ckey::{exchange, Generator, KeyPair, Public, Random, Secret};
 use parking_lot::{Mutex, RwLock};
 use primitives::Bytes;
@@ -506,8 +507,7 @@ impl RoutingTable {
             State::Establishing1(local_key_pair) => {
                 let shared_secret = exchange(&remote_public, local_key_pair.private())
                     .map_err(|e| format!("Cannot exchange key: {:?}", e))?;
-                let nonce = decrypt_nonce(encrypted_nonce, &shared_secret)
-                    .map_err(|e| format!("Cannot decrypt nonce: {:?}", e))?;
+                let nonce = decrypt_nonce(encrypted_nonce, &shared_secret)?;
                 State::Established {
                     local_key_pair: *local_key_pair,
                     remote_public,
@@ -529,8 +529,7 @@ impl RoutingTable {
                     ))
                 }
                 debug_assert_eq!(*shared_secret, exchange(&remote_public, local_key_pair.private()).unwrap());
-                let nonce = decrypt_nonce(encrypted_nonce, &shared_secret)
-                    .map_err(|e| format!("Cannot decrypt nonce: {:?}", e))?;
+                let nonce = decrypt_nonce(encrypted_nonce, &shared_secret)?;
                 State::Established {
                     local_key_pair: *local_key_pair,
                     remote_public,
@@ -618,19 +617,23 @@ impl RoutingTable {
     }
 }
 
-fn decrypt_nonce(encrypted_bytes: &[u8], shared_secret: &Secret) -> Result<Nonce, SymmetricCipherError> {
+fn decrypt_nonce(encrypted_bytes: &[u8], shared_secret: &Secret) -> Result<Nonce, String> {
     let iv = 0; // FIXME: Use proper iv
-    let unecrypted = aes::decrypt(encrypted_bytes, shared_secret, &iv)?;
+    let unecrypted =
+        aes::decrypt(encrypted_bytes, shared_secret, &iv).map_err(|e| format!("Cannot decrypt nonce: {:?}", e))?;
     debug_assert_eq!(std::mem::size_of::<Nonce>(), 16);
     if unecrypted.len() != 16 {
-        return Err(SymmetricCipherError::InvalidLength) // FIXME
+        return Err(format!(
+            "Cannot decrpyt nonce: 16 length bytes expected but, {} length bytes received",
+            unecrypted.len()
+        )) // FIXME
     }
     let mut nonce_bytes = [0u8; 16];
     nonce_bytes.copy_from_slice(&unecrypted);
     Ok(Nonce::from_be_bytes(nonce_bytes))
 }
 
-fn encrypt_nonce(nonce: Nonce, shared_secret: &Secret) -> Result<Bytes, SymmetricCipherError> {
+fn encrypt_nonce(nonce: Nonce, shared_secret: &Secret) -> Result<Bytes, SymmError> {
     let iv = 0; // FIXME: Use proper iv
     Ok(aes::encrypt(&nonce.to_be_bytes(), shared_secret, &iv)?)
 }

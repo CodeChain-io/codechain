@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ use crate::client::Client;
 use crate::session::Session;
 use crate::stream::Stream;
 use crate::{FiltersControl, NodeId, RoutingTable, SocketAddr};
-use ccrypto::aes::SymmetricCipherError;
+use ccrypto::error::SymmError;
 use cio::{IoChannel, IoContext, IoHandler, IoHandlerResult, IoManager, StreamToken, TimerToken};
 use ckey::NetworkId;
 use finally_block::finally;
@@ -1155,8 +1155,8 @@ impl IoHandler<Message> for Handler {
     }
 }
 
-impl From<SymmetricCipherError> for Error {
-    fn from(err: SymmetricCipherError) -> Self {
+impl From<SymmError> for Error {
+    fn from(err: SymmError) -> Self {
         Error::SymmetricCipher(err)
     }
 }
@@ -1186,7 +1186,7 @@ pub enum Message {
 #[derive(Debug)]
 enum Error {
     InvalidNode(NodeId),
-    SymmetricCipher(SymmetricCipherError),
+    SymmetricCipher(SymmError),
 }
 
 impl ::std::fmt::Display for Error {
