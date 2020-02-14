@@ -1,4 +1,4 @@
-// Copyright 2018-2019 Kodebox, Inc.
+// Copyright 2018-2020 Kodebox, Inc.
 // This file is part of CodeChain.
 //
 // This program is free software: you can redistribute it and/or modify
@@ -2016,6 +2016,7 @@ impl Worker {
                     };
                     votes.push(message);
                 }
+                self.send_commit(block, votes, &result);
             }
             Ordering::Greater => {}
         }
