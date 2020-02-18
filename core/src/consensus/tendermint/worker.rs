@@ -954,6 +954,7 @@ impl Worker {
             if !self.votes.is_old_or_known(&message) {
                 if let Err(double_vote) = self.votes.collect(message) {
                     cerror!(ENGINE, "Double vote found on_commit_message: {:?}", double_vote);
+                    self.report_double_vote(&double_vote);
                 }
             }
         }
@@ -2163,6 +2164,7 @@ impl Worker {
             if !self.votes.is_old_or_known(&vote) {
                 if let Err(double_vote) = self.votes.collect(vote) {
                     cerror!(ENGINE, "Double vote found on_commit_message: {:?}", double_vote);
+                    self.report_double_vote(&double_vote);
                 }
             }
         }
