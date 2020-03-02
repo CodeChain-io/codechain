@@ -24,7 +24,7 @@ import {
 import "mocha";
 import {
     aliceAddress,
-    faucetAccointId,
+    faucetAccountId,
     faucetAddress,
     faucetSecret
 } from "../helper/constants";
@@ -680,7 +680,7 @@ describe("solo - 1 node", function() {
                     shardId: 0,
                     recipient,
                     quantity: 10,
-                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                    payer: PlatformAddress.fromAccountId(faucetAccountId, {
                         networkId: "tc"
                     })
                 })

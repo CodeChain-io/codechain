@@ -25,7 +25,7 @@ import {
 import "mocha";
 import {
     aliceAddress,
-    faucetAccointId,
+    faucetAccountId,
     faucetAddress,
     faucetSecret
 } from "../helper/constants";
@@ -50,7 +50,7 @@ describe("Unwrap CCC", function() {
                     shardId: 0,
                     recipient,
                     quantity,
-                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                    payer: PlatformAddress.fromAccountId(faucetAccountId, {
                         networkId: "tc"
                     })
                 })
@@ -107,7 +107,7 @@ describe("Unwrap CCC", function() {
                     shardId: 0,
                     recipient,
                     quantity,
-                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                    payer: PlatformAddress.fromAccountId(faucetAccountId, {
                         networkId: "tc"
                     })
                 })

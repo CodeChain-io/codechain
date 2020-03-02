@@ -20,7 +20,7 @@ chai.use(chaiAsPromised);
 import { H160, PlatformAddress } from "codechain-primitives";
 import "mocha";
 import {
-    faucetAccointId,
+    faucetAccountId,
     faucetAddress,
     faucetSecret
 } from "../helper/constants";
@@ -44,7 +44,7 @@ describe("WrapCCC", function() {
                     shardId: 0,
                     recipient,
                     quantity: amount,
-                    payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                    payer: PlatformAddress.fromAccountId(faucetAccountId, {
                         networkId: "tc"
                     })
                 })
@@ -71,7 +71,7 @@ describe("WrapCCC", function() {
                 shardId: 0,
                 recipient,
                 quantity: 0,
-                payer: PlatformAddress.fromAccountId(faucetAccointId, {
+                payer: PlatformAddress.fromAccountId(faucetAccountId, {
                     networkId: "tc"
                 })
             })
@@ -95,7 +95,7 @@ describe("WrapCCC", function() {
             shardId,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 30,
-            payer: PlatformAddress.fromAccountId(faucetAccointId, {
+            payer: PlatformAddress.fromAccountId(faucetAccountId, {
                 networkId: "tc"
             })
         });
@@ -159,7 +159,7 @@ describe("WrapCCC", function() {
             shardId: 0,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 30,
-            payer: PlatformAddress.fromAccountId(faucetAccointId, {
+            payer: PlatformAddress.fromAccountId(faucetAccountId, {
                 networkId: "tc"
             })
         });
@@ -203,7 +203,7 @@ describe("WrapCCC", function() {
             shardId: 0,
             recipient: await node.createP2PKHBurnAddress(),
             quantity: 30,
-            payer: PlatformAddress.fromAccountId(faucetAccointId, {
+            payer: PlatformAddress.fromAccountId(faucetAccountId, {
                 networkId: "tc"
             })
         });

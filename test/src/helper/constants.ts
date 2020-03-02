@@ -18,9 +18,9 @@ import { SDK } from "codechain-sdk";
 
 export const faucetSecret =
     "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
-export const faucetAccointId = SDK.util.getAccountIdFromPrivate(faucetSecret); // 6fe64ffa3a46c074226457c90ccb32dc06ccced1
+export const faucetAccountId = SDK.util.getAccountIdFromPrivate(faucetSecret); // 6fe64ffa3a46c074226457c90ccb32dc06ccced1
 export const faucetAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
-    faucetAccointId,
+    faucetAccountId,
     { networkId: "tc" }
 ); // tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd
 
