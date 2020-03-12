@@ -50,6 +50,7 @@
     "codechain-sdk": "https://github.com/MSNTCS/codechain-sdk-js#getPendingTransactions",
     "codechain-stakeholder-sdk": "^2.0.0",
     "elliptic": "^6.5.3",
+    "get-port": "^5.1.1",
     "lodash": "^4.17.19",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
