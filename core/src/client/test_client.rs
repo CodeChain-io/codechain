@@ -47,7 +47,6 @@ use crate::transaction::{LocalizedTransaction, PendingSignedTransactions, Signed
 use crate::types::{BlockId, TransactionId, VerificationQueueInfo as QueueInfo};
 use cdb;
 use ckey::{public_to_address, Address, Generator, KeyPair, NetworkId, PlatformAddress, Private, Public, Random};
-use cnetwork::NodeId;
 use cstate::tests::helpers::empty_top_state;
 use cstate::{FindActionHandler, StateDB, TopLevelState};
 use ctimer::{TimeoutHandler, TimerToken};
@@ -540,7 +539,7 @@ impl BlockChainClient for TestBlockChainClient {
         Ok(())
     }
 
-    fn queue_transactions(&self, transactions: Vec<Bytes>, _peer_id: NodeId) {
+    fn queue_transactions(&self, transactions: Vec<Bytes>) {
         // import right here
         let transactions = transactions.into_iter().filter_map(|bytes| Rlp::new(&bytes).as_val().ok()).collect();
         self.miner.import_external_transactions(self, transactions);
