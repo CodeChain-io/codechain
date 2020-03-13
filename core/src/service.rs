@@ -20,7 +20,6 @@ use crate::miner::Miner;
 use crate::scheme::Scheme;
 use crate::BlockId;
 use cio::{IoContext, IoHandler, IoHandlerResult, IoService};
-use cnetwork::NodeId;
 use ctimer::TimerApi;
 use ctypes::BlockHash;
 use kvdb::KeyValueDB;
@@ -71,7 +70,7 @@ pub enum ClientIoMessage {
     /// A header is ready
     HeaderVerified,
     /// New transaction RLPs are ready to be imported
-    NewTransactions(Vec<Bytes>, NodeId),
+    NewTransactions(Vec<Bytes>),
     /// Block generation is required
     NewBlockRequired {
         parent_block: BlockId,
@@ -96,8 +95,8 @@ impl IoHandler<ClientIoMessage> for ClientIoHandler {
             ClientIoMessage::HeaderVerified => {
                 self.client.import_verified_headers();
             }
-            ClientIoMessage::NewTransactions(transactions, peer_id) => {
-                self.client.import_queued_transactions(&transactions, peer_id);
+            ClientIoMessage::NewTransactions(transactions) => {
+                self.client.import_queued_transactions(&transactions);
             }
             ClientIoMessage::NewBlockRequired {
                 parent_block,

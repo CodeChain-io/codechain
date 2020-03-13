@@ -111,7 +111,6 @@ impl NetworkExtension<Never> for Extension {
 
                     self.client.queue_transactions(
                         transactions.iter().map(|unverified| unverified.rlp_bytes().to_vec()).collect(),
-                        *token,
                     );
                     if let Some(peer) = self.peers.get_mut(token) {
                         let transactions: Vec<_> = transactions
