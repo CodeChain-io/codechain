@@ -346,9 +346,9 @@ fn tx_hash_and_address_entries(
 
 fn tracker_and_addresses_entries(
     block_hash: BlockHash,
-    tx_hashes: impl IntoIterator<Item = UnverifiedTransaction>,
+    transactions: impl IntoIterator<Item = UnverifiedTransaction>,
 ) -> impl Iterator<Item = TrackerAndAddress> {
-    tx_hashes.into_iter().enumerate().filter_map(move |(index, tx)| {
+    transactions.into_iter().enumerate().filter_map(move |(index, tx)| {
         tx.tracker().map(|tracker| {
             (
                 tracker,
