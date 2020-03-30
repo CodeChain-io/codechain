@@ -437,7 +437,7 @@ impl Miner {
                             }
                             _ => {}
                         }
-                        cdebug!(MINER, "Rejected transaction {:?} with invalid signature: {:?}", hash, e);
+                        cdebug!(MINER, "Rejected transaction {:?} with error {:?}", hash, e);
                         e
                     })?;
 
