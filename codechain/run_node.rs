@@ -145,8 +145,7 @@ fn new_miner(
             Some(ref engine_signer) => match miner.set_author((*engine_signer).into_address()) {
                 Err(AccountProviderError::NotUnlocked) => {
                     return Err(
-                        "The account is not unlocked. Specify the password path using --password-path option."
-                            .to_string(),
+                        format!("The account {} is not unlocked. The key file should exist in the keys_path directory, and the account's password should exist in the password_path file.", engine_signer)
                     )
                 }
                 Err(e) => return Err(format!("{}", e)),
