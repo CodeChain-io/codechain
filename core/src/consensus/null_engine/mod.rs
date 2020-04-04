@@ -42,10 +42,6 @@ impl NullEngine {
 }
 
 impl ConsensusEngine for NullEngine {
-    fn name(&self) -> &str {
-        "NullEngine"
-    }
-
     fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }

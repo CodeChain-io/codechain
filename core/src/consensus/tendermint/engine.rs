@@ -53,10 +53,6 @@ struct WorkInfo {
 }
 
 impl ConsensusEngine for Tendermint {
-    fn name(&self) -> &str {
-        "Tendermint"
-    }
-
     fn machine(&self) -> &CodeChainMachine {
         &self.machine.as_ref()
     }
@@ -137,7 +133,6 @@ impl ConsensusEngine for Tendermint {
         self.inner.send(worker::Event::OnTimeout(token)).unwrap();
     }
 
-    fn stop(&self) {}
 
     fn on_close_block(
         &self,

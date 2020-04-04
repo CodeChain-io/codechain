@@ -73,10 +73,6 @@ fn verify_external(header: &Header, validators: &dyn ValidatorSet) -> Result<(),
 }
 
 impl ConsensusEngine for SimplePoA {
-    fn name(&self) -> &str {
-        "SimplePoA"
-    }
-
     fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }
@@ -158,12 +154,6 @@ mod tests {
     use crate::tests::helpers::get_temp_state_db;
 
     use super::*;
-
-    #[test]
-    fn has_valid_metadata() {
-        let engine = Scheme::new_test_simple_poa().engine;
-        assert!(!engine.name().is_empty());
-    }
 
     #[test]
     fn fail_to_verify_signature_when_seal_is_invalid() {
