@@ -83,10 +83,6 @@ impl BlakePoW {
 }
 
 impl ConsensusEngine for BlakePoW {
-    fn name(&self) -> &str {
-        "BlakePoW"
-    }
-
     fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }

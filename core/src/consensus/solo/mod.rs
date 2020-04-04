@@ -61,10 +61,6 @@ impl Solo {
 }
 
 impl ConsensusEngine for Solo {
-    fn name(&self) -> &str {
-        "Solo"
-    }
-
     fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }

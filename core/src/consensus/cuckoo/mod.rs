@@ -89,10 +89,6 @@ impl Cuckoo {
 }
 
 impl ConsensusEngine for Cuckoo {
-    fn name(&self) -> &str {
-        "Cuckoo"
-    }
-
     fn machine(&self) -> &CodeChainMachine {
         &self.machine
     }
@@ -210,7 +206,6 @@ mod tests {
     fn has_valid_metadata() {
         let engine = Scheme::new_test_cuckoo().engine;
 
-        assert_eq!(engine.name(), "Cuckoo");
         assert_eq!(engine.engine_type(), EngineType::PoW);
     }
 

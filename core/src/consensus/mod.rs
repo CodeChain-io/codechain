@@ -138,9 +138,6 @@ impl EngineType {
 
 /// A consensus mechanism for the chain.
 pub trait ConsensusEngine: Sync + Send {
-    /// The name of this engine.
-    fn name(&self) -> &str;
-
     /// Get access to the underlying state machine.
     fn machine(&self) -> &CodeChainMachine;
 

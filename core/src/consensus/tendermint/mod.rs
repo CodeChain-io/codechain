@@ -133,7 +133,7 @@ mod tests {
     use crate::account_provider::AccountProvider;
     use crate::block::{ClosedBlock, OpenBlock};
     use crate::client::TestBlockChainClient;
-    use crate::consensus::{CodeChainEngine, EngineError, Seal};
+    use crate::consensus::{CodeChainEngine, Seal};
     use crate::error::BlockError;
     use crate::error::Error;
     use crate::scheme::Scheme;
@@ -174,18 +174,6 @@ mod tests {
         let addr = insert_and_unlock(tap, acc);
         engine.set_signer(tap.clone(), addr);
         addr
-    }
-
-    #[test]
-    fn has_valid_metadata() {
-        use std::time::Duration;
-        let engine = Scheme::new_test_tendermint().engine;
-        let time_gap_params = TimeGapParams {
-            allowed_past_gap: Duration::from_millis(30000),
-            allowed_future_gap: Duration::from_millis(5000),
-        };
-        engine.register_time_gap_config_to_worker(time_gap_params);
-        assert!(!engine.name().is_empty());
     }
 
     #[test]
@@ -248,84 +236,5 @@ mod tests {
 
         println!(".....");
         assert!(engine.verify_block_external(&header).is_err());
-    }
-
-    #[test]
-    #[ignore] // FIXME
-    fn seal_signatures_checking() {
-        let (spec, tap, c) = setup();
-        let engine = spec.engine;
-
-        let validator0 = insert_and_unlock(&tap, "0");
-        let validator1 = insert_and_unlock(&tap, "1");
-        let validator2 = insert_and_unlock(&tap, "2");
-        let validator3 = insert_and_unlock(&tap, "3");
-
-        let block1_hash = c.add_block_with_author(Some(validator1), 1, 1);
-
-        let mut header = Header::default();
-        header.set_number(2);
-        let proposer = validator2;
-        header.set_author(proposer);
-        header.set_parent_hash(block1_hash);
-
-        let vote_info = VoteOn {
-            step: VoteStep::new(1, 0, Step::Precommit),
-            block_hash: Some(*header.parent_hash()),
-        };
-        let signature2 = tap.get_account(&proposer, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
-
-        let seal = Seal::Tendermint {
-            prev_view: 0,
-            cur_view: 0,
-            precommits: vec![signature2],
-            precommit_bitset: BitSet::new_with_indices(&[2]),
-        }
-        .seal_fields()
-        .unwrap();
-        header.set_seal(seal);
-
-        // One good signature is not enough.
-        match engine.verify_block_external(&header) {
-            Err(Error::Engine(EngineError::BadSealFieldSize(_))) => {}
-            _ => panic!(),
-        }
-
-        let voter = validator3;
-        let signature3 = tap.get_account(&voter, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
-        let voter = validator0;
-        let signature0 = tap.get_account(&voter, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
-
-        let seal = Seal::Tendermint {
-            prev_view: 0,
-            cur_view: 0,
-            precommits: vec![signature0, signature2, signature3],
-            precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
-        }
-        .seal_fields()
-        .unwrap();
-        header.set_seal(seal);
-
-        assert!(engine.verify_block_external(&header).is_ok());
-
-        let bad_voter = insert_and_unlock(&tap, "101");
-        let bad_signature = tap.get_account(&bad_voter, None).unwrap().sign_schnorr(&vote_info.hash()).unwrap();
-
-        let seal = Seal::Tendermint {
-            prev_view: 0,
-            cur_view: 0,
-            precommits: vec![signature0, signature2, bad_signature],
-            precommit_bitset: BitSet::new_with_indices(&[0, 2, 3]),
-        }
-        .seal_fields()
-        .unwrap();
-        header.set_seal(seal);
-
-        // Two good and one bad signature.
-        match engine.verify_block_external(&header) {
-            Err(Error::Engine(EngineError::BlockNotAuthorized(_))) => {}
-            _ => panic!(),
-        };
-        engine.stop();
     }
 }
