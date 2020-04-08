@@ -109,6 +109,9 @@ impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
         assert!(read_size < len_of_len, "{} should be less than {}", read_size, len_of_len);
 
         if let Some(new_read_size) = self.stream.try_read(&mut bytes[(1 + read_size)..=len_of_len])? {
+            if new_read_size == 0 {
+                return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "EOF"))
+            }
             read_size += new_read_size;
         };
         if len_of_len == read_size {
@@ -128,7 +131,7 @@ impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
 
         if let Some(read_size) = self.stream.try_read(&mut bytes)? {
             if read_size == 0 {
-                return Ok(None)
+                return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "EOF").into())
             }
             debug_assert_eq!(1, read_size);
             if 0xf8 <= bytes[0] {
@@ -184,6 +187,9 @@ impl<Stream: TryRead + TryWrite + PeerAddr + Shutdown> TryStream<Stream> {
         while remain_length != 0 {
             let to_be_read = ::std::cmp::min(remain_length, 1024);
             if let Some(read_size) = self.stream.try_read(&mut bytes[0..to_be_read])? {
+                if read_size == 0 {
+                    return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "EOF").into())
+                }
                 result.extend_from_slice(&bytes[..read_size]);
                 debug_assert!(remain_length >= read_size);
                 remain_length -= read_size;
