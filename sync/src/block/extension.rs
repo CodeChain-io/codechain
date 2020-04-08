@@ -410,8 +410,6 @@ impl Extension {
             .map(|hash| self.client.block_header(&BlockId::Hash(hash)).expect("Enacted header must exist"))
             .collect();
         headers_to_download.sort_unstable_by_key(EncodedHeader::number);
-        #[allow(clippy::redundant_closure)]
-        // False alarm. https://github.com/rust-lang/rust-clippy/issues/1439
         headers_to_download.dedup_by_key(|h| h.hash());
 
         let headers: Vec<_> = headers_to_download
