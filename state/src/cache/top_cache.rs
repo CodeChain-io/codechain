@@ -128,10 +128,6 @@ impl TopCache {
         self.shard.get_mut(a, db)
     }
 
-    #[allow(dead_code)]
-    pub fn remove_shard(&self, address: &ShardAddress) {
-        self.shard.remove(address)
-    }
 
     pub fn text(&self, a: &H256, db: &dyn Trie) -> TrieResult<Option<Text>> {
         self.text.get(a, db)

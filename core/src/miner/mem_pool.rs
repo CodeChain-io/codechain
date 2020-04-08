@@ -868,17 +868,6 @@ impl MemPool {
         Ok(())
     }
 
-    /// Removes all elements (in any state) from the pool
-    #[allow(dead_code)]
-    pub fn clear(&mut self) {
-        self.current.clear();
-        self.future.clear();
-        self.by_signer_public.clear();
-        self.by_hash.clear();
-        self.first_seqs.clear();
-        self.next_seqs.clear();
-    }
-
     /// Returns top transactions whose timestamp are in the given range from the pool ordered by priority.
     // FIXME: current_timestamp should be `u64`, not `Option<u64>`.
     // FIXME: if range_contains becomes stable, use range.contains instead of inequality.
