@@ -653,13 +653,11 @@ dependencies = [
  "log 0.4.6",
  "merkle-trie",
  "never-type",
- "parking_lot 0.6.4",
  "primitives",
  "rand 0.6.1",
  "rlp",
  "snap",
  "tempfile",
- "time",
  "token-generator",
  "trie-standardmap",
 ]
