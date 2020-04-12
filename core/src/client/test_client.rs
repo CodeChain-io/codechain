@@ -150,7 +150,7 @@ impl TestBlockChainClient {
             seqs: RwLock::new(HashMap::new()),
             storage: RwLock::new(HashMap::new()),
             queue_size: AtomicUsize::new(0),
-            miner: Arc::new(Miner::with_scheme(&scheme, db)),
+            miner: Arc::new(Miner::with_scheme_for_test(&scheme, db)),
             scheme,
             latest_block_timestamp: RwLock::new(10_000_000),
             history: RwLock::new(None),
