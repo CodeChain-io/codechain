@@ -124,7 +124,7 @@ pub struct Miner {
 
     sealing_enabled: AtomicBool,
 
-    accounts: Option<Arc<AccountProvider>>,
+    accounts: Arc<AccountProvider>,
     notifiers: Notifiers,
     malicious_users: Users,
     immune_users: Users,
@@ -266,20 +266,20 @@ impl Miner {
     pub fn new(
         options: MinerOptions,
         scheme: &Scheme,
-        accounts: Option<Arc<AccountProvider>>,
+        accounts: Arc<AccountProvider>,
         db: Arc<dyn KeyValueDB>,
     ) -> Arc<Self> {
         Arc::new(Self::new_raw(options, scheme, accounts, db))
     }
 
-    pub fn with_scheme(scheme: &Scheme, db: Arc<dyn KeyValueDB>) -> Self {
-        Self::new_raw(Default::default(), scheme, None, db)
+    pub fn with_scheme_for_test(scheme: &Scheme, db: Arc<dyn KeyValueDB>) -> Self {
+        Self::new_raw(Default::default(), scheme, AccountProvider::transient_provider(), db)
     }
 
     fn new_raw(
         options: MinerOptions,
         scheme: &Scheme,
-        accounts: Option<Arc<AccountProvider>>,
+        accounts: Arc<AccountProvider>,
         db: Arc<dyn KeyValueDB>,
     ) -> Self {
         let mem_limit = options.mem_pool_memory_limit.unwrap_or_else(usize::max_value);
@@ -401,15 +401,11 @@ impl Miner {
                     self.immune_users.insert(signer_address);
                 }
 
-                let origin = self
-                    .accounts
-                    .as_ref()
-                    .and_then(|accounts| match accounts.has_public(&signer_public) {
-                        Ok(true) => Some(TxOrigin::Local),
-                        Ok(false) => None,
-                        Err(_) => None,
-                    })
-                    .unwrap_or(default_origin);
+                let origin = if self.accounts.has_public(&signer_public).unwrap_or_default() {
+                    TxOrigin::Local
+                } else {
+                    default_origin
+                };
 
                 if self.malicious_users.contains(&signer_address) {
                     // FIXME: just to skip, think about another way.
@@ -834,24 +830,17 @@ impl MinerService for Miner {
         self.params.apply(|params| params.author = address);
 
         if self.engine_type().need_signer_key() && self.engine.seals_internally().is_some() {
-            if let Some(ref ap) = self.accounts {
-                ctrace!(MINER, "Set author to {:?}", address);
-                // Sign test message
-                ap.get_unlocked_account(&address)?.sign(&Default::default())?;
-                // Limit the scope of the locks.
-                {
-                    let mut sealing_work = self.sealing_work.lock();
-                    sealing_work.enabled = true;
-                }
-                self.engine.set_signer(ap.clone(), address);
-                Ok(())
-            } else {
-                cwarn!(MINER, "No account provider");
-                Err(AccountProviderError::NotFound)
+            ctrace!(MINER, "Set author to {:?}", address);
+            // Sign test message
+            self.accounts.get_unlocked_account(&address)?.sign(&Default::default())?;
+            // Limit the scope of the locks.
+            {
+                let mut sealing_work = self.sealing_work.lock();
+                sealing_work.enabled = true;
             }
-        } else {
-            Ok(())
+            self.engine.set_signer(Arc::clone(&self.accounts), address);
         }
+        Ok(())
     }
 
     fn get_author_address(&self) -> Address {
@@ -1280,7 +1269,7 @@ pub mod test {
     fn check_add_transactions_result_idx() {
         let db = Arc::new(kvdb_memorydb::create(NUM_COLUMNS.unwrap()));
         let scheme = Scheme::new_test();
-        let miner = Arc::new(Miner::with_scheme(&scheme, db.clone()));
+        let miner = Arc::new(Miner::with_scheme_for_test(&scheme, db.clone()));
 
         let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone(), Default::default());
         let client = generate_test_client(db, Arc::clone(&miner), &scheme).unwrap();

@@ -131,7 +131,7 @@ fn new_miner(
     ap: Arc<AccountProvider>,
     db: Arc<dyn KeyValueDB>,
 ) -> Result<Arc<Miner>, String> {
-    let miner = Miner::new(config.miner_options()?, scheme, Some(ap), db);
+    let miner = Miner::new(config.miner_options()?, scheme, ap, db);
 
     match miner.engine_type() {
         EngineType::PoW => match &config.mining.author {
