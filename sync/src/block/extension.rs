@@ -682,21 +682,20 @@ impl Extension {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
         let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
             let before_pivot_score = peer.pivot_score();
-            let encoded: Vec<_> = headers.iter().map(|h| EncodedHeader::new(h.rlp_bytes().to_vec())).collect();
-            peer.import_headers(&encoded);
+            peer.import_headers(&headers);
             let after_pivot_score = peer.pivot_score();
             (peer.downloaded(), before_pivot_score != after_pivot_score)
         } else {
             (Vec::new(), false)
         };
-        completed.sort_unstable_by_key(EncodedHeader::number);
+        completed.sort_unstable_by_key(Header::number);
 
         let mut exists = Vec::new();
         let mut queued = Vec::new();
 
         for header in completed {
             let hash = header.hash();
-            match self.client.import_header(header.clone().into_inner()) {
+            match self.client.import_header(header.rlp_bytes()) {
                 Err(BlockImportError::Import(ImportError::AlreadyInChain)) => exists.push(hash),
                 Err(BlockImportError::Import(ImportError::AlreadyQueued)) => queued.push(hash),
                 // FIXME: handle import errors
