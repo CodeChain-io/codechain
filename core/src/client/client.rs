@@ -103,7 +103,6 @@ impl Client {
 
         let gb = scheme.genesis_block();
         let chain = BlockChain::new(&gb, db.clone());
-        scheme.check_genesis_common_params(&chain)?;
 
         let engine = scheme.engine.clone();
 
