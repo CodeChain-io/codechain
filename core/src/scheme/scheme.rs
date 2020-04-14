@@ -17,11 +17,10 @@
 use super::pod_state::{PodAccounts, PodShards};
 use super::seal::Generic as GenericSeal;
 use super::Genesis;
-use crate::blockchain::HeaderProvider;
 use crate::codechain_machine::CodeChainMachine;
 use crate::consensus::{BlakePoW, CodeChainEngine, Cuckoo, NullEngine, SimplePoA, Solo, Tendermint};
 use crate::error::{Error, SchemeError};
-use ccrypto::{blake256, BLAKE_NULL_RLP};
+use ccrypto::BLAKE_NULL_RLP;
 use cdb::{AsHashDB, HashDB};
 use cjson;
 use ckey::Address;
@@ -199,19 +198,6 @@ impl Scheme {
         Ok(self.initialize_state(db)?)
     }
 
-    pub fn check_genesis_common_params<HP: HeaderProvider>(&self, chain: &HP) -> Result<(), Error> {
-        let genesis_header = self.genesis_header();
-        let genesis_header_hash = genesis_header.hash();
-        let header =
-            chain.block_header(&genesis_header_hash).ok_or_else(|| Error::Scheme(SchemeError::InvalidCommonParams))?;
-        let extra_data = header.extra_data();
-        let common_params_hash = blake256(&self.genesis_params().rlp_bytes()).to_vec();
-        if extra_data != &common_params_hash {
-            return Err(Error::Scheme(SchemeError::InvalidCommonParams))
-        }
-        Ok(())
-    }
-
     /// Return the state root for the genesis state, memoising accordingly.
     pub fn state_root(&self) -> H256 {
         *self.state_root_memo.read()
@@ -291,7 +277,7 @@ impl Scheme {
         header.set_number(0);
         header.set_author(self.author);
         header.set_transactions_root(self.transactions_root);
-        header.set_extra_data(blake256(&self.genesis_params().rlp_bytes()).to_vec());
+        header.set_extra_data(self.extra_data.clone());
         header.set_state_root(self.state_root());
         header.set_score(self.score);
         header.set_seal({
@@ -353,22 +339,4 @@ fn load_from(s: cjson::scheme::Scheme) -> Result<Scheme, Error> {
     }
 
     Ok(s)
-}
-
-#[cfg(test)]
-mod tests {
-    use ccrypto::Blake;
-
-    use super::*;
-
-    #[test]
-    fn extra_data_of_genesis_header_is_hash_of_common_params() {
-        let scheme = Scheme::new_test();
-        let common_params = scheme.genesis_params();
-        let hash_of_common_params = H256::blake(&common_params.rlp_bytes()).to_vec();
-
-        let genesis_header = scheme.genesis_header();
-        let result = genesis_header.extra_data();
-        assert_eq!(&hash_of_common_params, result);
-    }
 }
