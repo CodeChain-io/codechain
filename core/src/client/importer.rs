@@ -93,7 +93,7 @@ impl Importer {
 
             {
                 let headers: Vec<&Header> = blocks.iter().map(|block| &block.header).collect();
-                self.import_headers(headers, client, &import_lock);
+                self.import_verified_headers(headers, client, &import_lock);
             }
 
             for block in blocks {
@@ -287,14 +287,14 @@ impl Importer {
     }
 
     /// This is triggered by a message coming from a header queue when the header is ready for insertion
-    pub fn import_verified_headers(&self, client: &Client) -> usize {
+    pub fn import_verified_headers_from_queue(&self, client: &Client) -> usize {
         const MAX_HEADERS_TO_IMPORT: usize = 1_000;
         let lock = self.import_lock.lock();
         let headers = self.header_queue.drain(MAX_HEADERS_TO_IMPORT);
-        self.import_headers(&headers, client, &lock)
+        self.import_verified_headers(&headers, client, &lock)
     }
 
-    pub fn import_headers<'a>(
+    pub fn import_verified_headers<'a>(
         &'a self,
         headers: impl IntoIterator<Item = &'a Header>,
         client: &Client,
