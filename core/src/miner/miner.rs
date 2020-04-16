@@ -661,7 +661,7 @@ impl Miner {
             // Check whether transaction type is allowed for sender
             let result =
                 self.engine.machine().verify_transaction(&tx, open_block.header(), chain, true).and_then(|_| {
-                    open_block.push_transaction(tx, None, chain, parent_header.number(), parent_header.timestamp())
+                    open_block.push_transaction(tx, chain, parent_header.number(), parent_header.timestamp())
                 });
 
             match result {
