@@ -508,7 +508,7 @@ impl ImportBlock for TestBlockChainClient {
         Ok(h)
     }
 
-    fn import_header(&self, _bytes: Bytes) -> Result<BlockHash, BlockImportError> {
+    fn import_header(&self, _bytes: BlockHeader) -> Result<BlockHash, BlockImportError> {
         unimplemented!()
     }
 

@@ -39,7 +39,7 @@ use cdb::DatabaseError;
 use ckey::{Address, NetworkId, PlatformAddress, Public};
 use cstate::{AssetScheme, FindActionHandler, OwnedAsset, StateResult, Text, TopLevelState, TopStateView};
 use ctypes::transaction::{AssetTransferInput, PartialHashing, ShardTransaction};
-use ctypes::{BlockHash, BlockNumber, CommonParams, ShardId, Tracker, TxHash};
+use ctypes::{BlockHash, BlockNumber, CommonParams, Header, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use merkle_trie::Result as TrieResult;
@@ -197,7 +197,7 @@ pub trait ImportBlock {
     fn import_block(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
 
     /// Import a header into the blockchain
-    fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
+    fn import_header(&self, header: Header) -> Result<BlockHash, BlockImportError>;
 
     /// Import sealed block. Skips all verifications.
     fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
