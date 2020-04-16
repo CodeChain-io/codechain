@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::verification::{QueueConfig, VerifierType};
+use crate::verification::QueueConfig;
 use kvdb_rocksdb::CompactionProfile;
 use std::path::Path;
 use std::str::FromStr;
@@ -71,8 +71,6 @@ pub struct ClientConfig {
     pub db_compaction: DatabaseCompactionProfile,
     /// State db cache-size.
     pub state_cache_size: usize,
-    /// Type of block verifier used by client.
-    pub verifier_type: VerifierType,
 }
 
 impl Default for ClientConfig {
@@ -84,7 +82,6 @@ impl Default for ClientConfig {
             db_cache_size: Default::default(),
             db_compaction: Default::default(),
             state_cache_size: DEFAULT_STATE_CACHE_SIZE as usize * mb,
-            verifier_type: Default::default(),
         }
     }
 }
