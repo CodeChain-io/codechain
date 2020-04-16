@@ -35,14 +35,13 @@ use rlp::Encodable;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use verification::CanonVerifier;
 
 pub struct Importer {
     /// Lock used during block import
     pub import_lock: Mutex<()>, // FIXME Maybe wrap the whole `Importer` instead?
 
     /// Used to verify blocks
-    pub verifier: Box<dyn Verifier<Client>>,
+    pub verifier: Verifier<Client>,
 
     /// Queue containing pending blocks
     pub block_queue: BlockQueue,
@@ -70,7 +69,7 @@ impl Importer {
 
         Ok(Importer {
             import_lock: Mutex::new(()),
-            verifier: Box::new(CanonVerifier),
+            verifier: Verifier::new(),
             block_queue,
             header_queue,
             miner,
