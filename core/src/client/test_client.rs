@@ -512,7 +512,7 @@ impl ImportBlock for TestBlockChainClient {
         unimplemented!()
     }
 
-    fn import_sealed_block(&self, _block: &SealedBlock) -> ImportResult {
+    fn import_generated_block(&self, _block: &SealedBlock) -> ImportResult {
         Ok(H256::default().into())
     }
 

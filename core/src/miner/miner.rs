@@ -777,7 +777,7 @@ impl Miner {
             self.engine.proposal_generated(&sealed);
         }
 
-        chain.import_sealed_block(&sealed).is_ok()
+        chain.import_generated_block(&sealed).is_ok()
     }
 
     /// Are we allowed to do a non-mandatory reseal?
@@ -1053,7 +1053,7 @@ impl MinerService for Miner {
         result.and_then(|sealed| {
             let n = sealed.header().number();
             let h = sealed.header().hash();
-            chain.import_sealed_block(&sealed)?;
+            chain.import_generated_block(&sealed)?;
             cinfo!(MINER, "Submitted block imported OK. #{}: {}", n, h);
             Ok(())
         })

@@ -643,7 +643,7 @@ impl ImportBlock for Client {
         Ok(self.importer.header_queue.import(unverified)?)
     }
 
-    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult {
+    fn import_generated_block(&self, block: &SealedBlock) -> ImportResult {
         let h = block.header().hash();
         let route = {
             // scope for self.import_lock
