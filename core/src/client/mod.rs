@@ -200,7 +200,7 @@ pub trait ImportBlock {
     fn import_header(&self, header: Header) -> Result<BlockHash, BlockImportError>;
 
     /// Import sealed block. Skips all verifications.
-    fn import_sealed_block(&self, block: &SealedBlock) -> ImportResult;
+    fn import_generated_block(&self, block: &SealedBlock) -> ImportResult;
 
     /// Set reseal min timer as reseal_min_period, for creating blocks with transactions which are pending because of reseal_min_period
     fn set_min_timer(&self);
