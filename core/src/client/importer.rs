@@ -35,6 +35,7 @@ use rlp::Encodable;
 use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use verification::CanonVerifier;
 
 pub struct Importer {
     /// Lock used during block import
@@ -63,19 +64,13 @@ impl Importer {
         message_channel: IoChannel<ClientIoMessage>,
         miner: Arc<Miner>,
     ) -> Result<Importer, Error> {
-        let block_queue = BlockQueue::new(
-            &config.queue,
-            engine.clone(),
-            message_channel.clone(),
-            config.verifier_type.verifying_seal(),
-        );
+        let block_queue = BlockQueue::new(&config.queue, engine.clone(), message_channel.clone(), true);
 
-        let header_queue =
-            HeaderQueue::new(&config.queue, engine.clone(), message_channel, config.verifier_type.verifying_seal());
+        let header_queue = HeaderQueue::new(&config.queue, engine.clone(), message_channel, true);
 
         Ok(Importer {
             import_lock: Mutex::new(()),
-            verifier: verification::new(config.verifier_type),
+            verifier: Box::new(CanonVerifier),
             block_queue,
             header_queue,
             miner,
