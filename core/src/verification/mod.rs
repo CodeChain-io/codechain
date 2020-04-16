@@ -14,15 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-mod canon_verifier;
-mod noop_verifier;
 pub mod queue;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_inception))]
 mod verification;
 mod verifier;
 
-pub use self::canon_verifier::CanonVerifier;
-pub use self::noop_verifier::NoopVerifier;
 pub use self::queue::{BlockQueue, Config as QueueConfig};
 pub use self::verification::*;
 pub use self::verifier::Verifier;

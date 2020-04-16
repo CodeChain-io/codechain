@@ -19,13 +19,26 @@ use crate::client::BlockChainTrait;
 use crate::consensus::CodeChainEngine;
 use crate::error::Error;
 use ctypes::{CommonParams, Header};
+use std::marker::PhantomData;
 
 /// Should be used to verify blocks.
-pub trait Verifier<C>: Send + Sync
+pub struct Verifier<C>
 where
     C: BlockChainTrait, {
+    phantom: PhantomData<C>,
+}
+
+impl<C: BlockChainTrait> Verifier<C> {
+    pub fn new() -> Self {
+        Self {
+            phantom: Default::default(),
+        }
+    }
+}
+
+impl<C: BlockChainTrait> Verifier<C> {
     /// Verify a block relative to its parent and uncles.
-    fn verify_block_family(
+    pub fn verify_block_family(
         &self,
         block: &[u8],
         header: &Header,
@@ -33,10 +46,17 @@ where
         engine: &dyn CodeChainEngine,
         do_full: Option<verification::FullFamilyParams<C>>,
         common_params: &CommonParams,
-    ) -> Result<(), Error>;
+    ) -> Result<(), Error> {
+        verification::verify_block_family(block, header, parent, engine, do_full, common_params)
+    }
 
     /// Do a final verification check for an enacted header vs its expected counterpart.
-    fn verify_block_final(&self, expected: &Header, got: &Header) -> Result<(), Error>;
+    pub fn verify_block_final(&self, expected: &Header, got: &Header) -> Result<(), Error> {
+        verification::verify_block_final(expected, got)
+    }
+
     /// Verify a block, inspecting external state.
-    fn verify_block_external(&self, header: &Header, engine: &dyn CodeChainEngine) -> Result<(), Error>;
+    pub fn verify_block_external(&self, header: &Header, engine: &dyn CodeChainEngine) -> Result<(), Error> {
+        engine.verify_block_external(header)
+    }
 }
