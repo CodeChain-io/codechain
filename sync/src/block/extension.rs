@@ -587,7 +587,7 @@ impl Extension {
             match response {
                 ResponseMessage::Headers(headers) => {
                     self.dismiss_request(from, id);
-                    self.on_header_response(from, &headers)
+                    self.on_header_response(from, headers)
                 }
                 ResponseMessage::Bodies(bodies) => {
                     self.check_sync_variable();
@@ -678,7 +678,7 @@ impl Extension {
         }
     }
 
-    fn on_header_response(&mut self, from: &NodeId, headers: &[Header]) {
+    fn on_header_response(&mut self, from: &NodeId, headers: Vec<Header>) {
         ctrace!(SYNC, "Received header response from({}) with length({})", from, headers.len());
         let (mut completed, pivot_score_changed) = if let Some(peer) = self.header_downloaders.get_mut(from) {
             let before_pivot_score = peer.pivot_score();
@@ -689,7 +689,6 @@ impl Extension {
             (Vec::new(), false)
         };
         completed.sort_unstable_by_key(Header::number);
-
         let mut exists = Vec::new();
         let mut queued = Vec::new();
 
