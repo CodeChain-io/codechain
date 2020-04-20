@@ -57,22 +57,22 @@
     "maxTransferMetadataSize": "0x0100",
     "maxTextContentSize": "0x0200",
     "networkID": "wc",
-    "minPayCost" : 100,
-    "minSetRegularKeyCost" : 10000,
-    "minCreateShardCost" : 1000000,
-    "minSetShardOwnersCost" : 100000,
-    "minSetShardUsersCost" : 10000,
-    "minWrapCccCost" : 100000,
-    "minCustomCost" : 0,
-    "minStoreCost" : 5000,
-    "minRemoveCost" : 5000,
-    "minMintAssetCost" : 100000,
-    "minTransferAssetCost" : 100,
-    "minChangeAssetSchemeCost" : 100000,
-    "minIncreaseAssetSupplyCost" : 100000,
-    "minComposeAssetCost" : 100000,
-    "minDecomposeAssetCost" : 100000,
-    "minUnwrapCccCost" : 100,
+    "minPayCost": 100,
+    "minSetRegularKeyCost": 10000,
+    "minCreateShardCost": 1000000,
+    "minSetShardOwnersCost": 100000,
+    "minSetShardUsersCost": 10000,
+    "minWrapCccCost": 100000,
+    "minCustomCost": 0,
+    "minStoreCost": 5000,
+    "minRemoveCost": 5000,
+    "minMintAssetCost": 100000,
+    "minTransferAssetCost": 100,
+    "minChangeAssetSchemeCost": 100000,
+    "minIncreaseAssetSupplyCost": 100000,
+    "minComposeAssetCost": 100000,
+    "minDecomposeAssetCost": 100000,
+    "minUnwrapCccCost": 100,
     "maxBodySize": 4194304,
     "snapshotPeriod": 16384
   },
@@ -93,12 +93,17 @@
     "extraData": "0x"
   },
   "accounts": {
-    "wccqx6n79wgvye8l8rx49xuqvm3vtwkffz28sff8axv": { "balance": "2100000000000000000", "seq": "0" }
+    "wccqx6n79wgvye8l8rx49xuqvm3vtwkffz28sff8axv": {
+      "balance": "2100000000000000000",
+      "seq": "0"
+    }
   },
   "shards": {
     "0": {
       "seq": 0,
-      "owners": ["wccqx6n79wgvye8l8rx49xuqvm3vtwkffz28sff8axv"],
+      "owners": [
+        "wccqx6n79wgvye8l8rx49xuqvm3vtwkffz28sff8axv"
+      ],
       "users": []
     }
   }
