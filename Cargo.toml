@@ -1,6 +1,6 @@
 [package]
 name = "codechain"
-version = "2.2.2"
+version = "2.2.3"
 license = "AGPL-3.0"
 authors = ["CodeChain Team <hi@codechain.io>"]
 exclude = [
