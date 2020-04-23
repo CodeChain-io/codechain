@@ -330,7 +330,6 @@ impl TopLevelState {
         self.inc_seq(&fee_payer)?;
         self.sub_balance(&fee_payer, fee)?;
 
-        // The failed transaction also must pay the fee and increase seq.
         self.create_checkpoint(ACTION_CHECKPOINT);
         let result = self.apply_action(
             &tx.action,
