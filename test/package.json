@@ -19,6 +19,7 @@
     "start-short-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 5000 src/e2e/*.test.ts",
     "start-long-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 10000 src/e2e.long/*.test.ts",
     "start-dyn-val-release": "cargo build --release && NODE_ENV=production mocha -r ts-node/register --timeout 10000 src/e2e.dynval/*.test.ts",
+    "test-mock": "mocha -r ts-node/register --timeout 5000 \"src/helper/mock/**/*.test.ts\"",
     "tendermint-test-local": "cargo build --release && NODE_ENV=production ts-node src/tendermint.test/local.ts",
     "tendermint-test-remote": "NODE_ENV=production ts-node src/tendermint.test/remote.ts",
     "lint": "tslint -p . && prettier 'src/**/*.{ts, json}' -l",
