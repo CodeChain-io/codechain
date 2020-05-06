@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: yarn-lint
+name: yarn
 
 jobs:
   lint:
@@ -14,3 +14,5 @@ jobs:
         run: yarn
       - working-directory: ./test
         run: yarn lint
+      - working-directory: ./test
+        run: yarn test-mock
