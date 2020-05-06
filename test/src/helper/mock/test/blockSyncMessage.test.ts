@@ -14,7 +14,7 @@ describe("Check BlockSyncMessage RLP encoding", function() {
             id: new U256(10),
             message
         });
-        expect([...msg.rlpBytes()]).deep.equal([195, 4, 10, 192]);
+        expect(msg.rlpBytes().toString("hex")).deep.equal("c3040ac0");
     });
 
     it("ResponseBodyMessage RLP encoding test", function() {
@@ -27,6 +27,6 @@ describe("Check BlockSyncMessage RLP encoding", function() {
             id: new U256(10),
             message
         });
-        expect([...msg.rlpBytes()]).deep.equal([196, 5, 10, 193, 192]);
+        expect(msg.rlpBytes().toString("hex")).deep.equal("c8050ac5840204c1c0");
     });
 });
