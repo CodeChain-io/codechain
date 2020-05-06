@@ -8,6 +8,6 @@ describe("Check TransactionSyncMessage RLP encoding", function() {
             type: "transactions",
             data: []
         });
-        expect([...msg.rlpBytes()]).deep.equal([192]);
+        expect(msg.rlpBytes().toString("hex")).deep.equal("830100c0");
     });
 });
