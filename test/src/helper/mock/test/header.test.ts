@@ -18,6 +18,7 @@ import { Header } from "../cHeader";
 describe("Check Header RLP encoding", function() {
     it("empty Header RLP encoding test", function() {
         const header = Header.default();
+        // Find the empty header's rlp encoded data in the unit test in header.rs file
         expect(header.rlpBytes().toString("hex")).deep.equal(
             "f87ca00000000000000000000000000000000000000000000000000000000000000000940000000000000000000000000000000000000000a045b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0a045b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c080808080"
         );
@@ -40,6 +41,7 @@ describe("Check Header RLP encoding", function() {
             privateKey
         });
         header.setSeal([0, 0, [Buffer.from(signature, "hex")], bitset]);
+        // Find the header's rlp encoded data in the unit test in the tendermint/mod.rs file
         expect(header.rlpBytes().toString("hex")).deep.equal(
             "f90128a00000000000000000000000000000000000000000000000000000000000000000946fe64ffa3a46c074226457c90ccb32dc06ccced1a045b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0a045b0cfc220ceec5b7c1c62c4d4193d38e4eba48e8815729ce75f9c0ab0e4c1c0800480808080f842b8405aa028f952416218d440568ddf58b42a02515d53dbe40aec6d8fbc3a0b9de171bd1fa833c2bf9e7b950414ca4bbc261c662d50372340c0f7b41ab0a12d11a789b86404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
         );

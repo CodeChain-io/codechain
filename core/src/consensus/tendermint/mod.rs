@@ -124,9 +124,10 @@ const SEAL_FIELDS: usize = 4;
 #[cfg(test)]
 mod tests {
     use ccrypto::blake256;
-    use ckey::Address;
+    use ckey::{public_to_address, sign_schnorr, Address, KeyPair, Private};
     use ctypes::{CommonParams, Header};
     use primitives::Bytes;
+    use std::str::FromStr;
 
     use super::super::BitSet;
     use super::message::VoteStep;
@@ -174,6 +175,47 @@ mod tests {
         let addr = insert_and_unlock(tap, acc);
         engine.set_signer(tap.clone(), addr);
         addr
+    }
+
+    #[test]
+    fn serialize_deserialize_test() {
+        let key_pair = {
+            let serialized_priv_key = "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
+            let private_key = Private::from_str(&serialized_priv_key).unwrap();
+            KeyPair::from_private(private_key).unwrap()
+        };
+
+        let mut header = Header::default();
+        header.set_number(4);
+        header.set_author(public_to_address(key_pair.public()));
+
+        let precommit_bitset = {
+            let mut bitset = BitSet::new();
+            bitset.set(2);
+            bitset
+        };
+        let signature = {
+            let height = 3;
+            let view = 0;
+            let step = Step::Precommit;
+            let vote_on = VoteOn {
+                step: VoteStep::new(height, view, step),
+                block_hash: Some(*header.parent_hash()),
+            };
+            sign_schnorr(key_pair.private(), &vote_on.hash()).unwrap()
+        };
+        let seal = Seal::Tendermint {
+            prev_view: 0,
+            cur_view: 0,
+            precommits: vec![signature],
+            precommit_bitset,
+        };
+        header.set_seal(seal.seal_fields().unwrap());
+
+        let encoded = rlp::encode(&header);
+        let decoded: Header = rlp::decode(&encoded).unwrap();
+
+        assert_eq!(header.hash(), decoded.hash());
     }
 
     #[test]
