@@ -51,6 +51,25 @@ export class Header {
 
         return header;
     }
+
+    public static default(): Header {
+        return new Header(
+            new H256(
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            new U256(0),
+            new U256(0),
+            new H160("0000000000000000000000000000000000000000"),
+            Buffer.alloc(0),
+            BLAKE_NULL_RLP,
+            BLAKE_NULL_RLP,
+            new U256(
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            []
+        );
+    }
+
     private parentHash: H256;
     private timestamp: U256;
     private number: U256;
@@ -135,24 +154,6 @@ export class Header {
 
     public getScore(): U256 {
         return this.score;
-    }
-
-    public default(): Header {
-        return new Header(
-            new H256(
-                "0000000000000000000000000000000000000000000000000000000000000000"
-            ),
-            new U256(0),
-            new U256(0),
-            new H160("0000000000000000000000000000000000000000"),
-            Buffer.alloc(0),
-            BLAKE_NULL_RLP,
-            BLAKE_NULL_RLP,
-            new U256(
-                "0000000000000000000000000000000000000000000000000000000000000000"
-            ),
-            []
-        );
     }
 
     public toEncodeObject(): Array<any> {
