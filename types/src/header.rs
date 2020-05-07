@@ -305,3 +305,16 @@ impl Encodable for Header {
         self.stream_rlp(s, &Seal::With);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize_deserialize_test() {
+        let empty = Header::default();
+        let encoded = rlp::encode(&empty);
+        let decoded: Header = rlp::decode(&encoded).unwrap();
+        assert_eq!(empty.hash(), decoded.hash());
+    }
+}
