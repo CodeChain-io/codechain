@@ -20,7 +20,7 @@ use ctypes::Header;
 use rlp::{DecoderError, Encodable, Rlp, RlpStream};
 use snap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ResponseMessage {
     Headers(Vec<Header>),
     Bodies(Vec<Vec<UnverifiedTransaction>>),
@@ -152,6 +152,11 @@ mod tests {
         ResponseMessage::decode(id, &rlp).unwrap()
     }
 
+    /// For a type that does not have PartialEq, uses Debug instead.
+    fn assert_eq_by_debug<T: std::fmt::Debug>(a: &T, b: &T) {
+        assert_eq!(format!("{:?}", a), format!("{:?}", b));
+    }
+
     #[test]
     fn headers_message_rlp() {
         let headers = vec![Header::default()];
@@ -160,13 +165,13 @@ mod tests {
         });
 
         let message = ResponseMessage::Headers(headers);
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
+        assert_eq_by_debug(&message, &decode_bytes(message.message_id(), message.rlp_bytes().as_ref()))
     }
 
     #[test]
     fn bodies_message_rlp() {
         let message = ResponseMessage::Bodies(vec![vec![]]);
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
+        assert_eq_by_debug(&message, &decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
 
         let tx = UnverifiedTransaction::new(
             Transaction {
@@ -181,18 +186,18 @@ mod tests {
         );
 
         let message = ResponseMessage::Bodies(vec![vec![tx]]);
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
+        assert_eq_by_debug(&message, &decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn state_head_message_rlp() {
         let message = ResponseMessage::StateHead(vec![]);
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
+        assert_eq_by_debug(&message, &decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 
     #[test]
     fn state_chunk_message_rlp() {
         let message = ResponseMessage::StateChunk(vec![]);
-        assert_eq!(message, decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
+        assert_eq_by_debug(&message, &decode_bytes(message.message_id(), message.rlp_bytes().as_ref()));
     }
 }
