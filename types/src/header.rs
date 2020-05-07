@@ -32,7 +32,7 @@ pub enum Seal {
 }
 
 /// A block header.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Header {
     /// Parent hash.
     parent_hash: BlockHash,
