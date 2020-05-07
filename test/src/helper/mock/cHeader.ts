@@ -144,6 +144,10 @@ export class Header {
         this.seal = seal;
     }
 
+    public getParentHash(): H256 | null {
+        return this.parentHash;
+    }
+
     public getHash(): H256 | null {
         return this.hash;
     }
