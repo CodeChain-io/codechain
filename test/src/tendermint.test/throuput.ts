@@ -22,7 +22,6 @@ import {
     validator2Address,
     validator3Address
 } from "../helper/constants";
-import { wait } from "../helper/promise";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
 
@@ -37,6 +36,7 @@ const RLP = require("rlp");
         validator2Address,
         validator3Address
     ];
+    const futureGapInMS = 360 * 24 * 60 * 60 * 1000;
     nodes = validatorAddresses.map(address => {
         return new CodeChain({
             chain: `${__dirname}/../scheme/tendermint-tps.json`,
@@ -47,7 +47,9 @@ const RLP = require("rlp");
                 "test/tendermint/password.json",
                 "--force-sealing",
                 "--no-discovery",
-                "--enable-devel-api"
+                "--enable-devel-api",
+                "--allowed-future-gap",
+                String(futureGapInMS)
             ],
             additionalKeysPath: "tendermint/keys"
         });
