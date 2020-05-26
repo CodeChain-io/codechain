@@ -115,6 +115,10 @@ const RLP = require("rlp");
             `Average: ${totalTransactionCount /
                 totalTime} = ${totalTransactionCount} / ${totalTime}`
         );
+        const pendingCounts = await Promise.all(
+            nodes.map(node => node.sdk.rpc.chain.getPendingTransactionsCount())
+        );
+        console.log(`Pending counts: ${JSON.stringify(pendingCounts)}`);
         console.log("");
     }
 })().catch(console.error);
