@@ -20,7 +20,11 @@ import {
     validator0Address,
     validator1Address,
     validator2Address,
-    validator3Address
+    validator3Address,
+    validator0Secret,
+    validator1Secret,
+    validator2Secret,
+    validator3Secret
 } from "../helper/constants";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
@@ -131,25 +135,36 @@ async function delay() {
 }
 
 async function sendTransactionLoop({ nodes }: any) {
-    const baseSeq = await nodes[0].sdk.rpc.chain.getSeq(faucetAddress);
+    const validatorSecrets = [
+        validator0Secret,
+        validator1Secret,
+        validator2Secret,
+        validator3Secret
+    ];
 
     for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
-        const value = makeRandomH256();
-        const accountId = nodes[0].sdk.util.getAccountIdFromPrivate(value);
-        const recipient = nodes[0].sdk.core.classes.PlatformAddress.fromAccountId(
-            accountId,
-            { networkId: "tc" }
-        );
-        const transaction = nodes[0].sdk.core
-            .createPayTransaction({
-                recipient,
-                quantity: 1
-            })
-            .sign({
-                secret: faucetSecret,
-                seq: baseSeq + i,
-                fee: 10
-            });
-        await nodes[0].sdk.rpc.chain.sendSignedTransaction(transaction);
+        const txPromises = [];
+        for (let j = 0; j < 4; j++) {
+            const value = makeRandomH256();
+            const accountId = nodes[0].sdk.util.getAccountIdFromPrivate(value);
+            const recipient = nodes[0].sdk.core.classes.PlatformAddress.fromAccountId(
+                accountId,
+                { networkId: "tc" }
+            );
+            const transaction = nodes[0].sdk.core
+                .createPayTransaction({
+                    recipient,
+                    quantity: 1
+                })
+                .sign({
+                    secret: validatorSecrets[j],
+                    seq: i,
+                    fee: 10
+                });
+            txPromises.push(
+                nodes[j].sdk.rpc.chain.sendSignedTransaction(transaction)
+            );
+        }
+        await Promise.all(txPromises);
     }
 }
