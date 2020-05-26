@@ -377,7 +377,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     // drop the scheme to free up genesis state.
     drop(scheme);
 
-    cinfo!(TEST_SCRIPT, "Initialization complete");
+    cerror!(TEST_SCRIPT, "Initialization complete");
 
     wait_for_exit();
 
