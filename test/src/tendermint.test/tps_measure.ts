@@ -31,7 +31,9 @@ class TPSSection {
     }
 
     public accumulate = (info: BlockInfo) => {
-        console.log(`timestamp: ${info.timestamp} and contains ${info.transactionCount} transactions`);
+        console.log(
+            `timestamp: ${info.timestamp} and contains ${info.transactionCount} transactions`
+        );
         if (this.records.push(info) > this.sectionLength + 1) {
             this.records.shift();
         }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-const { performance } = require('perf_hooks'); 
+const { performance } = require("perf_hooks");
 import { expect } from "chai";
 import "mocha";
 import CodeChain from "../helper/spawn";
@@ -28,11 +28,11 @@ describe("solo - 1 node", function() {
 
     it("ping", async function() {
         let i = 0;
-        let t0 = performance.now()
-        for (i = 0; i < 10000; i ++) {
+        const t0 = performance.now();
+        for (i = 0; i < 10000; i++) {
             expect(await node.sdk.rpc.node.ping()).to.equal("pong");
         }
-        let t1 = performance.now()
+        const t1 = performance.now();
         console.log(t1 - t0);
     });
 
@@ -44,5 +44,5 @@ describe("solo - 1 node", function() {
 
     after(async function() {
         await node.clean();
-    });    
+    });
 });

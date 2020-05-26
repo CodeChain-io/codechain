@@ -101,23 +101,26 @@ const RLP = require("rlp");
         console.log(`Tx count: ${txCount}`);
         console.log(`Used time: ${usedSeconds}`);
         console.log(`TPS: ${txCount / usedSeconds}`);
-        const parent_block_finalized_view = sealToNum(currentBlock.seal[0]);
-        const author_view = sealToNum(currentBlock.seal[1]);
-        console.log(`parent_block_finalized_view: ${parent_block_finalized_view}`);
-        console.log(`author_view: ${author_view}`);
+        const parentBlockFinalizedView = sealToNum(currentBlock.seal[0]);
+        const authorView = sealToNum(currentBlock.seal[1]);
+        console.log(`parent_block_finalized_view: ${parentBlockFinalizedView}`);
+        console.log(`author_view: ${authorView}`);
         totalTransactionCount += txCount;
         totalTime += usedSeconds;
-        console.log(`Average: ${totalTransactionCount / totalTime} = ${totalTransactionCount} / ${totalTime}`);
+        console.log(
+            `Average: ${totalTransactionCount /
+                totalTime} = ${totalTransactionCount} / ${totalTime}`
+        );
         console.log("");
     }
 })().catch(console.error);
 
 function sealToNum(rlp: any) {
-    let buffer = RLP.decode(Buffer.from([rlp]));
+    const buffer = RLP.decode(Buffer.from([rlp]));
     if (buffer.length === 0) {
         return 0;
     } else {
-        return buffer.readUInt8()
+        return buffer.readUInt8();
     }
 }
 
