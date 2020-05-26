@@ -14,5 +14,5 @@ yarn mocha -r ts-node/register --timeout 5000 src/tendermint.test/ping.ts
 ```
 cd test
 cargo build --release
-NODE_ENV=production yarn ts-node src/tendermint.test/throuput.ts
+NODE_ENV=production yarn ts-node src/tendermint.test/throughput.ts
 ```
