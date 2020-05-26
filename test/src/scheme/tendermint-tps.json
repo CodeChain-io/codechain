@@ -64,16 +64,57 @@
         "extraData": "0x"
     },
     "accounts": {
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt": { "balance": "1000000", "seq": "0" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv": { "balance": "1000000", "seq": "0" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk": { "balance": "1000000", "seq": "0" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z": { "balance": "1000000", "seq": "0" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5duemmc": { "balance": "1000000" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcuzl32l": { "balance": "1000000" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqungah99": { "balance": "1000000" },
-        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqc2ul2h": { "balance": "1000000" },
-        "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u": { "balance": "1000000" },
-        "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": { "balance": "10000000000000000000", "seq": "0" }
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqyca3rwt": {
+            "balance": "1000000",
+            "seq": "0"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqgfrhflv": {
+            "balance": "1000000",
+            "seq": "0"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqvxf40sk": {
+            "balance": "1000000",
+            "seq": "0"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqszkma5z": {
+            "balance": "1000000",
+            "seq": "0"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5duemmc": {
+            "balance": "1000000"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqcuzl32l": {
+            "balance": "1000000"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqungah99": {
+            "balance": "1000000"
+        },
+        "tccqyqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqpqc2ul2h": {
+            "balance": "1000000"
+        },
+        "tccq8vapdlstar6ghmqgczp6j2e83njsqq0tsvaxm9u": {
+            "balance": "1000000"
+        },
+        "tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd": {
+            "balance": "10000000000000000000",
+            "seq": "0"
+        },
+        "tccq94guhkrfndnehnca06dlkxcfuq0gdlamvw9ga4f": {
+            "balance": "10000000000000000000",
+            "seq": "0"
+        },
+        "tccq8p9hr53lnxnhzcn0d065lux7etz22azaca786tt": {
+            "balance": "10000000000000000000",
+            "seq": "0"
+        },
+        "tccq8fj6lxn9tchqdqqe93yaga6fzxh5rndzu8k2gdw": {
+            "balance": "10000000000000000000",
+            "seq": "0"
+        },
+        "tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y": {
+            "balance": "10000000000000000000",
+            "seq": "0"
+        }
     },
     "shards": {
         "0": {
