@@ -979,21 +979,27 @@ impl Worker {
                 TendermintState::ProposeWaitImported {
                     block,
                 } => {
-                    //if !block.transactions().is_empty() {
-                    cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
-                    self.move_to_step(TendermintState::Prevote, false);
-                    self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
-                    //} else {
-                    //     ctrace!(ENGINE, "Empty proposal is generated, set timer");
-                    //     self.step = TendermintState::ProposeWaitEmptyBlockTimer {
-                    //         block,
-                    //     };
-                    //     self.extension
-                    //         .send(network::Event::SetTimerEmptyProposal {
-                    //             view: self.view,
-                    //         })
-                    //         .unwrap();
-                    // }
+                    if std::env::var("WAIT_ON_EMPTY_BLOCK").is_ok() {
+                        cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
+                        self.move_to_step(TendermintState::Prevote, false);
+                        self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
+                    } else {
+                        if !block.transactions().is_empty() {
+                            cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
+                            self.move_to_step(TendermintState::Prevote, false);
+                            self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
+                        } else {
+                            ctrace!(ENGINE, "Empty proposal is generated, set timer");
+                            self.step = TendermintState::ProposeWaitEmptyBlockTimer {
+                                block,
+                            };
+                            self.extension
+                                .send(network::Event::SetTimerEmptyProposal {
+                                    view: self.view,
+                                })
+                                .unwrap();
+                        }
+                    }
                 }
                 TendermintState::ProposeWaitEmptyBlockTimer {
                     ..
