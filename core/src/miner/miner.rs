@@ -529,7 +529,6 @@ impl Miner {
         let tx_total = transactions.len();
         let mut invalid_tx_users = HashSet::new();
 
-        let immune_users = self.immune_users.read();
         for tx in transactions {
             let signer_public = tx.signer_public();
             let signer_address = public_to_address(&signer_public);
@@ -567,7 +566,7 @@ impl Miner {
                                 .read()
                                 .is_local_transaction(hash)
                                 .expect("The tx is clearly fetched from the mempool")
-                                && !immune_users.contains(&signer_address)
+                                && !self.immune_users.read().contains(&signer_address)
                             {
                                 self.malicious_users.write().insert(signer_address);
                             }
