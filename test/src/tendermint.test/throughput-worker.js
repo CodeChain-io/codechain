@@ -6,15 +6,21 @@ const {
 } = require("worker_threads");
 const { SDK } = require("codechain-sdk");
 
-async function main() {
-    const { index, port, validatorSecrets } = workerData;
+let globalTxs = [];
 
+async function main() {
+    generateTxs().catch(console.error);
+    sendTxs().catch(console.error);
+}
+
+async function generateTxs() {
+    const { index, port, validatorSecrets } = workerData;
     const sdk = new SDK({
         server: `http://localhost:${port}`,
         networkId: "tc"
     });
 
-    for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+    for (var i = 0;  i < Number.MAX_SAFE_INTEGER; i++) {
         const value = makeRandomH256();
         const accountId = sdk.util.getAccountIdFromPrivate(value);
         const recipient = sdk.core.classes.PlatformAddress.fromAccountId(
@@ -31,7 +37,27 @@ async function main() {
                 seq: i,
                 fee: 10
             });
-        await sdk.rpc.chain.sendSignedTransaction(transaction);
+        globalTxs.push("0x" + transaction.rlpBytes().toString("hex"));
+        await wait(1);
+    }
+}
+
+async function sendTxs() {
+    const { port } = workerData;
+
+    const sdk = new SDK({
+        server: `http://localhost:${port}`,
+        networkId: "tc"
+    });
+
+    for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
+        if (globalTxs.length > 0) {
+            const txs = globalTxs;
+            globalTxs = [];
+            await sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [txs]);
+        } else {
+            await wait(100);
+        }
     }
 }
 
@@ -45,3 +71,8 @@ function makeRandomH256() {
     }
     return text;
 }
+
+async function wait(duration) {
+    await new Promise(resolve => setTimeout(() => resolve(), duration));
+}
+
