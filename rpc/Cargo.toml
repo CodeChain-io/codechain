@@ -38,3 +38,4 @@ jsonrpc-derive = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14
 jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.3" }
 jsonrpc-ipc-server = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.3" }
 jsonrpc-ws-server = { git = "https://github.com/paritytech/jsonrpc.git", tag = "v14.0.3" }
+metrics = "0.12.1"

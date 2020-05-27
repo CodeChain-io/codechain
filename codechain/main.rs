@@ -55,6 +55,9 @@ extern crate primitives;
 extern crate rpassword;
 extern crate toml;
 
+extern crate metrics;
+extern crate metrics_core;
+
 mod config;
 mod constants;
 mod dummy_network_service;

@@ -205,7 +205,7 @@ export default class CodeChain {
 
         const {
             argv = [],
-            logLevel = "error",
+            logLevel = "error,tps=trace",
             disableLog = false,
             disableIpc = true
         } = params || {};

@@ -502,6 +502,9 @@ impl Miner {
                 .top_transactions(max_body_size, Some(open_block.header().timestamp()), DEFAULT_RANGE)
                 .transactions;
 
+            cwarn!(TPS, "transactions count in prepare_block: {}", transactions.len());
+            cwarn!(TPS, "queue size in prepare_block: {:?}", mem_pool.count_current_future_transactions(0..u64::max_value()));
+
             (transactions, open_block, last_work_hash, block_number)
         };
 

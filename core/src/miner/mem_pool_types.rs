@@ -330,6 +330,7 @@ impl CurrentQueue {
     }
 
     pub fn insert(&mut self, order: TransactionOrder) {
+        metrics::counter!("CurrentQueue::insert", 1);
         self.queue.insert(order);
         if !order.origin.is_local_or_retracted() {
             self.mem_usage += order.mem_usage;
@@ -339,6 +340,7 @@ impl CurrentQueue {
     }
 
     pub fn remove(&mut self, order: &TransactionOrder) {
+        metrics::counter!("CurrentQueue::remove", 1);
         assert!(self.queue.remove(order));
         if !order.origin.is_local_or_retracted() {
             self.mem_usage -= order.mem_usage;
@@ -389,6 +391,7 @@ impl FutureQueue {
     }
 
     pub fn insert(&mut self, order: TransactionOrder) {
+        metrics::counter!("FutureQueue::insert", 1);
         self.queue.insert(order);
         if !order.origin.is_local_or_retracted() {
             self.mem_usage += order.mem_usage;
@@ -397,6 +400,7 @@ impl FutureQueue {
     }
 
     pub fn remove(&mut self, order: &TransactionOrder) {
+        metrics::counter!("FutureQueue::remove", 1);
         assert!(self.queue.remove(order));
         if !order.origin.is_local_or_retracted() {
             self.mem_usage -= order.mem_usage;

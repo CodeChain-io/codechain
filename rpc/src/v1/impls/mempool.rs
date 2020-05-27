@@ -45,6 +45,7 @@ where
     C: BlockChainClient + MiningBlockChainClient + 'static,
 {
     fn send_signed_transaction(&self, raw: Bytes) -> Result<TxHash> {
+        metrics::counter!("RPC:send_signed_transaction", 1);
         UntrustedRlp::new(&raw.into_vec())
             .as_val()
             .map_err(|e| errors::rlp(&e))

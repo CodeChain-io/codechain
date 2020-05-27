@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use metrics;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Weak};
@@ -264,6 +265,7 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     };
     clogger::init(&LoggerConfig::new(instance_id), email_alarm.clone())
         .expect("Logger must be successfully initialized");
+    metrics::set_boxed_recorder(Box::new(cmetrics::LogRecorder::new())).unwrap();
     if let Some(email_alarm) = email_alarm {
         panic_hook::set_with_email_alarm(email_alarm);
     }
@@ -395,4 +397,65 @@ pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+mod cmetrics {
+    extern crate metrics;
+    extern crate metrics_core;
+
+    use self::metrics::Recorder;
+    use self::metrics_core::Key;
+    use parking_lot::Mutex;
+    use std::collections::HashMap;
+    use std::thread;
+    use std::time;
+    use std::sync::Arc;
+
+    pub struct LogRecorder {
+        counts: Arc<Mutex<HashMap<Key, u64>>>,
+    }
+
+    impl LogRecorder {
+        pub fn new() -> Self {
+            let s = Self {
+                counts: Default::default(),
+            };
+            s.run_thread();
+            s
+        }
+
+        fn run_thread(&self) {
+            let counts = Arc::clone(&self.counts);
+            thread::Builder::new().name("metric".to_string()).spawn(move || {
+                let second = time::Duration::from_secs(1);
+                loop {
+                    thread::sleep(second);
+                    let drained_counts: Vec<_> = {
+                        let mut lock = counts.lock();
+                        lock.drain().collect()
+                    };
+
+                    for (k, v) in drained_counts {
+                        cwarn!(TPS, "{}: {}", k, v);
+                    }
+                }
+            }).unwrap();
+        }
+    }
+
+    impl Recorder for LogRecorder {
+        fn increment_counter(&self, key: Key, value: u64) {
+            let mut lock = self.counts.lock();
+            let count = lock.entry(key).or_insert(0);
+            *count += value;
+        }
+
+        fn update_gauge(&self, key: Key, value: i64) {
+            info!("gauge '{}' -> {}", key, value);
+        }
+
+        fn record_histogram(&self, key: Key, value: u64) {
+            info!("histogram '{}' -> {}", key, value);
+        }
+    }
 }

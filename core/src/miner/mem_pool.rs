@@ -709,6 +709,7 @@ impl MemPool {
                     let order = order_with_tag.order;
                     if *seq < new_next_seq {
                         order_with_tag.tag = QueueTag::Current;
+                        metrics::counter!("add_new_orders_to_queue:self.current.insert", 1);
                         self.current.insert(order);
                     } else {
                         order_with_tag.tag = QueueTag::Future;
