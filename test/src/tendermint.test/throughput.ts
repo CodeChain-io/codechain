@@ -28,6 +28,13 @@ import {
 } from "../helper/constants";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
+const {
+    Worker,
+    isMainThread,
+    parentPort,
+    workerData
+} = require("worker_threads");
+const path = require("path");
 
 const RLP = require("rlp");
 
@@ -116,7 +123,12 @@ const RLP = require("rlp");
                 totalTime} = ${totalTransactionCount} / ${totalTime}`
         );
         const pendingCounts = await Promise.all(
-            nodes.map(node => node.sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [null, null]))
+            nodes.map(node =>
+                node.sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [
+                    null,
+                    null
+                ])
+            )
         );
         console.log(`Pending counts: ${JSON.stringify(pendingCounts)}`);
         console.log("");
@@ -139,6 +151,7 @@ async function delay() {
 }
 
 async function sendTransactionLoop({ nodes }: any) {
+    let promises = [];
     const validatorSecrets = [
         validator0Secret,
         validator1Secret,
@@ -146,29 +159,26 @@ async function sendTransactionLoop({ nodes }: any) {
         validator3Secret
     ];
 
-    for (let i = 0; i < Number.MAX_SAFE_INTEGER; i++) {
-        const txPromises = [];
-        for (let j = 0; j < 4; j++) {
-            const value = makeRandomH256();
-            const accountId = nodes[0].sdk.util.getAccountIdFromPrivate(value);
-            const recipient = nodes[0].sdk.core.classes.PlatformAddress.fromAccountId(
-                accountId,
-                { networkId: "tc" }
-            );
-            const transaction = nodes[0].sdk.core
-                .createPayTransaction({
-                    recipient,
-                    quantity: 1
-                })
-                .sign({
-                    secret: validatorSecrets[j],
-                    seq: i,
-                    fee: 10
-                });
-            txPromises.push(
-                nodes[j].sdk.rpc.chain.sendSignedTransaction(transaction)
-            );
-        }
-        await Promise.all(txPromises);
+    for (let index = 0; index < 4; index += 1) {
+        const worker = new Worker(
+            path.resolve(__dirname, "./throughput-worker.js"),
+            {
+                workerData: {
+                    index,
+                    port: nodes[index].rpcPort,
+                    validatorSecrets
+                }
+            }
+        );
+
+        let workerPromise = new Promise((resolve, reject) => {
+            worker.on("error", reject);
+            worker.on("exit", (code: any) => {
+                if (code !== 0) {
+                    reject(new Error(`Worker stopped with exit code ${code}`));
+                }
+            });
+        });
+        promises.push(workerPromise);
     }
 }
