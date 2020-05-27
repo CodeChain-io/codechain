@@ -116,7 +116,7 @@ const RLP = require("rlp");
                 totalTime} = ${totalTransactionCount} / ${totalTime}`
         );
         const pendingCounts = await Promise.all(
-            nodes.map(node => node.sdk.rpc.chain.getPendingTransactionsCount())
+            nodes.map(node => node.sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [null, null]))
         );
         console.log(`Pending counts: ${JSON.stringify(pendingCounts)}`);
         console.log("");
