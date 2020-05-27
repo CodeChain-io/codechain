@@ -43,6 +43,9 @@ pub trait Mempool {
     #[rpc(name = "mempool_getPendingTransactionsCount")]
     fn get_pending_transactions_count(&self, from: Option<u64>, to: Option<u64>) -> Result<usize>;
 
+    #[rpc(name = "mempool_getCurrentFuturueCount")]
+    fn get_current_future_count(&self, from: Option<u64>, to: Option<u64>) -> Result<(usize, usize)>;
+
     #[rpc(name = "mempool_getBannedAccounts")]
     fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>>;
 

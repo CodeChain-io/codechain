@@ -938,6 +938,15 @@ impl MemPool {
             .count()
     }
 
+    pub fn count_current_future_transactions(&self, range: Range<u64>) -> (usize, usize) {
+        let current = self.current
+            .queue
+            .len();
+        let future = self.future.queue.len();
+        (current, future)
+    }
+
+
     /// Return all future transactions.
     pub fn future_transactions(&self) -> Vec<SignedTransaction> {
         self.future
