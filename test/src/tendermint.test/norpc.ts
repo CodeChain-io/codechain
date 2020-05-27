@@ -128,15 +128,20 @@ import CodeChain from "../helper/spawn";
     console.log("Txes prepared");
 
     for (let k = 0; k < 4; k++) {
-        console.log(`${transactions[k].length}`);
-        for (let i = numTransactions - 1; i > 0; i--) {
-            if (i % 1000 === 0) {
-                console.log(`${i}`);
+        
+        let i = numTransactions - 1;
+        while(i > 0) {
+            console.log(`${i}`);
+            let txes = [];
+            for (let j = 0; j < 2000; j++) {
+                txes.push( "0x" + transactions[k][i]);
+                i--;
+                if (i ===0) {
+                    break;
+                }
             }
-            await nodes[
-                k
-            ].sdk.rpc.sendRpcRequest("mempool_sendSignedTransaction", [
-                "0x" + transactions[k][i]
+            await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
+                txes
             ]);
         }
     }
