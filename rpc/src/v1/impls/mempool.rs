@@ -60,6 +60,26 @@ where
             .map(Into::into)
     }
 
+    fn send_signed_transactions(&self, raws: Vec<Bytes>) -> Result<Vec<TxHash>> {
+        metrics::counter!("RPC:send_signed_transactions", 1);
+        let mut v = Vec::new();
+        for raw in raws {
+            v.push(
+            UntrustedRlp::new(&raw.into_vec())
+            .as_val()
+            .map_err(|e| errors::rlp(&e))
+            .and_then(|tx| SignedTransaction::try_new(tx).map_err(errors::transaction_core))
+            .and_then(|signed| {
+                let hash = signed.hash();
+                match self.client.queue_own_transaction(signed) {
+                    Ok(_) => Ok(hash),
+                    Err(e) => Err(errors::transaction_core(e)),
+                }
+            })?);
+        }
+        Ok(v)
+    }
+
     fn get_transaction_results_by_tracker(&self, tracker: Tracker) -> Result<Vec<bool>> {
         Ok(self
             .client
