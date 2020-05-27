@@ -979,7 +979,7 @@ impl Worker {
                 TendermintState::ProposeWaitImported {
                     block,
                 } => {
-                    if std::env::var("WAIT_ON_EMPTY_BLOCK").is_ok() {
+                    if !std::env::var("WAIT_ON_EMPTY_BLOCK").is_ok() {
                         cinfo!(ENGINE, "Submitting proposal block {}", block.header().hash());
                         self.move_to_step(TendermintState::Prevote, false);
                         self.broadcast_proposal_block(self.view, encoded::Block::new(block.rlp_bytes()));
