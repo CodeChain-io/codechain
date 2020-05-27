@@ -54,7 +54,7 @@ toml = "0.4"
 cidr = "0.0.4"
 
 [build-dependencies]
-vergen = "2"
+vergen = "3"
 
 [[bin]]
 path = "codechain/main.rs"
