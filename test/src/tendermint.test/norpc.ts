@@ -132,7 +132,7 @@ import CodeChain from "../helper/spawn";
         let i = numTransactions - 1;
         while(i > 0) {
             console.log(`${i}`);
-            let txes = [];
+            const txes = [];
             for (let j = 0; j < 2000; j++) {
                 txes.push( "0x" + transactions[k][i]);
                 i--;
