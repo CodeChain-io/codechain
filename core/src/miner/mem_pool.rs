@@ -17,7 +17,6 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Range;
 use std::sync::Arc;
-use parking_lot::MutexGuard;
 
 use ckey::{public_to_address, Public};
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
@@ -241,7 +240,6 @@ impl MemPool {
         inserted_block_number: PoolingInstant,
         inserted_timestamp: u64,
         fetch_account: &F,
-        _importer_lock: &MutexGuard<()>,
     ) -> Vec<Result<TransactionImportResult, Error>>
     where
         F: Fn(&Public) -> AccountDetails, {
@@ -942,7 +940,9 @@ impl MemPool {
     }
 
     pub fn count_current_future_transactions(&self, range: Range<u64>) -> (usize, usize) {
-        let current = self.current.queue.len();
+        let current = self.current
+            .queue
+            .len();
         let future = self.future.queue.len();
         (current, future)
     }

@@ -109,7 +109,6 @@ where
                 platform_address,
                 passphrase,
                 seq,
-                unimplemented!()
             )
             .map_err(errors::core)?;
 

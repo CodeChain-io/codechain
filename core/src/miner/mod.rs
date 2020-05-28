@@ -25,7 +25,6 @@ mod work_notify;
 
 use std::ops::Range;
 
-use parking_lot::MutexGuard;
 use ckey::{Address, Password, PlatformAddress};
 use cstate::{FindActionHandler, TopStateView};
 use ctypes::transaction::IncompleteTransaction;
@@ -124,7 +123,6 @@ pub trait MinerService: Send + Sync {
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
-        _importer_lock: &MutexGuard<()>,
     ) -> Vec<Result<TransactionImportResult, Error>>;
 
     /// Imports own (node owner) transaction to mem pool.
@@ -132,7 +130,6 @@ pub trait MinerService: Send + Sync {
         &self,
         chain: &C,
         tx: SignedTransaction,
-        _importer_lock: &MutexGuard<()>,
     ) -> Result<TransactionImportResult, Error>;
 
     /// Imports incomplete (node owner) transaction to mem pool.
@@ -144,7 +141,6 @@ pub trait MinerService: Send + Sync {
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
-        _importer_lock: &MutexGuard<()>,
     ) -> Result<(TxHash, u64), Error>;
 
     /// Get a list of all pending transactions in the mem pool.
