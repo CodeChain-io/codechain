@@ -460,10 +460,10 @@ impl Miner {
 
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);
-            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
+            let a = client.regular_key_owner(&address, BlockId::Hash(best_header.hash()).into()).unwrap_or(address);
             AccountDetails {
-                seq: client.latest_seq(&a),
-                balance: client.latest_balance(&a),
+                seq: client.seq(&a, BlockId::Hash(best_header.hash())).expect("Read from best block"),
+                balance: client.balance(&a, BlockId::Hash(best_header.hash()).into()).expect("Read from best block"),
             }
         };
 
@@ -718,10 +718,12 @@ impl Miner {
         };
         let block = open_block.close(&parent_header, &parent_common_params, term_common_params.as_ref())?;
 
+        let best_block_hash = chain.chain_info().best_block_hash;
+        let block_id = BlockId::Hash(best_block_hash);
         let fetch_seq = |p: &Public| {
             let address = public_to_address(p);
-            let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
-            chain.latest_seq(&a)
+            let a = chain.regular_key_owner(&address, block_id.into()).unwrap_or(address);
+            chain.seq(&a, block_id).expect("Read from best block")
         };
 
         {
@@ -903,13 +905,15 @@ impl MinerService for Miner {
 
         // ...and at the end remove the old ones
         {
+            let current_block_hash = chain.chain_info().best_block_hash;
+            let block_id = BlockId::Hash(current_block_hash);
             let fetch_account = |p: &Public| {
                 let address = public_to_address(p);
-                let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
+                let a = chain.regular_key_owner(&address, block_id.into()).unwrap_or(address);
 
                 AccountDetails {
-                    seq: chain.latest_seq(&a),
-                    balance: chain.latest_balance(&a),
+                    seq: chain.seq(&a, block_id).expect("Read from best block"),
+                    balance: chain.balance(&a, block_id.into()).expect("Read from best block"),
                 }
             };
             let current_block_number = chain.chain_info().best_block_number;

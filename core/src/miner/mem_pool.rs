@@ -33,7 +33,7 @@ use super::mem_pool_types::{
 use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChainTrait};
 use crate::transaction::{PendingSignedTransactions, SignedTransaction};
-use crate::Error as CoreError;
+use crate::{BlockId, Error as CoreError};
 
 const DEFAULT_POOLING_PERIOD: BlockNumber = 128;
 
@@ -429,12 +429,14 @@ impl MemPool {
 
     // Recover MemPool state from db stored data
     pub fn recover_from_db<C: AccountData + BlockChainTrait>(&mut self, client: &C) {
+        let recover_block_hash = client.chain_info().best_block_hash;
+        let recover_block_id = BlockId::Hash(recover_block_hash);
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);
-            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
+            let a = client.regular_key_owner(&address, recover_block_id.into()).unwrap_or(address);
             AccountDetails {
-                seq: client.latest_seq(&a),
-                balance: client.latest_balance(&a),
+                seq: client.seq(&a, recover_block_id).expect("Read from best block"),
+                balance: client.balance(&a, recover_block_id.into()).expect("Read from best block"),
             }
         };
         let by_hash = backup::recover_to_data(self.db.as_ref());
