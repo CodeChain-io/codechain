@@ -6,6 +6,14 @@ const {
 } = require("worker_threads");
 const { SDK } = require("codechain-sdk");
 
+const faucetSecret =
+    "ede1d4ccb4ec9a8bbbae9a13db3f4a7b56ea04189be86ac3a6a439d9a0a1addd";
+const faucetAccointId = SDK.util.getAccountIdFromPrivate(faucetSecret); // 6fe64ffa3a46c074226457c90ccb32dc06ccced1
+const faucetAddress = SDK.Core.classes.PlatformAddress.fromAccountId(
+    faucetAccointId,
+    { networkId: "tc" }
+); // tccq9h7vnl68frvqapzv3tujrxtxtwqdnxw6yamrrgd
+
 let globalTxs = [];
 
 async function main() {
@@ -23,13 +31,9 @@ async function generateTxs() {
     for (var i = 0;  i < Number.MAX_SAFE_INTEGER; i++) {
         const value = makeRandomH256();
         const accountId = sdk.util.getAccountIdFromPrivate(value);
-        const recipient = sdk.core.classes.PlatformAddress.fromAccountId(
-            accountId,
-            { networkId: "tc" }
-        );
         const transaction = sdk.core
             .createPayTransaction({
-                recipient,
+                recipient: faucetAddress,
                 quantity: 1
             })
             .sign({
