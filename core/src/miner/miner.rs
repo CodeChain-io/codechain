@@ -344,10 +344,10 @@ impl Miner {
 
         let fetch_account = |p: &Public| -> AccountDetails {
             let address = public_to_address(p);
-            let a = client.latest_regular_key_owner(&address).unwrap_or(address);
+            let a = client.regular_key_owner(&address, BlockId::Hash(best_header.hash()).into()).unwrap_or(address);
             AccountDetails {
-                seq: client.latest_seq(&a),
-                balance: client.latest_balance(&a),
+                seq: client.seq(&a, BlockId::Hash(best_header.hash())).unwrap(),
+                balance: client.balance(&a, BlockId::Hash(best_header.hash()).into()).unwrap(),
             }
         };
 
