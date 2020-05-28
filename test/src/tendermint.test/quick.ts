@@ -83,7 +83,7 @@ function sealToNum(rlp: any) {
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 8; i++) {
-            const buf = readFileSync(`/home/junha/Desktop/txsame/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
+            const buf = readFileSync(`./txsame/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
             const txRaw: string[] = JSON.parse(buf);
             for (let j = 0; j < 50000; j++) {
                 transactions[k].push(txRaw[j]);
@@ -93,49 +93,49 @@ function sealToNum(rlp: any) {
     console.log("Txes loaded");
 
     /// EXPERIMENT PARAMS
-    const goalTps = 1000; // per Node
-    const bulkSize = 1000;
+    const desiredMempoolSize = 30000;
+    const maxSend = 4000;
+    const minSend = 1000;
+
     
     let observer = observe(nodes, numTransactions);
-    let sender = async function() {
-        let txIndex = [0, 0, 0, 0];
-        const startTime = new Date();
-        console.log(`Start at: ${startTime}`);
-        let totalSent = 0;
-        let txToSend = 0;
-        let lastTime = new Date();
-
-        while(totalSent < numTransactions) {
-            let newTime = new Date();
-            let elapsed = newTime.getTime() - lastTime.getTime();
-            const txsNum = Math.round(goalTps * elapsed * 0.001);
-            if (txsNum > 10) {
-                lastTime = newTime;
-                txToSend += txsNum;
-            }
-            let sendPromise = [];
-            if (txToSend > bulkSize) {
-                for(let k = 0; k < 4; k++) {
-                    if (txIndex[k] === numTransactions) break;
+    let tasks = [];
+    for (let k = 0; k < 4; k++) {
+        tasks.push(async function(k: number) {
+            let index = 0;
+            let sentCount = 0;
+            while (true) {
+                const futureTxnum = await nodes[k].
+                sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [
+                    null,
+                    null
+                ]);
+                const txToSend = Math.min(maxSend, desiredMempoolSize - futureTxnum[0]);
+                if (txToSend > minSend) {
                     const txs = [];
-                    for (let i = 0; i < bulkSize; i++) {
-                        txs.push(transactions[k][txIndex[k]]);
-                        txIndex[k] += 1;
+                    for (let i = 0; i < txToSend; i++) {
+                        txs.push(transactions[k][index]);
+                        index += 1;
                     }
-                    sendPromise.push(nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
+                    await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
                         txs
-                    ]));
+                    ])
+                    sentCount += txToSend;
+                    if (sentCount > 5000) {
+                        console.log(`-----------------[TX Sent]-------------------`)
+                        console.log(`Txs sent for Node ${k}: ${sentCount}`);
+                        console.log(`Mempool for Node ${k}: ${futureTxnum}`);
+                        sentCount = 0;
+                    }
+                } else {
+                    await delay(50);
                 }
-                await Promise.all(sendPromise);
-                console.log(`Tx sent: ${bulkSize * 4}`);
-                console.log(`Tx left: ${txToSend}`);
-                totalSent += bulkSize;
-                txToSend -= bulkSize;
-            } 
-            await delay(10);
-        }
-    }();
-    await Promise.all([observer, sender]);
+                if (index == numTransactions) return;
+            }
+        }(k));
+    }
+    tasks.push(observer);
+    await Promise.all(tasks);
     await Promise.all(nodes.map(node => node.clean()));
 
 
@@ -147,7 +147,6 @@ async function delay(m: number) {
     });
 }
 
-
 async function observe(nodes: CodeChain[], txNum: number) {
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
@@ -158,37 +157,31 @@ async function observe(nodes: CodeChain[], txNum: number) {
         const num = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
         if (lastNum !== num) {
             let totalElapsed = newTime.getTime() - startTime.getTime();
-            console.log("-----------------[REPORT]----------------");
+            let blocks = [];
             for (let b = lastNum + 1; b <= num; b++) {
-                let currentBlock = (await nodes[0].sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[b]))!;
-                consumed += currentBlock.transactionCount;
-                console.log(`<BLOCK ${b}>`);
-                const parentBlockFinalizedView = sealToNum(currentBlock.seal[0]);
-                const authorView = sealToNum(currentBlock.seal[1]);
+                blocks.push((await nodes[0].sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[b]))!);
+            }
+
+            console.log("-----------------[REPORT]----------------");
+            for (let i = 0; i < num - lastNum; i++) {
+                consumed += blocks[i].transactionCount;
+                console.log(`<BLOCK ${lastNum + 1 + i}>`);
+                const parentBlockFinalizedView = sealToNum(blocks[i].seal[0]);
+                const authorView = sealToNum(blocks[i].seal[1]);
                 console.log(`parent_block_finalized_view: ${parentBlockFinalizedView}`);
                 console.log(`author_view: ${authorView}`);
-                console.log(`Tx included: ${currentBlock.transactionCount}`);
-                console.log("");
+                console.log(`Tx included: ${blocks[i].transactionCount}`);
             }
-            console.log("<Status>");
-            for (let k = 0; k < 4; k++) {
-                const futureTxnum = await nodes[k].
-                sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [
-                    null,
-                    null
-                ]);
-                console.log(`Mempool for Node ${k}: ${futureTxnum}`);
-            }
+            console.log("<STATUS>");
             console.log(`Total Consumed: ${consumed}`);
             console.log(`Total Elapsed: ${totalElapsed}`);
             console.log(`TPS: ${consumed/totalElapsed * 1000}`);
 
             lastNum = num;
-
             if (consumed === txNum * 4) {
                 break;
             }
         }
-        await delay(50);
+        await delay(100);
     }
 }
