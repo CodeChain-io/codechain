@@ -95,7 +95,7 @@ pub fn verify_header_basic(header: &Header) -> Result<(), Error> {
         })))
     }
 
-    const ACCEPTABLE_DRIFT_SECS: u64 = 15;
+    const ACCEPTABLE_DRIFT_SECS: u64 = 360 * 24 * 60 * 60;
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
     let max_time = now.as_secs() + ACCEPTABLE_DRIFT_SECS;
     let invalid_threshold = max_time + ACCEPTABLE_DRIFT_SECS * 9;
