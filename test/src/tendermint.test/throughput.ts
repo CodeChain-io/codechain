@@ -83,7 +83,7 @@ const RLP = require("rlp");
     ]);
 
     const startBlockNumber = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
-    const startBlock = await nodes[0].sdk.rpc.chain.getBlock(startBlockNumber);
+    const startBlock = await nodes[0].sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber", [startBlockNumber]);
 
     sendTransactionLoop({ nodes }).catch(console.error);
 
@@ -100,12 +100,12 @@ const RLP = require("rlp");
         }
 
         currentBlockNumber = newBlockNumber;
-        currentBlock = (await nodes[0].sdk.rpc.chain.getBlock(
-            currentBlockNumber
+        currentBlock = (await nodes[0].sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",
+            [currentBlockNumber]
         ))!;
         const prevTime = curTime;
         curTime = new Date();
-        const txCount = currentBlock.transactions.length;
+        const txCount = currentBlock.transactionCount;
         const usedSeconds = (curTime.getTime() - prevTime.getTime()) / 1000;
 
         console.log(`New block ${currentBlockNumber}`);
