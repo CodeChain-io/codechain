@@ -128,7 +128,7 @@ import CodeChain from "../helper/spawn";
     console.log("Txes prepared");
 
     for (let k = 0; k < 4; k++) {
-        
+
         let i = numTransactions - 1;
         while(i > 0) {
             console.log(`${i}`);
@@ -168,7 +168,7 @@ import CodeChain from "../helper/spawn";
             console.log("---------------------");
             console.log(`Block ${lastNum}`);
             const block = await nodes[0].sdk.rpc.chain.getBlock(lastNum);
-            const txnum = block?.transactions.length!;
+            const txnum = block!.transactions.length!;
             consumed += txnum;
             console.log(`Txs: ${txnum}`);
 
@@ -205,7 +205,11 @@ import CodeChain from "../helper/spawn";
 
     for (let i = 0; i <= bnEnd; i++) {
         const block = await nodes[0].sdk.rpc.chain.getBlock(i);
-        console.log(`BLOCK${i} : ${block?.transactions.length}`);
+        if (block != null) {
+            console.log(`BLOCK${i} : ${block.transactions.length}`);
+        } else {
+            console.log(`BLOCK${i} : null`);
+        }
     }
 
     console.log(`TPS: ${tps}`);

@@ -18,7 +18,7 @@ import { U64 } from "codechain-primitives";
 
 export const $else = Symbol("else");
 
-interface Predicate {
+export interface Predicate {
     (_: any): boolean;
     toString(): string;
 }
