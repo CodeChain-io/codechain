@@ -226,6 +226,9 @@ pub trait BlockChainClient: Sync + Send + AccountData + BlockChainTrait + Import
     /// Get the count of all pending transactions currently in the mem_pool.
     fn count_pending_transactions(&self, range: Range<u64>) -> usize;
 
+    /// Get the count of all pending transactions currently in the mem_pool.
+    fn count_current_future_transactions(&self, range: Range<u64>) -> (usize, usize);
+
     /// Check there are transactions which are allowed into the next block.
     fn is_pending_queue_empty(&self) -> bool;
 

@@ -1102,6 +1102,10 @@ impl MinerService for Miner {
         self.mem_pool.read().count_pending_transactions(range)
     }
 
+    fn count_current_future_transactions(&self, range: Range<u64>) -> (usize, usize) {
+        self.mem_pool.read().count_current_future_transactions(range)
+    }
+
     /// Get a list of all future transactions.
     fn future_transactions(&self) -> Vec<SignedTransaction> {
         self.mem_pool.read().future_transactions()

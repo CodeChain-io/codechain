@@ -604,6 +604,10 @@ impl BlockChainClient for TestBlockChainClient {
     fn error_hints_by_tracker(&self, _: &Tracker) -> Vec<(TxHash, Option<String>)> {
         unimplemented!();
     }
+
+    fn count_current_future_transactions(&self, range: Range<u64>) -> (usize, usize) {
+        unimplemented!();
+    }
 }
 
 impl TimeoutHandler for TestBlockChainClient {

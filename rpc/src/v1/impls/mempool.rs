@@ -80,6 +80,10 @@ where
         Ok(self.client.count_pending_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
     }
 
+    fn get_current_future_count(&self, from: Option<u64>, to: Option<u64>) -> Result<(usize, usize)> {
+        Ok(self.client.count_current_future_transactions(from.unwrap_or(0)..to.unwrap_or(::std::u64::MAX)))
+    }
+
     fn get_banned_accounts(&self) -> Result<Vec<PlatformAddress>> {
         let malicious_user_vec = self.client.get_malicious_users();
         let network_id = self.client.get_network_id();
