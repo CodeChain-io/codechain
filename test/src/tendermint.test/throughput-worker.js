@@ -42,7 +42,9 @@ async function generateTxs() {
                 fee: 10
             });
         globalTxs.push("0x" + transaction.rlpBytes().toString("hex"));
-        await wait(1);
+        if (i % 10 === 0) {
+            await wait(0);
+        }
     }
 }
 
