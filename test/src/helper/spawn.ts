@@ -212,7 +212,7 @@ export default class CodeChain {
         if (this.keyFileMovePromise) {
             await this.keyFileMovePromise;
         }
-        const useDebugBuild = process.env.NODE_ENV !== "production";
+        const useDebugBuild = process.env.NODE_ENV === "dev";
         process.env.RUST_LOG = logLevel;
 
         const baseArgs = [...this.argv, ...argv];
@@ -228,7 +228,7 @@ export default class CodeChain {
             this.restarts++;
             this.process = { state: "initializing" };
             const child = spawn(
-                `target/release/codechain`,
+                useDebugBuild ? "target/debug/codechain" : `target/release/codechain`,
                 [
                     ...baseArgs,
                     "--chain",
