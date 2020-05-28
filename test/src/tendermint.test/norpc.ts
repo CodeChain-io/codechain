@@ -31,6 +31,16 @@ import {
 import { wait } from "../helper/promise";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
+const RLP = require("rlp");
+
+function sealToNum(rlp: any) {
+    const buffer = RLP.decode(Buffer.from([rlp]));
+    if (buffer.length === 0) {
+        return 0;
+    } else {
+        return buffer.readUInt8();
+    }
+}
 
 (async () => {
     let nodes: CodeChain[];
@@ -56,7 +66,7 @@ import CodeChain from "../helper/spawn";
             additionalKeysPath: "tendermint/keys"
         });
     });
-    await Promise.all(nodes.map(node => node.start()));
+    await Promise.all(nodes.map(node => node.start({ argv: ["--no-tx-relay"] })));
 
     await Promise.all([
         nodes[0].connect(nodes[1]),
@@ -80,55 +90,21 @@ import CodeChain from "../helper/spawn";
         validator3Secret
     ];
     const transactions: string[][] = [[], [], [], []];
-    const numTransactions = 50000;
+    const numTransactions = 100000;
 
-    if (existsSync("./txcache.json")) {
-        const buf = readFileSync("./txcache.json", "utf8");
-        const txRaw: string[][] = JSON.parse(buf);
-        for (let k = 0; k < 4; k++) {
-            for (let i = 0; i < numTransactions; i++) {
-                if (i % 1000 === 0) {
-                    console.log(`${i}`);
-                }
-                transactions[k].push(txRaw[k][i]);
+    for (let k = 0; k < 4; k++){
+        for (let i = 0; i < 2; i++) {
+            const buf = readFileSync(`/home/junha/Desktop/tx2/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
+            const txRaw: string[] = JSON.parse(buf);
+            for (let j = 0; j < 50000; j++) {
+                transactions[k].push(txRaw[j]);
             }
         }
-    } else {
-        for (let k = 0; k < 4; k++) {
-            const value = makeRandomH256();
-            const baseSeq = await nodes[k].sdk.rpc.chain.getSeq(
-                validatorAddresses[k]
-            );
-            const accountId = nodes[k].sdk.util.getAccountIdFromPrivate(value);
-            const recipient = nodes[
-                k
-            ].sdk.core.classes.PlatformAddress.fromAccountId(accountId, {
-                networkId: "tc"
-            });
-            for (let i = 0; i < numTransactions; i++) {
-                if (i % 1000 === 0) {
-                    console.log(`${i}`);
-                }
-                const transaction = nodes[k].sdk.core
-                    .createPayTransaction({
-                        recipient,
-                        quantity: 1
-                    })
-                    .sign({
-                        secret: secrets[k],
-                        seq: baseSeq + i,
-                        fee: 10
-                    });
-                transactions[k].push(transaction.rlpBytes().toString("hex"));
-            }
-        }
-        writeFileSync("./txcache.json", JSON.stringify(transactions));
     }
 
     console.log("Txes prepared");
 
     for (let k = 0; k < 4; k++) {
-
         let i = numTransactions - 1;
         while(i > 0) {
             console.log(`${i}`);
@@ -167,10 +143,15 @@ import CodeChain from "../helper/spawn";
             lastNum = num;
             console.log("---------------------");
             console.log(`Block ${lastNum}`);
-            const block = await nodes[0].sdk.rpc.chain.getBlock(lastNum);
+            const block = (await nodes[0].sdk.rpc.chain.getBlock(lastNum))!;
             const txnum = block!.transactions.length!;
             consumed += txnum;
             console.log(`Txs: ${txnum}`);
+
+            const parentBlockFinalizedView = sealToNum(block.seal[0]);
+            const authorView = sealToNum(block.seal[1]);
+            console.log(`parent_block_finalized_view: ${parentBlockFinalizedView}`);
+            console.log(`author_view: ${authorView}`);
 
             for (let i = 0; i < 4; i++) {
                 const pendingTxnum = await nodes[
@@ -185,6 +166,7 @@ import CodeChain from "../helper/spawn";
                 console.log(`Txs in ${i}: ${pendingTxnum} ${futureTxnum}`);
             }
 
+            console.log(`Consumed TX: ${consumed}`);
             if (consumed === numTransactions * 4) {
                 break;
             }
