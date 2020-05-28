@@ -22,7 +22,8 @@
     "tendermint-test-local": "cargo build --release && NODE_ENV=production ts-node src/tendermint.test/local.ts",
     "tendermint-test-remote": "NODE_ENV=production ts-node src/tendermint.test/remote.ts",
     "lint": "tslint -p . && prettier 'src/**/*.{ts, json}' -l",
-    "fmt": "tslint -p . --fix && prettier 'src/**/*.{ts, json}' --write"
+    "fmt": "tslint -p . --fix && prettier 'src/**/*.{ts, json}' --write",
+    "build": "tsc -p ."
   },
   "devDependencies": {
     "@types/chai": "^4.1.7",
