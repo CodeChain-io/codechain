@@ -23,7 +23,7 @@ use super::TransactionImportResult;
 use crate::client::{AccountData, BlockChainTrait};
 use crate::miner::fetch_account_creator;
 use crate::transaction::{PendingSignedTransactions, SignedTransaction};
-use crate::Error as CoreError;
+use crate::{BlockId, Error as CoreError};
 use ckey::{public_to_address, Public};
 use ctypes::errors::{HistoryError, RuntimeError, SyntaxError};
 use ctypes::{BlockNumber, TxHash};
@@ -430,7 +430,12 @@ impl MemPool {
 
     // Recover MemPool state from db stored data
     pub fn recover_from_db<C: AccountData + BlockChainTrait>(&mut self, client: &C) {
-        let fetch_account = fetch_account_creator(client);
+        let recover_block_id = {
+            let recover_block_hash = client.chain_info().best_block_hash;
+            BlockId::Hash(recover_block_hash)
+        };
+        let fetch_account = fetch_account_creator(client, recover_block_id);
+
         let by_hash = backup::recover_to_data(self.db.as_ref());
 
         let recover_block_number = client.chain_info().best_block_number;
@@ -1524,7 +1529,7 @@ pub mod test {
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
         let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db.clone(), Default::default());
 
-        let fetch_account = fetch_account_creator(&test_client);
+        let fetch_account = fetch_account_creator(&test_client, BlockId::Latest);
         let no_timelock = TxTimelock {
             block: None,
             timestamp: None,
@@ -1647,7 +1652,7 @@ pub mod test {
         txs: Vec<SignedTransaction>,
         origin: TxOrigin,
     ) -> Vec<Result<TransactionImportResult, Error>> {
-        let fetch_account = fetch_account_creator(test_client);
+        let fetch_account = fetch_account_creator(test_client, BlockId::Latest);
         let no_timelock = TxTimelock {
             block: None,
             timestamp: None,
@@ -1782,7 +1787,7 @@ pub mod test {
         let db = Arc::new(kvdb_memorydb::create(crate::db::NUM_COLUMNS.unwrap_or(0)));
         let mut mem_pool = MemPool::with_limits(8192, usize::max_value(), 3, db, Default::default());
 
-        let fetch_account = fetch_account_creator(&test_client);
+        let fetch_account = fetch_account_creator(&test_client, BlockId::Latest);
         let keypair = Random.generate().unwrap();
         let address = public_to_address(keypair.public());
         println!("! {}", address);

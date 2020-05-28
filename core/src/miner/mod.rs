@@ -197,13 +197,16 @@ pub enum TransactionImportResult {
 #[cfg(all(feature = "nightly", test))]
 mod mem_pool_benches;
 
-fn fetch_account_creator<'c>(client: &'c dyn AccountData) -> impl Fn(&Public) -> AccountDetails + 'c {
+fn fetch_account_creator<'c>(
+    client: &'c dyn AccountData,
+    block_id: BlockId,
+) -> impl Fn(&Public) -> AccountDetails + 'c {
     move |public: &Public| {
         let address = public_to_address(public);
-        let a = client.latest_regular_key_owner(&address).unwrap_or(address);
+        let a = client.regular_key_owner(&address, block_id.into()).unwrap_or(address);
         AccountDetails {
-            seq: client.latest_seq(&a),
-            balance: client.latest_balance(&a),
+            seq: client.seq(&a, block_id).expect("We are querying sequence using trusted block id"),
+            balance: client.balance(&a, block_id.into()).expect("We are querying balance using trusted block id"),
         }
     }
 }
