@@ -29,7 +29,7 @@ use ctypes::transaction::{Action, IncompleteTransaction, Timelock};
 use ctypes::{BlockHash, BlockNumber, Header, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use primitives::{Bytes, H256};
 
 use super::mem_pool::{Error as MemPoolError, MemPool};
@@ -261,6 +261,7 @@ impl Miner {
         transactions: Vec<UnverifiedTransaction>,
         default_origin: TxOrigin,
         mem_pool: &mut MemPool,
+        _importer_lock: &MutexGuard<()>,
     ) -> Vec<Result<TransactionImportResult, Error>> {
         let best_header = client.best_block_header().decode();
         let fake_header = best_header.generate_child();
@@ -351,7 +352,8 @@ impl Miner {
             }
         };
 
-        let insertion_results = mem_pool.add(to_insert, current_block_number, current_timestamp, &fetch_account);
+        let insertion_results =
+            mem_pool.add(to_insert, current_block_number, current_timestamp, &fetch_account, _importer_lock);
 
         debug_assert_eq!(insertion_results.len(), intermediate_results.iter().filter(|r| r.is_ok()).count());
         let mut insertion_results_index = 0;
@@ -784,35 +786,6 @@ impl MinerService for Miner {
         C: AccountData + BlockChainTrait + BlockProducer + EngineInfo + ImportBlock, {
         ctrace!(MINER, "chain_new_blocks");
 
-        // Then import all transactions...
-        {
-            let mut mem_pool = self.mem_pool.write();
-            for hash in retracted {
-                let block = chain.block(&(*hash).into()).expect(
-                    "Client is sending message after commit to db and inserting to chain; the block is available; qed",
-                );
-                let transactions = block.transactions();
-                let _ = self.add_transactions_to_pool(chain, transactions, TxOrigin::RetractedBlock, &mut mem_pool);
-            }
-        }
-
-        // ...and at the end remove the old ones
-        {
-            let fetch_account = |p: &Public| {
-                let address = public_to_address(p);
-                let a = chain.latest_regular_key_owner(&address).unwrap_or(address);
-
-                AccountDetails {
-                    seq: chain.latest_seq(&a),
-                    balance: chain.latest_balance(&a),
-                }
-            };
-            let current_block_number = chain.chain_info().best_block_number;
-            let current_timestamp = chain.chain_info().best_block_timestamp;
-            let mut mem_pool = self.mem_pool.write();
-            mem_pool.remove_old(&fetch_account, current_block_number, current_timestamp);
-        }
-
         if !self.options.no_reseal_timer {
             chain.set_min_timer();
         }
@@ -983,11 +956,12 @@ impl MinerService for Miner {
         &self,
         client: &C,
         transactions: Vec<UnverifiedTransaction>,
+        _importer_lock: &MutexGuard<()>,
     ) -> Vec<Result<TransactionImportResult, Error>> {
         ctrace!(EXTERNAL_PARCEL, "Importing external transactions");
         let results = {
             let mut mem_pool = self.mem_pool.write();
-            self.add_transactions_to_pool(client, transactions, TxOrigin::External, &mut mem_pool)
+            self.add_transactions_to_pool(client, transactions, TxOrigin::External, &mut mem_pool, _importer_lock)
         };
 
         if !results.is_empty()
@@ -1008,6 +982,7 @@ impl MinerService for Miner {
         &self,
         chain: &C,
         tx: SignedTransaction,
+        _importer_lock: &MutexGuard<()>,
     ) -> Result<TransactionImportResult, Error> {
         ctrace!(OWN_PARCEL, "Importing transaction: {:?}", tx);
 
@@ -1016,7 +991,7 @@ impl MinerService for Miner {
             let mut mem_pool = self.mem_pool.write();
             // We need to re-validate transactions
             let import = self
-                .add_transactions_to_pool(chain, vec![tx.into()], TxOrigin::Local, &mut mem_pool)
+                .add_transactions_to_pool(chain, vec![tx.into()], TxOrigin::Local, &mut mem_pool, _importer_lock)
                 .pop()
                 .expect("one result returned per added transaction; one added => one result; qed");
 
@@ -1057,6 +1032,7 @@ impl MinerService for Miner {
         platform_address: PlatformAddress,
         passphrase: Option<Password>,
         seq: Option<u64>,
+        _importer_lock: &MutexGuard<()>,
     ) -> Result<(TxHash, u64), Error> {
         let address = platform_address.try_into_address()?;
         let seq = match seq {
@@ -1089,7 +1065,7 @@ impl MinerService for Miner {
         let unverified = UnverifiedTransaction::new(tx, sig);
         let signed = SignedTransaction::try_new(unverified)?;
         let hash = signed.hash();
-        self.import_own_transaction(client, signed)?;
+        self.import_own_transaction(client, signed, _importer_lock)?;
 
         Ok((hash, seq))
     }
@@ -1225,7 +1201,7 @@ pub mod test {
         );
 
         let transactions = vec![transaction1.clone(), transaction2, transaction1];
-        miner.add_transactions_to_pool(client.as_ref(), transactions, TxOrigin::Local, &mut mem_pool);
+        // miner.add_transactions_to_pool(client.as_ref(), transactions, TxOrigin::Local, &mut mem_pool);
     }
 
     fn generate_test_client(db: Arc<dyn KeyValueDB>, miner: Arc<Miner>, scheme: &Scheme) -> Result<Arc<Client>, Error> {

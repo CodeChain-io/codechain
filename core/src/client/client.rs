@@ -251,7 +251,8 @@ impl Client {
             transactions.iter().filter_map(|bytes| UntrustedRlp::new(bytes).as_val().ok()).collect();
         let hashes: Vec<_> = transactions.iter().map(UnverifiedTransaction::hash).collect();
         self.transactions_received(&hashes, peer_id);
-        let results = self.importer.miner.import_external_transactions(self, transactions);
+        let _lock = self.importer.import_lock.lock();
+        let results = self.importer.miner.import_external_transactions(self, transactions, &_lock);
         results.len()
     }
 
@@ -728,7 +729,8 @@ impl BlockChainClient for Client {
 
     /// Import own transaction
     fn queue_own_transaction(&self, transaction: SignedTransaction) -> Result<(), Error> {
-        self.importer.miner.import_own_transaction(self, transaction)?;
+        let _lock = self.importer.import_lock.lock();
+        self.importer.miner.import_own_transaction(self, transaction, &_lock)?;
         Ok(())
     }
 
