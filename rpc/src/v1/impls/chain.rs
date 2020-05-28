@@ -33,7 +33,9 @@ use jsonrpc_core::Result;
 
 use super::super::errors;
 use super::super::traits::Chain;
-use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use super::super::types::{
+    AssetScheme, Block, BlockNumberAndHash, HeaderAndTxCount, OwnedAsset, Text, Transaction, UnsignedTransaction,
+};
 
 pub struct ChainClient<C>
 where
@@ -235,6 +237,21 @@ where
 
     fn get_block_hash(&self, block_number: u64) -> Result<Option<BlockHash>> {
         Ok(self.client.block_hash(&BlockId::Number(block_number)))
+    }
+
+    fn get_header_and_tx_count_by_number(&self, block_number: u64) -> Result<Option<HeaderAndTxCount>> {
+        let id = BlockId::Number(block_number);
+        Ok(self.client.block(&id).map(|block| {
+            let block_id_to_read_params = if block_number == 0 {
+                0.into()
+            } else {
+                (block_number - 1).into()
+            };
+            HeaderAndTxCount::from_core(
+                block.decode(),
+                self.client.common_params(block_id_to_read_params).unwrap().network_id(),
+            )
+        }))
     }
 
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>> {

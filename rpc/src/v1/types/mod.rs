@@ -24,6 +24,7 @@ mod text;
 mod transaction;
 mod unsigned_transaction;
 mod work;
+mod header_and_tx_count;
 
 use self::asset::Asset;
 use self::asset_input::AssetTransferInput;
@@ -38,6 +39,7 @@ pub use self::text::Text;
 pub use self::transaction::{PendingTransactions, Transaction};
 pub use self::unsigned_transaction::UnsignedTransaction;
 pub use self::work::Work;
+pub use self::header_and_tx_count::HeaderAndTxCount;
 
 use ctypes::TxHash;
 use serde::de::{self, Deserialize, Deserializer};
