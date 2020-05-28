@@ -204,6 +204,7 @@ pub struct Ipc {
 #[serde(deny_unknown_fields)]
 pub struct Operating {
     pub quiet: Option<bool>,
+    pub enforce_memory_db: Option<bool>,
     pub instance_id: Option<usize>,
     pub base_path: Option<String>,
     pub db_path: Option<String>,
@@ -325,6 +326,9 @@ impl Operating {
         if other.quiet.is_some() {
             self.quiet = other.quiet;
         }
+        if other.enforce_memory_db.is_some() {
+            self.enforce_memory_db = other.enforce_memory_db;
+        }
         if other.instance_id.is_some() {
             self.instance_id = other.instance_id;
         }
@@ -348,6 +352,9 @@ impl Operating {
     pub fn overwrite_with(&mut self, matches: &clap::ArgMatches) -> Result<(), String> {
         if matches.is_present("quiet") {
             self.quiet = Some(true);
+        }
+        if matches.is_present("enforce-memory-db") {
+            self.enforce_memory_db = Some(true);
         }
         if let Some(instance_id) = matches.value_of("instance-id") {
             self.instance_id = Some(instance_id.parse().map_err(|e| format!("{}", e))?);

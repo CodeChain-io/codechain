@@ -35,6 +35,7 @@ use ctimer::TimerLoop;
 use ctrlc::CtrlC;
 use fdlimit::raise_fd_limit;
 use kvdb::KeyValueDB;
+use kvdb_memorydb;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::{Condvar, Mutex};
 
@@ -205,21 +206,25 @@ fn unlock_accounts(ap: &AccountProvider, pf: &PasswordFile) -> Result<(), String
 }
 
 pub fn open_db(cfg: &config::Operating, client_config: &ClientConfig) -> Result<Arc<dyn KeyValueDB>, String> {
-    let base_path = cfg.base_path.as_ref().unwrap().clone();
-    let db_path = cfg.db_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_DB_PATH);
-    let client_path = Path::new(&db_path);
-    let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
+    if let Some(true) = cfg.enforce_memory_db {
+        Ok(Arc::new(kvdb_memorydb::create(NUM_COLUMNS.unwrap())))
+    } else {
+        let base_path = cfg.base_path.as_ref().unwrap().clone();
+        let db_path = cfg.db_path.as_ref().map(String::clone).unwrap_or_else(|| base_path + "/" + DEFAULT_DB_PATH);
+        let client_path = Path::new(&db_path);
+        let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 
-    db_config.memory_budget = client_config.db_cache_size;
-    db_config.compaction = client_config.db_compaction.compaction_profile(client_path);
-    db_config.wal = client_config.db_wal;
+        db_config.memory_budget = client_config.db_cache_size;
+        db_config.compaction = client_config.db_compaction.compaction_profile(client_path);
+        db_config.wal = client_config.db_wal;
 
-    let db = Arc::new(
-        Database::open(&db_config, &client_path.to_str().expect("DB path could not be converted to string."))
-            .map_err(|_e| "Low level database error. Some issue with disk?".to_string())?,
-    );
+        let db = Arc::new(
+            Database::open(&db_config, &client_path.to_str().expect("DB path could not be converted to string."))
+                .map_err(|_e| "Low level database error. Some issue with disk?".to_string())?,
+        );
 
-    Ok(db)
+        Ok(db)
+    }
 }
 
 pub fn run_node(matches: &ArgMatches) -> Result<(), String> {
