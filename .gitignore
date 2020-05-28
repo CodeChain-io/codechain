@@ -13,6 +13,9 @@
 /log/
 /keys/
 /test/log/
+/test/lib/
 
 # macOS
 .DS_store
+
+
