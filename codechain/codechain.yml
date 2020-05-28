@@ -196,6 +196,12 @@ args:
         takes_value: false
         conflicts_with:
             - no-miner
+    - force-memory-db:
+        long: force-memory-db
+        help: Force a node to use memory db instead of a disk one.
+        takes_value: false
+        conflicts_with:
+            - db-path
     - reseal-on-txs:
         long: reseal-on-txs
         help: Specify which transactions should force the node to reseal a block.

@@ -37,6 +37,7 @@ finally-block = "0.1"
 futures = "0.1"
 kvdb = { path = "util/kvdb" }
 kvdb-rocksdb = { path = "util/kvdb-rocksdb" }
+kvdb-memorydb = { path = "util/kvdb-memorydb" }
 log = "0.4.6"
 env_logger = "0.5.3"
 never-type = "0.1.0"
