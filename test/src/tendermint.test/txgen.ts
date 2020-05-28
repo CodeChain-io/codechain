@@ -62,8 +62,8 @@ const RLP = require("rlp");
                 workerData: {
                     wname: `${index}`,
                     secret: validatorSecrets[index],
-                    seqStart: 50000,
-                    seqEnd: 60000,
+                    seqStart: 350000,
+                    seqEnd: 360000,
                     filePrefix: `${index}`
                 }
             }

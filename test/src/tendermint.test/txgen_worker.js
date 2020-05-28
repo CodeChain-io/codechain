@@ -20,7 +20,7 @@ async function main() {
             const recipient = sdk.core.classes.PlatformAddress.fromAccountId(accountId, {
                 networkId: "tc"
             });
-            
+
     let seqCount = seqStart;
     while (seqCount < seqEnd) {
         const transactions = [];
@@ -44,7 +44,7 @@ async function main() {
             transactions.push(transaction.rlpBytes().toString("hex"));
             seqCount++;
         }
-        writeFileSync(`/home/junha/Desktop/tx2/${filePrefix}_${chunkStart}_${seqCount}.json`, JSON.stringify(transactions));
+        writeFileSync(`/home/junha/Desktop/txsame/${filePrefix}_${chunkStart}_${seqCount}.json`, JSON.stringify(transactions));
     }
 }
 
