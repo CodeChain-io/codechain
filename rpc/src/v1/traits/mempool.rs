@@ -27,6 +27,10 @@ pub trait Mempool {
     #[rpc(name = "mempool_sendSignedTransaction")]
     fn send_signed_transaction(&self, raw: Bytes) -> Result<TxHash>;
 
+    /// Sends signed transaction, returning its hash.
+    #[rpc(name = "mempool_sendSignedTransactions")]
+    fn send_signed_transactions(&self, raws: Vec<Bytes>) -> Result<Vec<TxHash>>;
+
     /// Gets transaction results with given transaction tracker.
     #[rpc(name = "mempool_getTransactionResultsByTracker")]
     fn get_transaction_results_by_tracker(&self, tracker: Tracker) -> Result<Vec<bool>>;
