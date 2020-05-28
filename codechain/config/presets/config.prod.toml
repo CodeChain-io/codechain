@@ -16,7 +16,8 @@ reseal_max_period = 120000
 no_reseal_timer = false
 work_queue_size = 20
 allowed_past_gap = 30000
-allowed_future_gap = 5000
+# 31104000 is 365 days in seconds
+allowed_future_gap = 31104000
 
 [network]
 disable = false
