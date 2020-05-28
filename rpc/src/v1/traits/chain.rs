@@ -22,7 +22,9 @@ use primitives::{Bytes as BytesArray, H160, H256};
 
 use jsonrpc_core::Result;
 
-use super::super::types::{AssetScheme, Block, BlockNumberAndHash, OwnedAsset, Text, Transaction, UnsignedTransaction};
+use super::super::types::{
+    AssetScheme, Block, BlockNumberAndHash, HeaderAndTxCount, OwnedAsset, Text, Transaction, UnsignedTransaction,
+};
 
 #[rpc(server)]
 pub trait Chain {
@@ -139,9 +141,13 @@ pub trait Chain {
     #[rpc(name = "chain_getBlockHash")]
     fn get_block_hash(&self, block_number: u64) -> Result<Option<BlockHash>>;
 
-    /// Gets block with given number.
+    /// Gets header and tx count with given number.
     #[rpc(name = "chain_getBlockByNumber")]
     fn get_block_by_number(&self, block_number: u64) -> Result<Option<Block>>;
+
+    /// Gets block with given number.
+    #[rpc(name = "chain_getHeaderAndTxCountByNumber")]
+    fn get_header_and_tx_count_by_number(&self, block_number: u64) -> Result<Option<HeaderAndTxCount>>;
 
     /// Gets block with given hash.
     #[rpc(name = "chain_getBlockByHash")]
