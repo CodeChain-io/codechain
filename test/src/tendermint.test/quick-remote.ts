@@ -13,7 +13,12 @@ function sealToNum(rlp: any) {
 }
 
 (async () => {
-    const rpcServers = ["http://192.168.1.101:2487", "http://192.168.1.42:2487", "http://192.168.1.102:2487", "http://192.168.1.103:2487"];
+    const rpcServers = [
+    "http://3.101.76.251:2487",
+    "http://54.215.184.5:2487",
+    "http://18.144.42.220:2487",
+    "http://13.57.187.58:2487"
+    ];
     const sdks = rpcServers.map(server => new SDK({
         server
     }));
@@ -23,7 +28,7 @@ function sealToNum(rlp: any) {
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 8; i++) {
-            const buf = readFileSync(`/home/spkim2/Downloads/txsame/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
+            const buf = readFileSync(`./prepared_transactions/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
             const txRaw: string[] = JSON.parse(buf);
             for (let j = 0; j < 50000; j++) {
                 transactions[k].push(txRaw[j]);
@@ -88,7 +93,7 @@ async function delay(m: number) {
 async function observe(sdks: SDK[], txNum: number) {
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
-    let lastNum = 0;
+    let lastNum = await sdks[0].rpc.chain.getBestBlockNumber();
     let consumed = 0;
     while(true) {
         const newTime = new Date();

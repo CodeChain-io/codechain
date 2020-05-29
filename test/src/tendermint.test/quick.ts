@@ -151,7 +151,7 @@ async function delay(m: number) {
 async function observe(nodes: CodeChain[], txNum: number) {
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
-    let lastNum = 0;
+    let lastNum = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
     let consumed = 0;
     while(true) {
         let newTime = new Date();
