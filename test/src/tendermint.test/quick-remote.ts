@@ -1,4 +1,3 @@
-
 import { SDK } from "codechain-sdk";
 import { readFileSync } from "fs";
 const RLP = require("rlp");
@@ -14,10 +13,10 @@ function sealToNum(rlp: any) {
 
 (async () => {
     const rpcServers = [
-    "http://3.101.76.251:2487",
-    "http://54.215.184.5:2487",
-    "http://18.144.42.220:2487",
-    "http://13.57.187.58:2487"
+    "http://123.123.123.1:2487",
+    "http://123.123.123.2:2487",
+    "http://123.123.123.3:2487",
+    "http://123.123.123.4:2487"
     ];
     const sdks = rpcServers.map(server => new SDK({
         server
