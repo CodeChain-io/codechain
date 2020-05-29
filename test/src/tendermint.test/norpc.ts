@@ -66,7 +66,7 @@ function sealToNum(rlp: any) {
             additionalKeysPath: "tendermint/keys"
         });
     });
-    await Promise.all(nodes.map(node => node.start({ argv: ["--no-tx-relay"] })));
+    await Promise.all(nodes.map(node => node.start()));
 
     await Promise.all([
         nodes[0].connect(nodes[1]),
@@ -94,7 +94,7 @@ function sealToNum(rlp: any) {
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 2; i++) {
-            const buf = readFileSync(`./txes/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
+            const buf = readFileSync(`./prepared_transactions/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
             const txRaw: string[] = JSON.parse(buf);
             for (let j = 0; j < 50000; j++) {
                 transactions[k].push(txRaw[j]);
@@ -171,7 +171,7 @@ function sealToNum(rlp: any) {
                 break;
             }
         }
-        await wait(100);
+        await wait(10);
     }
     const endTime = new Date();
     console.log(`End at: ${endTime}`);
@@ -184,16 +184,6 @@ function sealToNum(rlp: any) {
 
     const bnEnd = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
     console.log(`BLOCK: ${bnEnd}`);
-
-    for (let i = 0; i <= bnEnd; i++) {
-        const block = await nodes[0].sdk.rpc.chain.getBlock(i);
-        if (block != null) {
-            console.log(`BLOCK${i} : ${block.transactions.length}`);
-        } else {
-            console.log(`BLOCK${i} : null`);
-        }
-    }
-
     console.log(`TPS: ${tps}`);
 
     await Promise.all(nodes.map(node => node.clean()));
