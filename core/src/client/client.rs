@@ -75,6 +75,9 @@ pub struct Client {
 
     importer: Importer,
 
+    /// Handles block sealing
+    miner: Arc<Miner>,
+
     /// Timer for reseal_min_period/reseal_max_period on miner client
     reseal_timer: TimerApi,
 }
@@ -106,7 +109,7 @@ impl Client {
 
         let engine = scheme.engine.clone();
 
-        let importer = Importer::try_new(config, engine.clone(), message_channel.clone(), miner)?;
+        let importer = Importer::try_new(config, engine.clone(), message_channel.clone(), Arc::clone(&miner))?;
         let genesis_accounts = scheme.genesis_accounts();
 
         let client = Arc::new(Client {
@@ -119,6 +122,7 @@ impl Client {
             queue_transactions: AtomicUsize::new(0),
             genesis_accounts,
             importer,
+            miner,
             reseal_timer,
         });
 
@@ -199,7 +203,7 @@ impl Client {
 
     /// This is triggered by a message coming from a engine when a new block should be created
     pub fn update_sealing(&self, parent_block: BlockId, allow_empty_block: bool) {
-        self.importer.miner.update_sealing(self, parent_block, allow_empty_block);
+        self.miner.update_sealing(self, parent_block, allow_empty_block);
     }
 
     fn block_hash(chain: &BlockChain, id: &BlockId) -> Option<BlockHash> {
@@ -234,7 +238,7 @@ impl Client {
         self.queue_transactions.fetch_sub(transactions.len(), AtomicOrdering::SeqCst);
         let transactions: Vec<UnverifiedTransaction> =
             transactions.iter().filter_map(|bytes| Rlp::new(bytes).as_val().ok()).collect();
-        let results = self.importer.miner.import_external_transactions(self, transactions);
+        let results = self.miner.import_external_transactions(self, transactions);
         results.len()
     }
 
@@ -264,7 +268,7 @@ impl Client {
         }
 
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
-        self.importer.miner.chain_new_blocks(self, &[], &[], &enacted, &retracted);
+        self.miner.chain_new_blocks(self, &[], &[], &enacted, &retracted);
         self.new_blocks(&[], &[], &enacted, &retracted, &[]);
     }
 
@@ -315,7 +319,7 @@ impl TimeoutHandler for Client {
         match token {
             RESEAL_MAX_TIMER_TOKEN => {
                 // Working in PoW only
-                if self.engine().seals_internally().is_none() && !self.importer.miner.prepare_work_sealing(self) {
+                if self.engine().seals_internally().is_none() && !self.miner.prepare_work_sealing(self) {
                     self.update_sealing(BlockId::Latest, true);
                 }
             }
@@ -547,7 +551,7 @@ impl EngineClient for Client {
 
     /// Submit a seal for a block in the mining queue.
     fn submit_seal(&self, block_hash: BlockHash, seal: Vec<Bytes>) {
-        if self.importer.miner.submit_seal(self, block_hash, seal).is_err() {
+        if self.miner.submit_seal(self, block_hash, seal).is_err() {
             cwarn!(CLIENT, "Wrong internal seal submission!")
         }
     }
@@ -660,7 +664,7 @@ impl ImportBlock for Client {
             route
         };
         let (enacted, retracted) = self.importer.calculate_enacted_retracted(&[route]);
-        self.importer.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
+        self.miner.chain_new_blocks(self, &[h], &[], &enacted, &retracted);
         self.new_blocks(&[h], &[], &enacted, &retracted, &[h]);
         self.db().flush().expect("DB flush failed.");
         Ok(h)
@@ -668,10 +672,7 @@ impl ImportBlock for Client {
 
     fn set_min_timer(&self) {
         self.reseal_timer.cancel(RESEAL_MIN_TIMER_TOKEN).expect("Reseal min timer clear succeeds");
-        match self
-            .reseal_timer
-            .schedule_once(self.importer.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN)
-        {
+        match self.reseal_timer.schedule_once(self.miner.get_options().reseal_min_period, RESEAL_MIN_TIMER_TOKEN) {
             Ok(_) => {}
             Err(TimerScheduleError::TokenAlreadyScheduled) => {
                 // Since set_min_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
@@ -682,10 +683,7 @@ impl ImportBlock for Client {
 
     fn set_max_timer(&self) {
         self.reseal_timer.cancel(RESEAL_MAX_TIMER_TOKEN).expect("Reseal max timer clear succeeds");
-        match self
-            .reseal_timer
-            .schedule_once(self.importer.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN)
-        {
+        match self.reseal_timer.schedule_once(self.miner.get_options().reseal_max_period, RESEAL_MAX_TIMER_TOKEN) {
             Ok(_) => {}
             Err(TimerScheduleError::TokenAlreadyScheduled) => {
                 // Since set_max_timer could be called in multi thread, ignore the TokenAlreadyScheduled error
@@ -703,7 +701,7 @@ impl BlockChainClient for Client {
 
     /// Import own transaction
     fn queue_own_transaction(&self, transaction: SignedTransaction) -> Result<(), Error> {
-        self.importer.miner.import_own_transaction(self, transaction)?;
+        self.miner.import_own_transaction(self, transaction)?;
         Ok(())
     }
 
@@ -726,26 +724,26 @@ impl BlockChainClient for Client {
     }
 
     fn delete_all_pending_transactions(&self) {
-        self.importer.miner.delete_all_pending_transactions();
+        self.miner.delete_all_pending_transactions();
     }
 
     fn ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
-        self.importer.miner.ready_transactions(range)
+        self.miner.ready_transactions(range)
     }
 
     fn count_pending_transactions(&self, range: Range<u64>) -> usize {
-        self.importer.miner.count_pending_transactions(range)
+        self.miner.count_pending_transactions(range)
     }
 
     fn future_included_count_pending_transactions(&self, range: Range<u64>) -> usize {
-        self.importer.miner.future_included_count_pending_transactions(range)
+        self.miner.future_included_count_pending_transactions(range)
     }
 
     fn future_ready_transactions(&self, range: Range<u64>) -> PendingSignedTransactions {
-        self.importer.miner.future_ready_transactions(range)
+        self.miner.future_ready_transactions(range)
     }
     fn is_pending_queue_empty(&self) -> bool {
-        self.importer.miner.status().transactions_in_pending_queue == 0
+        self.miner.status().transactions_in_pending_queue == 0
     }
 
     fn block_number(&self, id: &BlockId) -> Option<BlockNumber> {
@@ -895,27 +893,27 @@ impl BlockProducer for Client {
 
 impl MiningBlockChainClient for Client {
     fn get_malicious_users(&self) -> Vec<Address> {
-        self.importer.miner.get_malicious_users()
+        self.miner.get_malicious_users()
     }
 
     fn release_malicious_users(&self, prisoner_vec: Vec<Address>) {
-        self.importer.miner.release_malicious_users(prisoner_vec)
+        self.miner.release_malicious_users(prisoner_vec)
     }
 
     fn imprison_malicious_users(&self, prisoner_vec: Vec<Address>) {
-        self.importer.miner.imprison_malicious_users(prisoner_vec)
+        self.miner.imprison_malicious_users(prisoner_vec)
     }
 
     fn get_immune_users(&self) -> Vec<Address> {
-        self.importer.miner.get_immune_users()
+        self.miner.get_immune_users()
     }
 
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
-        self.importer.miner.register_immune_users(immune_user_vec)
+        self.miner.register_immune_users(immune_user_vec)
     }
 
     fn mem_pool_min_fees(&self) -> MemPoolMinFees {
-        self.importer.miner.get_options().mem_pool_min_fees
+        self.miner.get_options().mem_pool_min_fees
     }
 }
 

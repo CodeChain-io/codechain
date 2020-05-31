@@ -50,7 +50,7 @@ pub struct Importer {
     pub header_queue: HeaderQueue,
 
     /// Handles block sealing
-    pub miner: Arc<Miner>,
+    miner: Arc<Miner>,
 
     /// CodeChain engine to be used during import
     pub engine: Arc<dyn CodeChainEngine>,
