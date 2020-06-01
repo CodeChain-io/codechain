@@ -1,5 +1,5 @@
 
-import { SignedTransaction } from "codechain-sdk/lib/core/classes";
+import { SignedTransaction, H256 } from "codechain-sdk/lib/core/classes";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import {
     faucetAddress,
@@ -14,6 +14,7 @@ import {
     validator3Secret
 } from "../helper/constants";
 import { wait } from "../helper/promise";
+import { SDK } from "codechain-sdk";
 import { makeRandomH256 } from "../helper/random";
 import CodeChain from "../helper/spawn";
 const RLP = require("rlp");
@@ -54,8 +55,7 @@ function sealToNum(rlp: any) {
             additionalKeysPath: "tendermint/keys"
         });
     });
-    //{ argv: ["--no-tx-relay"] }
-    await Promise.all(nodes.map(node => node.start()));
+    await Promise.all(nodes.map(node => node.start({ argv: ["--no-tx-relay"] })));
 
     await Promise.all([
         nodes[0].connect(nodes[1]),
@@ -79,10 +79,10 @@ function sealToNum(rlp: any) {
         validator3Secret
     ];
     const transactions: string[][] = [[], [], [], []];
-    const numTransactions = 400000;
+    const numTransactions = 10000;
 
     for (let k = 0; k < 4; k++){
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 2; i++) {
             const buf = readFileSync(`./prepared_transactions/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
             const txRaw: string[] = JSON.parse(buf);
             for (let j = 0; j < 50000; j++) {
@@ -90,73 +90,68 @@ function sealToNum(rlp: any) {
             }
         }
     }
-    console.log("Txes loaded");
 
+    let txHashes: H256[] = [];
+    
     for (let k = 0; k < 4; k++) {
         let i = numTransactions - 1;
         while(i > 0) {
             console.log(`${i}`);
             const txes = [];
             for (let j = 0; j < 2000; j++) {
-                txes.push( "0x" + transactions[k][i]);
+                txes.push(transactions[k][i]);
                 i--;
-                if (i ===0) {
+                if (i ===-1) {
                     break;
                 }
             }
-            await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
+            txHashes = txHashes.concat((await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
                 txes
-            ]);
+            ]))!);
         }
     }
+    console.log("Txes loaded");
 
-    /// EXPERIMENT PARAMS
-    const desiredMempoolSize = 30000;
-    const maxSend = 4000;
-    const minSend = 1000;
+    await consume_all(nodes[0].sdk, numTransactions * 4);
 
-    
-    let observer = observe(nodes, numTransactions);
-    let tasks = [];
-    for (let k = 0; k < 4; k++) {
-        tasks.push(async function(k: number) {
-            let index = 0;
-            let sentCount = 0;
-            while (true) {
-                const futureTxnum = await nodes[k].
-                sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [
-                    null,
-                    null
-                ]);
-                const txToSend = Math.min(maxSend, desiredMempoolSize - futureTxnum[0]);
-                if (txToSend > minSend) {
-                    const txs = [];
-                    for (let i = 0; i < txToSend; i++) {
-                        txs.push(transactions[k][index]);
-                        index += 1;
-                        if (index == numTransactions) break;
-                    }
-                    await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
-                        txs
-                    ])
-                    sentCount += txToSend;
-                    if (sentCount > 5000) {
-                        console.log(`-----------------[TX Sent]-------------------`)
-                        console.log(`Txs sent for Node ${k}: ${sentCount}`);
-                        console.log(`Mempool for Node ${k}: ${futureTxnum}`);
-                        sentCount = 0;
-                    }
-                } else {
-                    await delay(10);
-                }
-                if (index == numTransactions) return;
+    console.log("DONE!");
+
+    let concurrency = 64;
+    const queryTasks = []; 
+
+    const totalCount = [0];
+
+    const startTime = new Date();
+    console.log(`Start at: ${startTime}`);
+
+    for (let con = 0; con < concurrency; con++) 
+    {
+        queryTasks.push(async function(c: number) {
+            const sdk = nodes[c % 4].sdk;
+            for (let i = c; i < txHashes.length; i+= concurrency) {
+                await sdk.rpc.chain.getTransaction(txHashes[i]);
+                totalCount[0] += 1;
             }
-        }(k));
+        }(con));
     }
-    tasks.push(observer);
-    await Promise.all(tasks);
-    await Promise.all(nodes.map(node => node.clean()));
 
+    queryTasks.push(async function() {
+        while(totalCount[0] < 4 * numTransactions) {
+            console.log(`${totalCount[0]}`);
+            await delay(500);
+        }
+    }());   
+    await Promise.all(queryTasks);
+
+    let endTime = new Date();
+    let totalElapsed = endTime.getTime() - startTime.getTime();
+
+    console.log("<STATUS>");
+    console.log(`Total Consumed: ${txHashes.length}`);
+    console.log(`Total Elapsed: ${totalElapsed}`);
+    console.log(`TPS: ${txHashes.length/totalElapsed * 1000}`);
+
+    return;
 
 })().catch(console.error);
 
@@ -166,40 +161,24 @@ async function delay(m: number) {
     });
 }
 
-async function observe(nodes: CodeChain[], txNum: number) {
-    const startTime = new Date();
-    console.log(`Start at: ${startTime}`);
-    let lastNum = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
+async function consume_all(sdk: SDK, txNum: number ){ 
     let consumed = 0;
-    while(true) {
-        let newTime = new Date();
-        const num = await nodes[0].sdk.rpc.chain.getBestBlockNumber();
+    let lastNum = 0;
+    while(consumed < txNum ) {
+        const num = await sdk.rpc.chain.getBestBlockNumber();
         if (lastNum !== num) {
-            let totalElapsed = newTime.getTime() - startTime.getTime();
-            let blocks = [];
             for (let b = lastNum + 1; b <= num; b++) {
-                blocks.push((await nodes[0].sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[b]))!);
-            }
 
-            console.log("-----------------[REPORT]----------------");
-            for (let i = 0; i < num - lastNum; i++) {
-                consumed += blocks[i].transactionCount;
-                console.log(`<BLOCK ${lastNum + 1 + i}>`);
-                const parentBlockFinalizedView = sealToNum(blocks[i].seal[0]);
-                const authorView = sealToNum(blocks[i].seal[1]);
-                console.log(`parent_block_finalized_view: ${parentBlockFinalizedView}`);
-                console.log(`author_view: ${authorView}`);
-                console.log(`Tx included: ${blocks[i].transactionCount}`);
+                const futureTxnum = await 
+                sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [
+                    null,
+                    null
+                ]);
+                let count = (await sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[b]))!.transactionCount;
+                consumed += count;
+                console.log(`Consumed: ${count} / Total Left: ${txNum - consumed}`);
             }
-            console.log("<STATUS>");
-            console.log(`Total Consumed: ${consumed}`);
-            console.log(`Total Elapsed: ${totalElapsed}`);
-            console.log(`TPS: ${consumed/totalElapsed * 1000}`);
-
             lastNum = num;
-            if (consumed === txNum * 4) {
-                break;
-            }
         }
         await delay(100);
     }
