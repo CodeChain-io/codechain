@@ -119,7 +119,7 @@ function sealToNum(rlp: any) {
     let concurrency = 64;
     const queryTasks = []; 
 
-    const totalCount = [0];
+    const result = [];
 
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
@@ -129,15 +129,14 @@ function sealToNum(rlp: any) {
         queryTasks.push(async function(c: number) {
             const sdk = nodes[c % 4].sdk;
             for (let i = c; i < txHashes.length; i+= concurrency) {
-                await sdk.rpc.chain.getTransaction(txHashes[i]);
-                totalCount[0] += 1;
+                result.push((await sdk.rpc.chain.getTransaction(txHashes[i]))!);
             }
         }(con));
     }
 
     queryTasks.push(async function() {
-        while(totalCount[0] < 4 * numTransactions) {
-            console.log(`${totalCount[0]}`);
+        while(result.length < 4 * numTransactions) {
+            console.log(`${result.length}`);
             await delay(500);
         }
     }());   
