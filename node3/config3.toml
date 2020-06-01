@@ -1,0 +1,55 @@
+[codechain]
+password_path = "./password3.json"
+quiet = false
+base_path = "."
+chain = "tendermint"
+
+[mining]
+engine_signer = "tccq9y6e0k6af9058qq4h4ffpt9xmat2vkeyue23j8y"
+mem_pool_mem_limit = 512 # MB
+mem_pool_size = 524288
+mem_pool_fee_bump_shift = 3 # 12.5%
+allow_create_shard = false
+notify_work = []
+force_sealing = true
+reseal_on_txs = "all"
+allowed_past_gap = 30000
+allowed_future_gap = 31104000
+
+[network]
+disable = false
+interface = "0.0.0.0"
+port = 3487
+max_peers = 9
+min_peers = 3
+bootstrap_addresses = [
+    "192.168.1.101:3487",
+    "192.168.1.102:3487",
+    "192.168.1.42:3487"
+]
+sync = true
+transaction_relay = true
+discovery = true
+discovery_type = "unstructured"
+discovery_refresh = 60000
+discovery_bucket_size = 10
+
+[rpc]
+disable = false
+interface = "0.0.0.0"
+port = 2487
+
+[ws]
+disable = true
+
+[snapshot]
+disable = true
+
+[stratum]
+disable = true
+
+[email_alarm]
+disable = true
+
+[ipc]
+disable = true
