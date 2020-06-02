@@ -16,8 +16,7 @@ async function main() {
     const blockNumber = Number.parseInt(process.argv[2], 10);
 
     const sdk = new SDK({
-        //server: "http://127.0.0.1:2487",
-        server: "https://corgi-rpc.codechain.io",
+        server: "http://127.0.0.1:2487",
         networkId: NETWORK_ID
     });
 
@@ -80,7 +79,7 @@ function calculateBlockHash(block: Block) {
 }
 
 function hex2Buf(hexString: string) {
-    let stripped = hexString.startsWith("0x") ? hexString.slice(2) : hexString;
+    const stripped = hexString.startsWith("0x") ? hexString.slice(2) : hexString;
     return Buffer.from(stripped, "hex");
 };
 
