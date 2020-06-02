@@ -26,7 +26,7 @@ async function main() {
     const txHash = await sdk.rpc.chain.sendSignedTransaction(transaction);
 
     console.log(`Send ${quantity} CCC to ${recipient.toString()}`);
-    console.log(`Transaction hash: ${txHash.toString()}`);
+    console.log(`Transaction hash: 0x${txHash.toString()}`);
 }
 
 main().catch(console.error);
