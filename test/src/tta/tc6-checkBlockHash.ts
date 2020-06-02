@@ -1,6 +1,6 @@
 import { SDK } from "codechain-sdk";
-import {Block} from "codechain-sdk/lib/core/classes";
-import {blake256} from "codechain-sdk/lib/utils";
+import { Block } from "codechain-sdk/lib/core/classes";
+import { blake256 } from "codechain-sdk/lib/utils";
 
 const RLP = require("rlp");
 const NETWORK_ID = "tc";
@@ -33,8 +33,17 @@ async function main() {
     console.log(`Calculated block hash ${calculatedBlockHash}`);
 
     console.log();
-    console.log(`Serialized header ${blockNumber} contains block ${blockNumber - 1}'s hash at index ${serializedHeader.indexOf(parentBlock!.hash.toString())}`);
-    console.log(`Calculated block hash ${calculatedBlockHash} === Received block hash ${block!.hash}: ${calculatedBlockHash === block!.hash.toString()}`);
+    console.log(
+        `Serialized header ${blockNumber} contains block ${blockNumber -
+            1}'s hash at index ${serializedHeader.indexOf(
+            parentBlock!.hash.toString()
+        )}`
+    );
+    console.log(
+        `Calculated block hash ${calculatedBlockHash} === Received block hash ${
+            block!.hash
+        }: ${calculatedBlockHash === block!.hash.toString()}`
+    );
 }
 
 main().catch(console.error);
@@ -56,19 +65,19 @@ function serializeHeader(block: Block) {
     blockHeader.push(hex2Buf(parentHash.toEncodeObject()));
     blockHeader.push(hex2Buf(author.getAccountId().toEncodeObject()));
     blockHeader.push(hex2Buf(stateRoot.toEncodeObject()));
-    blockHeader.push(hex2Buf(transactionsRoot.toEncodeObject()))
+    blockHeader.push(hex2Buf(transactionsRoot.toEncodeObject()));
     blockHeader.push(hex2Buf(score.toEncodeObject() as any));
     blockHeader.push(number);
     blockHeader.push(timestamp);
     blockHeader.push(Buffer.from(extraData));
-    blockHeader = blockHeader.concat(seal.map(s => {
-        const buffer = Buffer.from(s)
-        return RLP.decode(buffer)
-    }));
-
-    const encoded: Buffer = RLP.encode(
-        blockHeader
+    blockHeader = blockHeader.concat(
+        seal.map(s => {
+            const buffer = Buffer.from(s);
+            return RLP.decode(buffer);
+        })
     );
+
+    const encoded: Buffer = RLP.encode(blockHeader);
 
     return encoded;
 }
@@ -79,9 +88,11 @@ function calculateBlockHash(block: Block) {
 }
 
 function hex2Buf(hexString: string) {
-    const stripped = hexString.startsWith("0x") ? hexString.slice(2) : hexString;
+    const stripped = hexString.startsWith("0x")
+        ? hexString.slice(2)
+        : hexString;
     return Buffer.from(stripped, "hex");
-};
+}
 
 function printBlockDefault(block: Block) {
     console.group(`Block number ${block.number}`);
