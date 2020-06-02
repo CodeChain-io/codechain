@@ -34,7 +34,6 @@ async function main() {
         block!.transactions.map(tx => tx.hash())
     );
     const txCount = block!.transactions.length;
-    console.log(`Transaction count ${txCount}`);
     console.log(`TxRoot in Header: ${transactionsRoot}`);
     console.log(`Calculated TxRoot: ${calculatedTxRoot}`);
 
