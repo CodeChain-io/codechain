@@ -23,7 +23,7 @@ function sealToNum(rlp: any) {
     }));
 
     const transactions: string[][] = [[], [], [], []];
-    const numTransactions = 400000;
+    const numTransactions = 100000;
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 8; i++) {
@@ -40,7 +40,6 @@ function sealToNum(rlp: any) {
     const desiredMempoolSize = 30000;
     const maxSend = 4000;
     const minSend = 1000;
-
     
     const observer = observe(sdks, numTransactions);
     const tasks = [];
@@ -81,6 +80,20 @@ function sealToNum(rlp: any) {
     tasks.push(observer);
     await Promise.all(tasks);
 
+    console.log("");
+    console.log("--------------------Final Check-------------------");
+    console.log("");
+
+    let total = 0;
+    let i = 0;
+    while(total < numTransactions* 4) {
+        let x = (await sdks[0].rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[i]))!
+        total += x.transactionCount;
+        if (x.transactionCount != 0) {
+            console.log(`Block${i}: ${x.transactionCount}`);
+        }
+        i+=1;   
+    }
 })().catch(console.error);
 
 async function delay(m: number) {
