@@ -66,7 +66,6 @@ async function findBlock(sdk: SDK) {
         for (; prevBestBlockNumber < bestBlockNumber; prevBestBlockNumber += 1) {
             const block = await sdk.rpc.chain.getBlock(bestBlockNumber);
             if (block!.transactions.length > 0) {
-                await printBlock(sdk, bestBlockNumber - 1);
                 await printBlock(sdk, bestBlockNumber);
                 process.exit(0);
             }
