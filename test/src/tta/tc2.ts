@@ -43,7 +43,7 @@ function sealToNum(rlp: any) {
         validator3Secret
     ];
     const transactions: string[][] = [[], [], [], []];
-    const numTransactions = 20000;
+    const numTransactions = 4000;
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 2; i++) {
@@ -117,7 +117,7 @@ function sealToNum(rlp: any) {
     console.log("");
     console.log("-----------------<LAST 40>------------------");
     for (let i = 0; i < 40; i++) {
-        let k = result[result.length - 1 - i].toJSON();
+        let k = JSON.stringify(result[result.length - 1 - i].toJSON());
         console.log(`${k}`);
     }
 
