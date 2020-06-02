@@ -13,10 +13,7 @@ import {
     validator3Address,
     validator3Secret
 } from "../helper/constants";
-import { wait } from "../helper/promise";
 import { SDK } from "codechain-sdk";
-import { makeRandomH256 } from "../helper/random";
-import CodeChain from "../helper/spawn";
 const RLP = require("rlp");
 
 function sealToNum(rlp: any) {
@@ -29,48 +26,15 @@ function sealToNum(rlp: any) {
 }
 
 (async () => {
-    let nodes: CodeChain[];
-
-    const validatorAddresses = [
-        validator0Address,
-        validator1Address,
-        validator2Address,
-        validator3Address
-    ];
-    const futureGapInMS = 360 * 24 * 60 * 60 * 1000;
-    nodes = validatorAddresses.map(address => {
-        return new CodeChain({
-            chain: `${__dirname}/../scheme/tendermint-tps.json`,
-            argv: [
-                "--engine-signer",
-                address.toString(),
-                "--password-path",
-                "test/tendermint/password.json",
-                "--force-sealing",
-                "--no-discovery",
-                "--enable-devel-api",
-                "--allowed-future-gap",
-                String(futureGapInMS)
-            ],
-            additionalKeysPath: "tendermint/keys"
-        });
-    });
-    await Promise.all(nodes.map(node => node.start({ argv: ["--no-tx-relay"] })));
-
-    await Promise.all([
-        nodes[0].connect(nodes[1]),
-        nodes[0].connect(nodes[2]),
-        nodes[0].connect(nodes[3]),
-        nodes[1].connect(nodes[2]),
-        nodes[1].connect(nodes[3]),
-        nodes[2].connect(nodes[3])
-    ]);
-    await Promise.all([
-        nodes[0].waitPeers(4 - 1),
-        nodes[1].waitPeers(4 - 1),
-        nodes[2].waitPeers(4 - 1),
-        nodes[3].waitPeers(4 - 1)
-    ]);
+    const rpcServers = [
+        "http://52.53.237.116:2487",
+        "http://54.67.67.96:2487",
+        "http://54.176.9.137:2487",
+        "http://54.151.59.22:2487"
+        ];
+        const sdks = rpcServers.map(server => new SDK({
+            server
+        }));
 
     const secrets = [
         validator0Secret,
@@ -79,7 +43,7 @@ function sealToNum(rlp: any) {
         validator3Secret
     ];
     const transactions: string[][] = [[], [], [], []];
-    const numTransactions = 10000;
+    const numTransactions = 20000;
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 2; i++) {
@@ -105,30 +69,30 @@ function sealToNum(rlp: any) {
                     break;
                 }
             }
-            txHashes = txHashes.concat((await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
+            txHashes = txHashes.concat((await sdks[k].rpc.sendRpcRequest("mempool_sendSignedTransactions", [
                 txes
             ]))!);
         }
     }
     console.log("Txes loaded");
 
-    await consume_all(nodes[0].sdk, numTransactions * 4);
+    await consume_all(sdks, numTransactions * 4);
 
     console.log("DONE!");
 
-    let concurrency = 64;
+    let asycnTasks = 64;
     const queryTasks = []; 
 
-    const result = [];
+    const result: SignedTransaction[] = [];
 
     const startTime = new Date();
     console.log(`Start at: ${startTime}`);
 
-    for (let con = 0; con < concurrency; con++) 
+    for (let con = 0; con < asycnTasks; con++) 
     {
         queryTasks.push(async function(c: number) {
-            const sdk = nodes[c % 4].sdk;
-            for (let i = c; i < txHashes.length; i+= concurrency) {
+            const sdk = sdks[c % 4];
+            for (let i = c; i < txHashes.length; i+= asycnTasks) {
                 result.push((await sdk.rpc.chain.getTransaction(txHashes[i]))!);
             }
         }(con));
@@ -145,10 +109,17 @@ function sealToNum(rlp: any) {
     let endTime = new Date();
     let totalElapsed = endTime.getTime() - startTime.getTime();
 
-    console.log("<STATUS>");
+    console.log("-----------------<REPORT>-------------------");
     console.log(`Total Consumed: ${txHashes.length}`);
     console.log(`Total Elapsed: ${totalElapsed}`);
     console.log(`TPS: ${txHashes.length/totalElapsed * 1000}`);
+
+    console.log("");
+    console.log("-----------------<LAST 40>------------------");
+    for (let i = 0; i < 40; i++) {
+        let k = result[result.length - 1 - i].toJSON();
+        console.log(`${k}`);
+    }
 
     return;
 
@@ -160,22 +131,19 @@ async function delay(m: number) {
     });
 }
 
-async function consume_all(sdk: SDK, txNum: number ){ 
+async function consume_all(sdks: SDK[], txNum: number ){ 
     let consumed = 0;
-    let lastNum = 0;
+    let lastNum = -1;
     while(consumed < txNum ) {
-        const num = await sdk.rpc.chain.getBestBlockNumber();
+        const num = await sdks[0].rpc.chain.getBestBlockNumber();
         if (lastNum !== num) {
             for (let b = lastNum + 1; b <= num; b++) {
-
-                const futureTxnum = await 
-                sdk.rpc.sendRpcRequest("mempool_getCurrentFuturueCount", [
-                    null,
-                    null
-                ]);
-                let count = (await sdk.rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[b]))!.transactionCount;
+                let count = (await sdks[0].rpc.sendRpcRequest("chain_getHeaderAndTxCountByNumber",[b]))!.transactionCount;
                 consumed += count;
+                console.log(`Block #: ${b}`);
                 console.log(`Consumed: ${count} / Total Left: ${txNum - consumed}`);
+
+                if (consumed == txNum) break;
             }
             lastNum = num;
         }

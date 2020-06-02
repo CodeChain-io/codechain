@@ -120,6 +120,9 @@ async function observe(sdks: SDK[], txNum: number) {
             console.log("-----------------[REPORT]----------------");
             for (let i = 0; i < num - lastNum; i++) {
                 consumed += blocks[i].transactionCount;
+                if (consumed === txNum * 4) {
+                    break;
+                }
                 console.log(`<BLOCK ${lastNum + 1 + i}>`);
                 const parentBlockFinalizedView = sealToNum(blocks[i].seal[0]);
                 const authorView = sealToNum(blocks[i].seal[1]);
