@@ -43,7 +43,7 @@ function sealToNum(rlp: any) {
         validator3Secret
     ];
     const transactions: string[][] = [[], [], [], []];
-    const numTransactions = 4000;
+    const numTransactions = 20000;
 
     for (let k = 0; k < 4; k++){
         for (let i = 0; i < 2; i++) {
