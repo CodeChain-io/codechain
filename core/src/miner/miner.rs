@@ -117,7 +117,7 @@ pub struct Miner {
     next_mandatory_reseal: NextMandatoryReseal,
     sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
-    params: RwLock<AuthoringParams>,
+    params: Params,
     engine: Arc<dyn CodeChainEngine>,
     options: MinerOptions,
 
@@ -148,6 +148,29 @@ impl NextMandatoryReseal {
 
     pub fn set(&self, instant: Instant) {
         *self.instant.write() = instant;
+    }
+}
+
+struct Params {
+    params: RwLock<AuthoringParams>,
+}
+
+impl Params {
+    pub fn new(params: AuthoringParams) -> Self {
+        Self {
+            params: RwLock::new(params),
+        }
+    }
+
+    pub fn get(&self) -> AuthoringParams {
+        self.params.read().clone()
+    }
+
+    pub fn apply<F>(&self, f: F)
+    where
+        F: FnOnce(&mut AuthoringParams) -> (), {
+        let mut params = self.params.write();
+        f(&mut params);
     }
 }
 
@@ -194,7 +217,7 @@ impl Miner {
             mem_pool,
             next_allowed_reseal: NextAllowedReseal::new(Instant::now()),
             next_mandatory_reseal: NextMandatoryReseal::new(Instant::now() + options.reseal_max_period),
-            params: RwLock::new(AuthoringParams::default()),
+            params: Params::new(AuthoringParams::default()),
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
@@ -492,7 +515,7 @@ impl Miner {
 
             let last_work_hash = sealing_work.queue.peek_last_ref().map(|pb| *pb.block().header().hash());
             ctrace!(MINER, "prepare_block: No existing work - making new block");
-            let params = self.params.read().clone();
+            let params = self.params.get();
             let open_block = chain.prepare_open_block(parent_block_id, params.author, params.extra_data);
             let (block_number, parent_hash) = {
                 let header = open_block.block().header();
@@ -731,11 +754,11 @@ impl MinerService for Miner {
     }
 
     fn authoring_params(&self) -> AuthoringParams {
-        self.params.read().clone()
+        self.params.get()
     }
 
     fn set_author(&self, address: Address) -> Result<(), AccountProviderError> {
-        self.params.write().author = address;
+        self.params.apply(|params| params.author = address);
 
         if self.engine_type().need_signer_key() && self.engine.seals_internally().is_some() {
             if let Some(ref ap) = self.accounts {
@@ -759,7 +782,7 @@ impl MinerService for Miner {
     }
 
     fn set_extra_data(&self, extra_data: Bytes) {
-        self.params.write().extra_data = extra_data;
+        self.params.apply(|params| params.extra_data = extra_data);
     }
 
     fn minimal_fee(&self) -> u64 {
