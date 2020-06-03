@@ -39,7 +39,7 @@ use ctypes::{BlockHash, BlockNumber, Header, TxHash};
 use cvm::ChainTimeInfo;
 use kvdb::KeyValueDB;
 use parking_lot::{Mutex, RwLock};
-use primitives::{Bytes, H256};
+use primitives::{Bytes, H256, U256};
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::iter::once;
@@ -126,9 +126,36 @@ pub struct Miner {
     sealing_enabled: AtomicBool,
 
     accounts: Option<Arc<AccountProvider>>,
-    notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
+    notifiers: Notifiers,
     malicious_users: RwLock<HashSet<Address>>,
     immune_users: RwLock<HashSet<Address>>,
+}
+
+struct Notifiers {
+    notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
+}
+
+impl Notifiers {
+    pub fn new(notifiers: Vec<Box<dyn NotifyWork>>) -> Self {
+        Self {
+            notifiers: RwLock::new(notifiers),
+        }
+    }
+
+    pub fn push(&self, notifier: Box<dyn NotifyWork>) {
+        self.notifiers.write().push(notifier);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.notifiers.read().is_empty()
+    }
+
+    pub fn notify(&self, pow_hash: H256, target: U256) {
+        // FIXME: Calling callbacks inside of lock lifetime may cause a deadlock.
+        for notifier in self.notifiers.read().iter() {
+            notifier.notify(pow_hash, target)
+        }
+    }
 }
 
 struct SealingBlockLastRequest {
@@ -203,7 +230,7 @@ impl Params {
 impl Miner {
     /// Push listener that will handle new jobs
     pub fn add_work_listener(&self, notifier: Box<dyn NotifyWork>) {
-        self.notifiers.write().push(notifier);
+        self.notifiers.push(notifier);
     }
 
     pub fn new(
@@ -254,7 +281,7 @@ impl Miner {
             options,
             sealing_enabled: AtomicBool::new(true),
             accounts,
-            notifiers: RwLock::new(notifiers),
+            notifiers: Notifiers::new(notifiers),
             malicious_users: RwLock::new(HashSet::new()),
             immune_users: RwLock::new(HashSet::new()),
         }
@@ -503,7 +530,7 @@ impl Miner {
                 let is_new = original_work_hash.map_or(true, |h| *block.block().header().hash() != h);
                 sealing_work.queue.push(block);
                 // If push notifications are enabled we assume all work items are used.
-                if !self.notifiers.read().is_empty() && is_new {
+                if !self.notifiers.is_empty() && is_new {
                     sealing_work.queue.use_last_ref();
                 }
                 (Some((pow_hash, score, number)), is_new)
@@ -520,9 +547,7 @@ impl Miner {
         if is_new {
             if let Some((pow_hash, score, _number)) = work {
                 let target = self.engine.score_to_target(&score);
-                for notifier in self.notifiers.read().iter() {
-                    notifier.notify(pow_hash, target)
-                }
+                self.notifiers.notify(pow_hash, target);
             }
         }
     }
