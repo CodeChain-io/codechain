@@ -849,10 +849,12 @@ describe("Staking", function() {
         }
 
         const fee = 100;
-        const payHash = (await nodes[0].sendPayTx({
-            recipient: validator0Address,
-            quantity: fee
-        })).hash();
+        const payHash = (
+            await nodes[0].sendPayTx({
+                recipient: validator0Address,
+                quantity: fee
+            })
+        ).hash();
         while (!(await nodes[0].sdk.rpc.chain.containsTransaction(payHash))) {
             await wait(500);
         }
@@ -1007,11 +1009,13 @@ describe("Staking", function() {
         }
 
         const fee = 567;
-        const payHash = (await nodes[0].sendPayTx({
-            recipient: validator0Address,
-            quantity: fee,
-            fee
-        })).hash();
+        const payHash = (
+            await nodes[0].sendPayTx({
+                recipient: validator0Address,
+                quantity: fee,
+                fee
+            })
+        ).hash();
         while (!(await nodes[0].sdk.rpc.chain.containsTransaction(payHash))) {
             await wait(500);
         }

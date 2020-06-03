@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import * as path from "path";
+import { Worker } from "worker_threads";
 import {
     validator0Address,
     validator0Secret,
@@ -25,8 +27,6 @@ import {
     validator3Secret
 } from "../helper/constants";
 import CodeChain from "../helper/spawn";
-import { Worker } from "worker_threads";
-import * as path from "path";
 
 const RLP = require("rlp");
 

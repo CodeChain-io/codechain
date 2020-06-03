@@ -1,6 +1,6 @@
-import { faucetSecret, faucetAddress } from "../helper/constants";
-import { makeRandomH256 } from "../helper/random";
 import { SDK } from "codechain-sdk";
+import { faucetAddress, faucetSecret } from "../helper/constants";
+import { makeRandomH256 } from "../helper/random";
 
 const NETWORK_ID = "tc";
 

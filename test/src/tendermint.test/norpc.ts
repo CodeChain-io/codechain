@@ -92,9 +92,13 @@ function sealToNum(rlp: any) {
     const transactions: string[][] = [[], [], [], []];
     const numTransactions = 100000;
 
-    for (let k = 0; k < 4; k++){
+    for (let k = 0; k < 4; k++) {
         for (let i = 0; i < 2; i++) {
-            const buf = readFileSync(`./prepared_transactions/${k}_${i * 50000}_${i * 50000 + 50000}.json`, "utf8");
+            const buf = readFileSync(
+                `./prepared_transactions/${k}_${i * 50000}_${i * 50000 +
+                    50000}.json`,
+                "utf8"
+            );
             const txRaw: string[] = JSON.parse(buf);
             for (let j = 0; j < 50000; j++) {
                 transactions[k].push(txRaw[j]);
@@ -106,19 +110,19 @@ function sealToNum(rlp: any) {
 
     for (let k = 0; k < 4; k++) {
         let i = numTransactions - 1;
-        while(i > 0) {
+        while (i > 0) {
             console.log(`${i}`);
             const txes = [];
             for (let j = 0; j < 2000; j++) {
-                txes.push( "0x" + transactions[k][i]);
+                txes.push("0x" + transactions[k][i]);
                 i--;
-                if (i ===0) {
+                if (i === 0) {
                     break;
                 }
             }
-            await nodes[k].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [
-                txes
-            ]);
+            await nodes[
+                k
+            ].sdk.rpc.sendRpcRequest("mempool_sendSignedTransactions", [txes]);
         }
     }
 
@@ -150,7 +154,9 @@ function sealToNum(rlp: any) {
 
             const parentBlockFinalizedView = sealToNum(block.seal[0]);
             const authorView = sealToNum(block.seal[1]);
-            console.log(`parent_block_finalized_view: ${parentBlockFinalizedView}`);
+            console.log(
+                `parent_block_finalized_view: ${parentBlockFinalizedView}`
+            );
             console.log(`author_view: ${authorView}`);
 
             for (let i = 0; i < 4; i++) {

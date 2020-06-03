@@ -18,12 +18,12 @@ import {
     faucetAddress,
     faucetSecret,
     validator0Address,
-    validator1Address,
-    validator2Address,
-    validator3Address,
     validator0Secret,
+    validator1Address,
     validator1Secret,
+    validator2Address,
     validator2Secret,
+    validator3Address,
     validator3Secret
 } from "../helper/constants";
 import { makeRandomH256 } from "../helper/random";
@@ -39,15 +39,13 @@ const path = require("path");
 const RLP = require("rlp");
 
 (async () => {
-    let nodes: CodeChain[];
-
     const validatorAddresses = [
         validator0Address,
         validator1Address,
         validator2Address,
         validator3Address
     ];
-    let promises = [];
+    const promises = [];
     const validatorSecrets = [
         validator0Secret,
         validator1Secret,
@@ -70,7 +68,7 @@ const RLP = require("rlp");
             }
         );
 
-        let workerPromise = new Promise((resolve, reject) => {
+        const workerPromise = new Promise((resolve, reject) => {
             worker.on("error", reject);
             worker.on("exit", (code: any) => {
                 if (code !== 0) {
@@ -82,4 +80,3 @@ const RLP = require("rlp");
     }
     await Promise.all(promises);
 })().catch(console.error);
-

@@ -47,21 +47,21 @@ describe("Jail state transition test", function() {
     });
 
     async function isValidator(
-        entity: (typeof validators)[number]
+        entity: typeof validators[number]
     ): Promise<boolean> {
         const activated = await stake.getValidators(nodes[0].sdk);
         return activated.some(v => v.pubkey.toString() === entity.publicKey);
     }
 
     async function isCandidate(
-        entity: (typeof validators)[number]
+        entity: typeof validators[number]
     ): Promise<boolean> {
         const candidates = await stake.getCandidates(nodes[0].sdk);
         return candidates.some(c => c.pubkey.toString() === entity.publicKey);
     }
 
     async function isBanned(
-        entity: (typeof validators)[number]
+        entity: typeof validators[number]
     ): Promise<boolean> {
         const banned = await stake.getBanned(nodes[0].sdk);
         return banned.some(
@@ -70,7 +70,7 @@ describe("Jail state transition test", function() {
     }
 
     async function isPrisoner(
-        entity: (typeof validators)[number]
+        entity: typeof validators[number]
     ): Promise<boolean> {
         const prisoners = await stake.getJailed(nodes[0].sdk);
         return prisoners.some(
@@ -79,7 +79,7 @@ describe("Jail state transition test", function() {
     }
 
     async function isEligible(
-        entity: (typeof validators)[number]
+        entity: typeof validators[number]
     ): Promise<boolean> {
         return !(
             (await isValidator(entity)) ||

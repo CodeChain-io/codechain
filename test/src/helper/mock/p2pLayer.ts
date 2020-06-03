@@ -39,7 +39,8 @@ export class P2pLayer {
     private readonly arrivedExtensionMessage: (
         | BlockSyncMessage
         | TransactionSyncMessage
-        | TendermintMessage)[];
+        | TendermintMessage
+    )[];
     private tcpBuffer: Buffer;
     private genesisHash: H256;
     private recentHeaderNonce: U256;
@@ -78,7 +79,8 @@ export class P2pLayer {
     public getArrivedExtensionMessage(): (
         | BlockSyncMessage
         | TransactionSyncMessage
-        | TendermintMessage)[] {
+        | TendermintMessage
+    )[] {
         return this.arrivedExtensionMessage;
     }
 
