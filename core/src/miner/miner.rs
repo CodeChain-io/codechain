@@ -16,7 +16,6 @@
 
 use std::collections::HashSet;
 use std::iter::once;
-use std::iter::FromIterator;
 use std::ops::Range;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -125,8 +124,39 @@ pub struct Miner {
 
     accounts: Option<Arc<AccountProvider>>,
     notifiers: Notifiers,
-    malicious_users: RwLock<HashSet<Address>>,
-    immune_users: RwLock<HashSet<Address>>,
+    malicious_users: Users,
+    immune_users: Users,
+}
+
+struct Users {
+    users: RwLock<HashSet<Address>>,
+}
+
+impl Users {
+    pub fn new() -> Self {
+        Self {
+            users: RwLock::new(HashSet::new()),
+        }
+    }
+
+    pub fn cloned(&self) -> Vec<Address> {
+        self.users.read().iter().map(Clone::clone).collect()
+    }
+
+    pub fn contains(&self, address: &Address) -> bool {
+        self.users.read().contains(address)
+    }
+
+    pub fn insert(&self, address: Address) -> bool {
+        self.users.write().insert(address)
+    }
+
+    pub fn remove_users<'a>(&self, addresses: impl Iterator<Item = &'a Address>) {
+        let mut users = self.users.write();
+        for address in addresses {
+            users.remove(address);
+        }
+    }
 }
 
 struct Notifiers {
@@ -279,8 +309,8 @@ impl Miner {
             sealing_enabled: AtomicBool::new(true),
             accounts,
             notifiers: Notifiers::new(notifiers),
-            malicious_users: RwLock::new(HashSet::new()),
-            immune_users: RwLock::new(HashSet::new()),
+            malicious_users: Users::new(),
+            immune_users: Users::new(),
         }
     }
 
@@ -365,7 +395,7 @@ impl Miner {
                 let signer_public = tx.recover_public()?;
                 let signer_address = public_to_address(&signer_public);
                 if default_origin.is_local() {
-                    self.immune_users.write().insert(signer_address);
+                    self.immune_users.insert(signer_address);
                 }
 
                 let origin = self
@@ -378,7 +408,7 @@ impl Miner {
                     })
                     .unwrap_or(default_origin);
 
-                if self.malicious_users.read().contains(&signer_address) {
+                if self.malicious_users.contains(&signer_address) {
                     // FIXME: just to skip, think about another way.
                     return Ok(())
                 }
@@ -389,7 +419,6 @@ impl Miner {
                 if !self.is_allowed_transaction(&tx.action) {
                     cdebug!(MINER, "Rejected transaction {:?}: {:?} is not allowed transaction", hash, tx.action);
                 }
-                let immune_users = self.immune_users.read();
                 let tx = tx
                     .verify_basic()
                     .map_err(From::from)
@@ -400,8 +429,8 @@ impl Miner {
                     .and_then(|_| CodeChainMachine::verify_transaction_seal(tx, &fake_header))
                     .map_err(|e| {
                         match e {
-                            Error::Syntax(_) if !origin.is_local() && !immune_users.contains(&signer_address) => {
-                                self.malicious_users.write().insert(signer_address);
+                            Error::Syntax(_) if !origin.is_local() && !self.immune_users.contains(&signer_address) => {
+                                self.malicious_users.insert(signer_address);
                             }
                             _ => {}
                         }
@@ -412,8 +441,8 @@ impl Miner {
                 // This check goes here because verify_transaction takes SignedTransaction parameter
                 self.engine.machine().verify_transaction(&tx, &fake_header, client, false).map_err(|e| {
                     match e {
-                        Error::Syntax(_) if !origin.is_local() && !immune_users.contains(&signer_address) => {
-                            self.malicious_users.write().insert(signer_address);
+                        Error::Syntax(_) if !origin.is_local() && !self.immune_users.contains(&signer_address) => {
+                            self.malicious_users.insert(signer_address);
                         }
                         _ => {}
                     }
@@ -608,11 +637,10 @@ impl Miner {
         let tx_total = transactions.len();
         let mut invalid_tx_users = HashSet::new();
 
-        let immune_users = self.immune_users.read();
         for tx in transactions {
             let signer_public = tx.signer_public();
             let signer_address = public_to_address(&signer_public);
-            if self.malicious_users.read().contains(&signer_address) {
+            if self.malicious_users.contains(&signer_address) {
                 invalid_transactions.push(tx.hash());
                 continue
             }
@@ -646,9 +674,9 @@ impl Miner {
                                 .read()
                                 .is_local_transaction(hash)
                                 .expect("The tx is clearly fetched from the mempool")
-                                && !immune_users.contains(&signer_address)
+                                && !self.immune_users.contains(&signer_address)
                             {
-                                self.malicious_users.write().insert(signer_address);
+                                self.malicious_users.insert(signer_address);
                             }
                         }
                         _ => {}
@@ -1205,32 +1233,23 @@ impl MinerService for Miner {
     }
 
     fn get_malicious_users(&self) -> Vec<Address> {
-        Vec::from_iter(self.malicious_users.read().iter().map(Clone::clone))
+        self.malicious_users.cloned()
     }
 
     fn release_malicious_users(&self, prisoner_vec: Vec<Address>) {
-        let mut malicious_users = self.malicious_users.write();
-        for address in prisoner_vec {
-            malicious_users.remove(&address);
-        }
+        self.malicious_users.remove_users(prisoner_vec.iter());
     }
 
     fn imprison_malicious_users(&self, prisoner_vec: Vec<Address>) {
-        let mut malicious_users = self.malicious_users.write();
-        for address in prisoner_vec {
-            malicious_users.insert(address);
-        }
+        self.malicious_users.remove_users(prisoner_vec.iter());
     }
 
     fn get_immune_users(&self) -> Vec<Address> {
-        Vec::from_iter(self.immune_users.read().iter().map(Clone::clone))
+        self.immune_users.cloned()
     }
 
     fn register_immune_users(&self, immune_user_vec: Vec<Address>) {
-        let mut immune_users = self.immune_users.write();
-        for address in immune_user_vec {
-            immune_users.insert(address);
-        }
+        self.immune_users.remove_users(immune_user_vec.iter())
     }
 }
 
