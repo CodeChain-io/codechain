@@ -116,7 +116,7 @@ struct SealingWork {
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
     next_allowed_reseal: Mutex<Instant>,
-    next_mandatory_reseal: RwLock<Instant>,
+    next_mandatory_reseal: NextMandatoryReseal,
     sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
     params: RwLock<AuthoringParams>,
@@ -129,6 +129,26 @@ pub struct Miner {
     notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
     malicious_users: RwLock<HashSet<Address>>,
     immune_users: RwLock<HashSet<Address>>,
+}
+
+struct NextMandatoryReseal {
+    instant: RwLock<Instant>,
+}
+
+impl NextMandatoryReseal {
+    pub fn new(instant: Instant) -> Self {
+        Self {
+            instant: RwLock::new(instant),
+        }
+    }
+
+    pub fn get(&self) -> Instant {
+        *self.instant.read()
+    }
+
+    pub fn set(&self, instant: Instant) {
+        *self.instant.write() = instant;
+    }
 }
 
 impl Miner {
@@ -174,7 +194,7 @@ impl Miner {
         Self {
             mem_pool,
             next_allowed_reseal: Mutex::new(Instant::now()),
-            next_mandatory_reseal: RwLock::new(Instant::now() + options.reseal_max_period),
+            next_mandatory_reseal: NextMandatoryReseal::new(Instant::now() + options.reseal_max_period),
             params: RwLock::new(AuthoringParams::default()),
             sealing_block_last_request: Mutex::new(0),
             sealing_work: Mutex::new(SealingWork {
@@ -611,7 +631,7 @@ impl Miner {
         C: BlockChainTrait + ImportBlock, {
         if block.transactions().is_empty()
             && !self.options.force_sealing
-            && Instant::now() <= *self.next_mandatory_reseal.read()
+            && Instant::now() <= self.next_mandatory_reseal.get()
         {
             cdebug!(MINER, "seal_block_internally: no sealing.");
             return false
@@ -628,7 +648,7 @@ impl Miner {
             return false
         }
 
-        *self.next_mandatory_reseal.write() = Instant::now() + self.options.reseal_max_period;
+        self.next_mandatory_reseal.set(Instant::now() + self.options.reseal_max_period);
         let sealed = if self.engine_type().is_seal_first() {
             block.lock().already_sealed()
         } else {
