@@ -113,7 +113,7 @@ struct SealingWork {
 
 pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
-    next_allowed_reseal: Mutex<Instant>,
+    next_allowed_reseal: NextAllowedReseal,
     next_mandatory_reseal: NextMandatoryReseal,
     sealing_block_last_request: Mutex<u64>,
     sealing_work: Mutex<SealingWork>,
@@ -128,6 +128,8 @@ pub struct Miner {
     malicious_users: RwLock<HashSet<Address>>,
     immune_users: RwLock<HashSet<Address>>,
 }
+
+type NextAllowedReseal = NextMandatoryReseal;
 
 struct NextMandatoryReseal {
     instant: RwLock<Instant>,
@@ -190,7 +192,7 @@ impl Miner {
 
         Self {
             mem_pool,
-            next_allowed_reseal: Mutex::new(Instant::now()),
+            next_allowed_reseal: NextAllowedReseal::new(Instant::now()),
             next_mandatory_reseal: NextMandatoryReseal::new(Instant::now() + options.reseal_max_period),
             params: RwLock::new(AuthoringParams::default()),
             sealing_block_last_request: Mutex::new(0),
@@ -684,7 +686,7 @@ impl Miner {
 
     /// Are we allowed to do a non-mandatory reseal?
     fn transaction_reseal_allowed(&self) -> bool {
-        self.sealing_enabled.load(Ordering::Relaxed) && (Instant::now() > *self.next_allowed_reseal.lock())
+        self.sealing_enabled.load(Ordering::Relaxed) && (Instant::now() > self.next_allowed_reseal.get())
     }
 
     fn map_pending_block<F, T>(&self, f: F, latest_block_number: BlockNumber) -> Option<T>
@@ -935,7 +937,7 @@ impl MinerService for Miner {
             }
 
             // Sealing successful
-            *self.next_allowed_reseal.lock() = Instant::now() + self.options.reseal_min_period;
+            self.next_allowed_reseal.set(Instant::now() + self.options.reseal_min_period);
             if !self.options.no_reseal_timer {
                 chain.set_min_timer();
             }
