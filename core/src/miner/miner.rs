@@ -115,7 +115,7 @@ pub struct Miner {
     mem_pool: Arc<RwLock<MemPool>>,
     next_allowed_reseal: NextAllowedReseal,
     next_mandatory_reseal: NextMandatoryReseal,
-    sealing_block_last_request: Mutex<u64>,
+    sealing_block_last_request: SealingBlockLastRequest,
     sealing_work: Mutex<SealingWork>,
     params: Params,
     engine: Arc<dyn CodeChainEngine>,
@@ -127,6 +127,30 @@ pub struct Miner {
     notifiers: RwLock<Vec<Box<dyn NotifyWork>>>,
     malicious_users: RwLock<HashSet<Address>>,
     immune_users: RwLock<HashSet<Address>>,
+}
+
+struct SealingBlockLastRequest {
+    block_number: Mutex<u64>,
+}
+
+impl SealingBlockLastRequest {
+    pub fn new() -> Self {
+        Self {
+            block_number: Mutex::new(0),
+        }
+    }
+
+    pub fn get(&self) -> u64 {
+        *self.block_number.lock()
+    }
+
+    /// Returns previous value
+    pub fn set(&self, block_number: u64) -> u64 {
+        let mut guard = self.block_number.lock();
+        let prev = *guard;
+        *guard = block_number;
+        prev
+    }
 }
 
 type NextAllowedReseal = NextMandatoryReseal;
@@ -218,7 +242,7 @@ impl Miner {
             next_allowed_reseal: NextAllowedReseal::new(Instant::now()),
             next_mandatory_reseal: NextMandatoryReseal::new(Instant::now() + options.reseal_max_period),
             params: Params::new(AuthoringParams::default()),
-            sealing_block_last_request: Mutex::new(0),
+            sealing_block_last_request: SealingBlockLastRequest::new(),
             sealing_work: Mutex::new(SealingWork {
                 queue: SealingQueue::new(options.work_queue_size),
                 enabled: options.force_sealing || scheme.engine.seals_internally().is_some(),
@@ -262,7 +286,7 @@ impl Miner {
         let mut sealing_work = self.sealing_work.lock();
         if sealing_work.enabled {
             ctrace!(MINER, "requires_reseal: sealing enabled");
-            let last_request = *self.sealing_block_last_request.lock();
+            let last_request = self.sealing_block_last_request.get();
             let should_disable_sealing = !self.options.force_sealing
                 && !has_local_transactions
                 && self.engine.seals_internally().is_none()
@@ -889,16 +913,16 @@ impl MinerService for Miner {
                 }
             }
         }
-        let mut sealing_block_last_request = self.sealing_block_last_request.lock();
+
         let best_number = client.chain_info().best_block_number;
-        if *sealing_block_last_request != best_number {
+        let prev_request = self.sealing_block_last_request.set(best_number);
+        if prev_request != best_number {
             ctrace!(
                 MINER,
                 "prepare_work_sealing: Miner received request (was {}, now {}) - waking up.",
-                *sealing_block_last_request,
+                prev_request,
                 best_number
             );
-            *sealing_block_last_request = best_number;
         }
 
         // Return if we restarted
