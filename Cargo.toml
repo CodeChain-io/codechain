@@ -41,7 +41,7 @@ log = "0.4.6"
 env_logger = "0.5.3"
 never-type = "0.1.0"
 panic_hook = { path = "util/panic_hook" }
-parking_lot = "0.6.0"
+parking_lot = "0.11.0"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = { git = "https://github.com/CodeChain-io/rlp.git", version = "0.4" }
 rpassword = "2.0.0"
