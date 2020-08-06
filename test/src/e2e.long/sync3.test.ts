@@ -28,7 +28,9 @@ describe("sync 3 nodes", function() {
         nodes = [];
         for (let i = 0; i < NUM_NODES; i++) {
             const node = new CodeChain({
-                argv: ["--no-discovery"]
+                // To generate a block this test sends a tx to a node.
+                // If the tx is propagated before generating a block, tests in this file would fail.
+                argv: ["--no-discovery", "--no-tx-relay"]
             });
             nodes.push(node);
         }

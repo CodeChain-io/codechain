@@ -25,8 +25,10 @@ describe("sync 2 nodes", function() {
 
     describe("2 nodes", function() {
         beforeEach(async function() {
-            nodeA = new CodeChain();
-            nodeB = new CodeChain();
+            // To generate a block this test sends a tx to a node.
+            // If the tx is propagated before generating a block, tests in this file would fail.
+            nodeA = new CodeChain({ argv: ["--no-tx-relay"] });
+            nodeB = new CodeChain({ argv: ["--no-tx-relay"] });
 
             await Promise.all([nodeA.start(), nodeB.start()]);
         });
