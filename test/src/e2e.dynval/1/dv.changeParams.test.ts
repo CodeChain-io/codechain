@@ -192,10 +192,20 @@ describe("Change commonParams that doesn't affects validator set", function() {
         it("should be applied after a term seconds", async function() {
             const initialTermSeconds = initialParams.termSeconds;
             const newTermSeconds = 5;
-            const margin = 1.3;
+            const margin = {
+                multiplier: 1.3,
+                add: 5
+            };
 
-            this.slow((initialTermSeconds + newTermSeconds) * 1000 * margin);
-            this.timeout((initialTermSeconds + newTermSeconds) * 1000 * 2);
+            this.slow(
+                (initialTermSeconds + newTermSeconds) *
+                    1000 *
+                    margin.multiplier +
+                    margin.add
+            );
+            this.timeout(
+                (initialTermSeconds + newTermSeconds) * 1000 * 2 + margin.add
+            );
 
             const term1Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
@@ -208,14 +218,20 @@ describe("Change commonParams that doesn't affects validator set", function() {
                 })
             );
 
-            await nodes[0].waitForTermChange(2, initialTermSeconds * margin);
+            await nodes[0].waitForTermChange(
+                2,
+                initialTermSeconds * margin.multiplier + margin.add
+            );
 
             const term2Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
                 expect(term2Metadata.currentTermId).to.be.equal(2);
             }
 
-            await nodes[0].waitForTermChange(3, newTermSeconds * margin);
+            await nodes[0].waitForTermChange(
+                3,
+                newTermSeconds * margin.multiplier + margin.add
+            );
 
             const term3Metadata = (await stake.getTermMetadata(nodes[0].sdk))!;
             {
