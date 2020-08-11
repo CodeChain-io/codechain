@@ -471,6 +471,7 @@ fn give_additional_rewards<F: FnMut(&Address, u64) -> Result<(), Error>>(
 ) -> Result<(), Error> {
     let sorted_validators = work_info
         .into_iter()
+        .filter(|(_, work)| work.proposed > 0)
         .map(|(address, info)| (address, Ratio::new(info.missed, info.proposed)))
         // When one sees the Ratio crate's Order trait implementation, he/she can easily realize that the
         // comparing routine is erroneous. It inversely compares denominators when the numerators are the same.
