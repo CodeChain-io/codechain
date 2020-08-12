@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
+import { wait } from "../helper/promise";
 import { H160, H256, U256 } from "codechain-primitives/lib";
 import "mocha";
 import { Mock } from "../helper/mock";
@@ -134,6 +135,9 @@ describe("Test onChain block communication", async function() {
         );
 
         await mock.waitStatusMessage();
+        // This is not a good delay.
+        // We need a method to know that transferred block is imported.
+        await wait(500);
 
         const block1 = await sdk.rpc.chain.getBlock(1);
         const block2 = await sdk.rpc.chain.getBlock(2);
