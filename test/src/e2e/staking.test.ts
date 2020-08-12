@@ -882,7 +882,7 @@ describe("Staking", function() {
         expect(validator1Balance).to.be.deep.equal(
             oldValidator1Balance.plus(Math.floor((minCustomCost * 1) / 10))
         );
-    });
+    }).timeout(10_000);
 
     it("Shouldn't accept regular key to self nominate", async function() {
         const privKey = node.sdk.util.generatePrivateKey();
