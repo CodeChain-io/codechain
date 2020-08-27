@@ -234,6 +234,7 @@ dependencies = [
  "fdlimit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "finally-block 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
+ "journaldb 0.1.0",
  "kvdb 0.1.0",
  "kvdb-rocksdb 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",

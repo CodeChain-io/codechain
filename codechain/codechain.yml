@@ -381,3 +381,9 @@ subcommands:
           about: Print the commit hash at the build time.
     - generate-data:
           about: Generate large trie for test
+          args:
+            - number:
+                  short: n
+                  long: number
+                  help: Set the number of db values
+                  takes_value: true

@@ -35,6 +35,7 @@ extern crate codechain_keystore as ckeystore;
 #[macro_use]
 extern crate codechain_logger as clogger;
 extern crate cidr;
+extern crate codechain_crypto as ccrypto;
 extern crate codechain_network as cnetwork;
 extern crate codechain_rpc as crpc;
 extern crate codechain_state as cstate;
@@ -45,6 +46,7 @@ extern crate ctrlc;
 extern crate env_logger;
 extern crate fdlimit;
 extern crate finally_block;
+extern crate journaldb;
 extern crate kvdb;
 extern crate kvdb_rocksdb;
 extern crate never_type;
