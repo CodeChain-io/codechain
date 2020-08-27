@@ -379,3 +379,5 @@ subcommands:
                       - accountId
     - commit-hash:
           about: Print the commit hash at the build time.
+    - generate-data:
+          about: Generate large trie for test

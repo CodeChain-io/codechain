@@ -16,17 +16,20 @@
 
 mod account_command;
 mod convert_command;
+mod generate_data_command;
 
 use clap::ArgMatches;
 
 use self::account_command::run_account_command;
 use self::convert_command::run_convert_command;
+use self::generate_data_command::run_generate_data_command;
 
 pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
     let subcommand = matches.subcommand.as_ref().unwrap();
     match subcommand.name.as_str() {
         "account" => run_account_command(&subcommand.matches),
         "convert" => run_convert_command(&subcommand.matches),
+        "generate-data" => run_generate_data_command(&subcommand.matches),
         "commit-hash" => {
             println!("{}", env!("VERGEN_SHA"));
             Ok(())
