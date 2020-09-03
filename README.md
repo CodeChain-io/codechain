@@ -28,7 +28,7 @@ CodeChain supports the use of Docker to provide an easy and seamless installatio
 needs to get CodeChain up and running. In order to get the installation package, run the following command after installing Docker:
 
 ```sh
-docker build -f docker/ubuntu/Dockerfile --tag codechain-io/codechain:branch_or_tag_name .
+docker build -f docker/ubuntu/Dockerfile --tag kodebox/codechain:branch_or_tag_name .
 ```    
 
 WSL users may find difficulty in using Docker, and thus, it is highly recommended to use Ubuntu, or install Docker for Windows. When using Docker for Windows,
@@ -42,13 +42,13 @@ docker images
 It will result in something like this:
 ```sh
 REPOSITORY               TAG                  IMAGE ID            CREATED              SIZE
-codechain-io/codechain   branch_or_tag_name   6f8474d9bc7a        About a minute ago   1.85GB
+kodebox/codechain        branch_or_tag_name   6f8474d9bc7a        About a minute ago   1.85GB
 ubuntu                   14.04                971bb384a50a        6 days ago           188MB
 ```
     
 If you want to run the first image file, run the following command:
 ```sh
-docker run -it codechain-io/codechain:branch_or_tag_name
+docker run -it kodebox/codechain:branch_or_tag_name
 ```
 
 This should result in CodeChain running.
@@ -57,16 +57,16 @@ This should result in CodeChain running.
 
 CodeChain depends on the local database and keys commonly stored under the directories `keys` and `db`. A Docker container is independent of host environment and other Docker images. Therefore, when running a new Docker container with an image with a new CodeChain version or even with the same image, the database and keys are not persistent. To solve the problem, one can take advantage of the Docker's volume option. With the command below,
 ```sh
-docker run -it -v codechain-db-vol:/app/codechain/db -v codechain-keys-vol:/app/codechain/keys codechain-io/codechain:branch_or_tag_name
+docker run -it -v codechain-db-vol:/app/codechain/db -v codechain-keys-vol:/app/codechain/keys kodebox/codechain:branch_or_tag_name
 ```
 one can mount the volume `codechain-db-vol` into `/app/db` and the volume `codechain-keys-vol` into `/app/keys` in the container. This command will automatically create volumes if existing volumes with specified names do not exist. Because the default working directory specified in `Dockerfile` is `/app/codechain`, the default db and keys path are `/app/codechain/db` and `app/codechian/keys`. One can also customize the paths with CodeChain cli arguments `base-path`, `key-path` and `db-path`.
 
 ```sh
-docker run -it -v codechain-db-vol:custom_base_path/db -v codechain-keys-vol:custom_base_path/keys codechain-io/codechain:branch_or_tag_name --base-path custom_base_path
+docker run -it -v codechain-db-vol:custom_base_path/db -v codechain-keys-vol:custom_base_path/keys kodebox/codechain:branch_or_tag_name --base-path custom_base_path
 ```
 
 ```sh
-docker run -it -v codechain-db-vol:custom_db_path -v codechain-keys-vol:custom_keys_path codechain-io/codechain:branch_or_tag_name --db-path custom_db_path --keys-path custom_keys_path
+docker run -it -v codechain-db-vol:custom_db_path -v codechain-keys-vol:custom_keys_path kodebox/codechain:branch_or_tag_name --db-path custom_db_path --keys-path custom_keys_path
 ```
 With the methods above, node organizers can manage their local persistent data using docker images.
 
