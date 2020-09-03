@@ -17,6 +17,7 @@
 mod account_command;
 mod convert_command;
 mod generate_data_command;
+mod perf_write_command;
 
 use clap::ArgMatches;
 
