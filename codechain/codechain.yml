@@ -379,6 +379,14 @@ subcommands:
                       - accountId
     - commit-hash:
           about: Print the commit hash at the build time.
+    - perf-write:
+          about: Check the write performance
+          args:
+            - number:
+                  short: n
+                  long: number
+                  help: Set the number of db values
+                  takes_value: true
     - generate-data:
           about: Generate large trie for test
           args:
