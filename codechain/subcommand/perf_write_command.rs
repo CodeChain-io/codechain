@@ -1,22 +1,42 @@
 use ccore::ClientConfig;
-use clogger::{self, LoggerConfig};
 use clap::ArgMatches;
+use clogger::{self, LoggerConfig};
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
-use std::{path::Path, sync::Arc};
+use std::{path::Path, sync::Arc, time::Instant};
+use ckey::Address;
+use cstate::{TopState, TopLevelState, StateDB, StateWithCache};
+use primitives::H256;
 
-pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
+pub const COL_STATE: Option<u32> = Some(0);
+pub const COL_EXTRA: Option<u32> = Some(3);
+
+pub fn run_perf_write_command(_matches: &ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(777), None).expect("Logger must be successfully initialized");
     let db = open_db()?;
+    let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
+    let state_db = StateDB::new(journal_db);
+
+    let root = {
+        let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
+        H256::from(bytes.as_ref())
+    };
+
+    let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
 
     for i in 0..10 {
+        let now = Instant::now();
         let address = Address::random();
         toplevel_state.add_balance(&address, i).unwrap();
+        if now.elapsed().as_secs() >= 1 {
+            println!("{}", now.elapsed().as_secs());
+        }
     }
     toplevel_state.commit().unwrap();
 
+    println!("Finished");
 
-    unimplemented!();
+    Ok(())
 }
 
 pub const DEFAULT_DB_PATH: &str = "db_test";

@@ -24,6 +24,7 @@ use clap::ArgMatches;
 use self::account_command::run_account_command;
 use self::convert_command::run_convert_command;
 use self::generate_data_command::run_generate_data_command;
+use self::perf_write_command::run_perf_write_command;
 
 pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
     let subcommand = matches.subcommand.as_ref().unwrap();
@@ -31,6 +32,7 @@ pub fn run_subcommand(matches: &ArgMatches) -> Result<(), String> {
         "account" => run_account_command(&subcommand.matches),
         "convert" => run_convert_command(&subcommand.matches),
         "generate-data" => run_generate_data_command(&subcommand.matches),
+        "perf-write" => run_perf_write_command(&subcommand.matches),
         "commit-hash" => {
             println!("{}", env!("VERGEN_SHA"));
             Ok(())

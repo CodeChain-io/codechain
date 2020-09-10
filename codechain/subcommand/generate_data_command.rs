@@ -9,6 +9,7 @@ use kvdb::{DBTransaction, KeyValueDB};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use std::{path::Path, sync::Arc};
 
+pub const COL_EXTRA: Option<u32> = Some(3);
 pub const COL_STATE: Option<u32> = Some(0);
 
 /// Generate large trie to test update speed
@@ -29,7 +30,12 @@ pub fn run_generate_data_command(matches: &ArgMatches) -> Result<(), String> {
         let address = Address::random();
         toplevel_state.add_balance(&address, i).unwrap();
     }
-    toplevel_state.commit().unwrap();
+    let new_root = toplevel_state.commit().unwrap();
+    {
+        let mut batch = DBTransaction::new();
+        batch.put(COL_EXTRA, b"perf_data_root", new_root.as_ref());
+        db.write(batch).unwrap();
+    }
 
     let mut batch = DBTransaction::new();
     let updated = toplevel_state.journal_under(&mut batch, 0).unwrap();
@@ -63,4 +69,3 @@ pub fn open_db() -> Result<Arc<dyn KeyValueDB>, String> {
 
     Ok(db)
 }
-
