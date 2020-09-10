@@ -19,30 +19,34 @@ pub fn run_generate_data_command(matches: &ArgMatches) -> Result<(), String> {
 
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
     let state_db = StateDB::new(journal_db);
-    let root = BLAKE_NULL_RLP;
-    let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
+    let mut root = BLAKE_NULL_RLP;
 
     let num = matches.value_of("number").unwrap();
     let num: u32 = num.parse().unwrap();
 
     //for i in 0..1_000_000_000 {
     for i in 0..10_u64.pow(num) {
-        let address = Address::random();
-        toplevel_state.add_balance(&address, i).unwrap();
-    }
-    let new_root = toplevel_state.commit().unwrap();
-    {
+        let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
+        for j in 0..1000 {
+            let address = Address::random();
+            toplevel_state.add_balance(&address, i * 1000 + j).unwrap();
+        }
+        root = toplevel_state.commit().unwrap();
+        println!("write root {:?}", root);
+        {
+            let mut batch = DBTransaction::new();
+            batch.put(COL_EXTRA, b"perf_data_root", root.as_ref());
+            db.write(batch).unwrap();
+        }
         let mut batch = DBTransaction::new();
-        batch.put(COL_EXTRA, b"perf_data_root", new_root.as_ref());
-        db.write(batch).unwrap();
+        let updated = toplevel_state.journal_under(&mut batch, 0).unwrap();
+        println!("write to db");
+        //let updated = state_db.journal_under(&mut batch, 0, root).map_err(|err| err.to_string())?;
+        db.write(batch).map_err(|err| err.to_string())?;
+        println!("flush the db");
+        db.flush().unwrap();
+        println!("updated {}", updated);
     }
-
-    let mut batch = DBTransaction::new();
-    let updated = toplevel_state.journal_under(&mut batch, 0).unwrap();
-    //let updated = state_db.journal_under(&mut batch, 0, root).map_err(|err| err.to_string())?;
-    db.write(batch).map_err(|err| err.to_string())?;
-
-    println!("updated {}", updated);
 
     Ok(())
 }
