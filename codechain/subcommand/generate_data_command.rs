@@ -30,7 +30,7 @@ pub fn run_generate_data_command(matches: &ArgMatches) -> Result<(), String> {
         let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
         for j in 0..1000 {
             let address = Address::random();
-            toplevel_state.add_balance(&address, i * 1000 + j).unwrap();
+            toplevel_state.add_balance(&address, i * 1000 + j + 1).unwrap();
         }
         root = toplevel_state.commit().unwrap();
         println!("write root {:?}", root);
