@@ -26,6 +26,7 @@ extern crate serde;
 extern crate serde_derive;
 #[cfg(test)]
 extern crate serde_json;
+extern crate rustc_hex;
 
 mod block_hash;
 mod common_params;
@@ -43,22 +44,40 @@ pub type ShardId = u16;
 pub use block_hash::BlockHash;
 pub use common_params::CommonParams;
 pub use header::Header;
+use rustc_hex::ToHex;
 pub use tracker::Tracker;
 pub use tx_hash::TxHash;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
+pub struct Read {
+    time_us: u128,
+    key: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct DebugInfo {
     pub read_count: u32,
+    pub db_read_time_us: u128,
+    pub reads: Vec<Read>,
 }
 
 impl DebugInfo {
     pub fn empty() -> Self {
         Self {
             read_count: 0,
+            db_read_time_us: 0,
+            reads: Vec::new(),
         }
     }
 
     pub fn inc_read_count(&mut self) {
         self.read_count += 1;
+    }
+
+    pub fn add_read(&mut self, time_us: u128, key: &[u8]) {
+        self.reads.push(Read {
+            time_us,
+            key: key.to_hex(),
+        })
     }
 }

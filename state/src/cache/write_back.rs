@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::vec::Vec;
+use std::{time::Instant, vec::Vec};
 
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
 
@@ -241,7 +241,10 @@ where
         let contains_key = self.cache.borrow().contains_key(a);
         let mut debug_info = DebugInfo::empty();
         if !contains_key {
-            let (maybe_item, debug_info_) = db.get_with_debug(a.as_ref(), ::rlp::decode::<Item>)?;
+            let now = Instant::now();
+            let (maybe_item, mut debug_info_) = db.get_with_debug(a.as_ref(), ::rlp::decode::<Item>)?;
+            let elapsed = now.elapsed().as_micros();
+            debug_info_.db_read_time_us = elapsed;
             self.insert(a, Entry::<Item>::new_clean(maybe_item));
             debug_info = debug_info_;
         }

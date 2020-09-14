@@ -4,7 +4,7 @@ use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cstate::{StateDB, StateWithCache, TopLevelState, TopState};
 use ctypes::DebugInfo;
-use kvdb::{DBTransaction, KeyValueDB};
+use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use primitives::H256;
 use std::{path::Path, sync::Arc, time::Instant, u128, u32, u64};
@@ -30,7 +30,7 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 
     println!("before getting root");
 
-    let mut root = {
+    let root = {
         let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
         H256::from(bytes.as_ref())
     };
@@ -42,11 +42,11 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
     println!("before loop");
 
     let mut total_elapsed_micros = 0_u128;
-    /// (index, elapsed, read count)
+    // (index, elapsed, read count)
     let mut max_elapsed = (0_u64, 0_u128, DebugInfo::empty());
-    /// (index, elapsed, read count)
+    // (index, elapsed, read count)
     let mut max_height = (0_u64, 0_u128, DebugInfo::empty());
-    /// (index, elapsed, read count)
+    // (index, elapsed, read count)
     let mut min_elapsed = (u64::MAX, u128::MAX, DebugInfo::empty());
     for i in 0..10_u64.pow(num) {
         // let address = Address::random();
@@ -58,15 +58,15 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
         total_elapsed_micros += elapsed;
         let (_, max_elapsed_micros, _) = max_elapsed;
         if elapsed > max_elapsed_micros {
-            max_elapsed = (i, elapsed, debug_info);
+            max_elapsed = (i, elapsed, debug_info.clone());
         }
         let (_, min_elapsed_micros, _) = min_elapsed;
         if elapsed < min_elapsed_micros {
-            min_elapsed = (i, elapsed, debug_info);
+            min_elapsed = (i, elapsed, debug_info.clone());
         }
-        let (_, _, max_height_) = max_height;
+        let (_, _, max_height_) = &max_height;
         if debug_info.read_count > max_height_.read_count {
-            max_height = (i, elapsed, debug_info);
+            max_height = (i, elapsed, debug_info.clone());
         }
         println!("debug info {:?}", debug_info);
     }
@@ -75,7 +75,7 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
     println!("Min {}us from DB address: {} debug_info {:?}", min_elapsed.1, min_elapsed.0, min_elapsed.2);
     println!("Max height {}us from DB address: {} debug_info {:?}", max_height.1, max_height.0, max_height.2);
 
-    root = toplevel_state.commit().unwrap();
+    toplevel_state.commit().unwrap();
     // {
     //     let mut batch = DBTransaction::new();
     //     let updated = toplevel_state.journal_under(&mut batch, 0).unwrap();

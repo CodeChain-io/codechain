@@ -18,10 +18,11 @@ use ccrypto::blake256;
 use hashdb::HashDB;
 use primitives::H256;
 
-use ctypes::DebugInfo;
 use crate::nibbleslice::NibbleSlice;
 use crate::node::Node as RlpNode;
 use crate::{Query, Trie, TrieError};
+use ctypes::DebugInfo;
+use std::time::Instant;
 /// A `Trie` implementation using a generic `HashDB` backing database.
 ///
 /// Use it as a `Trie` trait object. You can use `db()` to get the backing database object.
@@ -116,14 +117,18 @@ impl<'db> TrieDB<'db> {
     ) -> crate::Result<(Option<Q::Item>, DebugInfo)> {
         match cur_node_hash {
             Some(hash) => {
+                let read_start = Instant::now();
                 let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
+                let elapsed = read_start.elapsed().as_micros();
+                let mut empty = DebugInfo::empty();
+                empty.add_read(elapsed, hash.as_ref());
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
                         if &partial == path {
-                            Ok((Some(query.decode(value)), DebugInfo::empty()))
+                            Ok((Some(query.decode(value)), empty))
                         } else {
-                            Ok((None, DebugInfo::empty()))
+                            Ok((None, empty))
                         }
                     }
                     Some(RlpNode::Branch(partial, children)) => {
@@ -134,12 +139,13 @@ impl<'db> TrieDB<'db> {
                                 query,
                             )?;
                             debug_info.inc_read_count();
+                            debug_info.add_read(elapsed, hash.as_ref());
                             Ok((result, debug_info))
                         } else {
-                            Ok((None, DebugInfo::empty()))
+                            Ok((None, empty))
                         }
                     }
-                    None => Ok((None, DebugInfo::empty())),
+                    None => Ok((None, empty)),
                 }
             }
             None => Ok((None, DebugInfo::empty())),
@@ -159,7 +165,7 @@ impl<'db> Trie for TrieDB<'db> {
         self.get_aux(&NibbleSlice::new(&path), Some(root), query)
     }
 
-    fn get_with_debug<Q: Query>(&self, key: &[u8], query: Q) -> crate::Result<(Option<Q::Item>, DebugInfo)>  {
+    fn get_with_debug<Q: Query>(&self, key: &[u8], query: Q) -> crate::Result<(Option<Q::Item>, DebugInfo)> {
         let path = blake256(key);
         let root = *self.root;
 
