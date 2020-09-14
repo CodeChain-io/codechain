@@ -413,6 +413,7 @@ name = "codechain-merkle"
 version = "0.1.0"
 dependencies = [
  "codechain-crypto 0.1.0 (git+https://github.com/CodeChain-io/rust-codechain-crypto.git)",
+ "codechain-types 0.1.0",
  "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hashdb 0.1.1",
  "memorydb 0.1.1",

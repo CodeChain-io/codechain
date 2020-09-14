@@ -17,7 +17,7 @@
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
-use ctypes::{BlockNumber, CommonParams, ShardId, Tracker, TxHash};
+use ctypes::{BlockNumber, CommonParams, ShardId, Tracker, TxHash, DebugInfo};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 
@@ -156,7 +156,7 @@ pub trait TopState {
     /// Add `incr` to the balance of account `a`.
     fn add_balance(&mut self, a: &Address, incr: u64) -> TrieResult<()>;
 
-    fn add_balance_debug(&mut self, a: &Address, incr: u64) -> TrieResult<u32>;
+    fn add_balance_debug(&mut self, a: &Address, incr: u64) -> TrieResult<DebugInfo>;
     /// Subtract `decr` from the balance of account `a`.
     fn sub_balance(&mut self, a: &Address, decr: u64) -> StateResult<()>;
     /// Subtracts `by` from the balance of `from` and adds it to that of `to`.

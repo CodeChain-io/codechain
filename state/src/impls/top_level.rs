@@ -48,7 +48,7 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 #[cfg(test)]
 use ctypes::Tracker;
-use ctypes::{BlockNumber, CommonParams, ShardId, TxHash};
+use ctypes::{BlockNumber, CommonParams, ShardId, TxHash, DebugInfo};
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
 use kvdb::DBTransaction;
@@ -639,7 +639,7 @@ impl TopLevelState {
         self.top_cache.account_mut(&a, &trie)
     }
 
-    fn get_account_mut_debug(&self, a: &Address) -> TrieResult<(RefMut<Account>, u32)> {
+    fn get_account_mut_debug(&self, a: &Address) -> TrieResult<(RefMut<Account>, DebugInfo)> {
         debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null_by_address(a));
 
         let db = self.db.borrow();
@@ -822,14 +822,14 @@ impl TopState for TopLevelState {
         Ok(())
     }
 
-    fn add_balance_debug(&mut self, a: &Address, incr: u64) -> TrieResult<u32> {
+    fn add_balance_debug(&mut self, a: &Address, incr: u64) -> TrieResult<DebugInfo> {
         ctrace!(STATE, "add_balance({}, {}): {}", a, incr, self.balance(a)?);
         if incr != 0 {
-            let (mut account, read_count) = self.get_account_mut_debug(a)?;
+            let (mut account, debug_info) = self.get_account_mut_debug(a)?;
             account.add_balance(incr);
-            return Ok(read_count);
+            return Ok(debug_info);
         }
-        Ok(0)
+        Ok(DebugInfo::empty())
     }
 
     fn sub_balance(&mut self, a: &Address, decr: u64) -> StateResult<()> {

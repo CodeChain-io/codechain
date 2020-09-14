@@ -24,6 +24,7 @@ use super::WriteBack;
 use crate::{
     Account, ActionData, Metadata, MetadataAddress, RegularAccount, RegularAccountAddress, Shard, ShardAddress, Text,
 };
+use ctypes::DebugInfo;
 
 pub struct TopCache {
     account: WriteBack<Account>,
@@ -98,7 +99,7 @@ impl TopCache {
         self.account.get_mut(a, db)
     }
 
-    pub fn account_mut_debug(&self, a: &Address, db: &TrieDB) -> TrieResult<(RefMut<Account>, u32)> {
+    pub fn account_mut_debug(&self, a: &Address, db: &TrieDB) -> TrieResult<(RefMut<Account>, DebugInfo)> {
         self.account.get_mut_debug(a, db)
     }
 

@@ -3,6 +3,7 @@ use ckey::Address;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cstate::{StateDB, StateWithCache, TopLevelState, TopState};
+use ctypes::DebugInfo;
 use kvdb::{DBTransaction, KeyValueDB};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use primitives::H256;
@@ -42,37 +43,37 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 
     let mut total_elapsed_micros = 0_u128;
     /// (index, elapsed, read count)
-    let mut max_elapsed = (0_u64, 0_u128, 0_u32);
+    let mut max_elapsed = (0_u64, 0_u128, DebugInfo::empty());
     /// (index, elapsed, read count)
-    let mut max_height = (0_u64, 0_u128, 0_u32);
+    let mut max_height = (0_u64, 0_u128, DebugInfo::empty());
     /// (index, elapsed, read count)
-    let mut min_elapsed = (u64::MAX, u128::MAX, u32::MAX);
+    let mut min_elapsed = (u64::MAX, u128::MAX, DebugInfo::empty());
     for i in 0..10_u64.pow(num) {
         // let address = Address::random();
         let address = Address::from(i as u64);
         addresses.push(address);
         let now = Instant::now();
-        let read_count = toplevel_state.add_balance_debug(&address, i + 1).unwrap();
+        let debug_info = toplevel_state.add_balance_debug(&address, i + 1).unwrap();
         let elapsed = now.elapsed().as_micros();
         total_elapsed_micros += elapsed;
         let (_, max_elapsed_micros, _) = max_elapsed;
         if elapsed > max_elapsed_micros {
-            max_elapsed = (i, elapsed, read_count);
+            max_elapsed = (i, elapsed, debug_info);
         }
         let (_, min_elapsed_micros, _) = min_elapsed;
         if elapsed < min_elapsed_micros {
-            min_elapsed = (i, elapsed, read_count);
+            min_elapsed = (i, elapsed, debug_info);
         }
         let (_, _, max_height_) = max_height;
-        if read_count > max_height_ {
-            max_height = (i, elapsed, read_count);
+        if debug_info.read_count > max_height_.read_count {
+            max_height = (i, elapsed, debug_info);
         }
-        println!("read count {}", read_count);
+        println!("debug info {:?}", debug_info);
     }
     println!("Average {}us from DB", total_elapsed_micros / 10_u128.pow(num));
-    println!("Max {}us from DB address: {} read_count {}", max_elapsed.1, max_elapsed.0, max_elapsed.2);
-    println!("Min {}us from DB address: {} read_count {}", min_elapsed.1, min_elapsed.0, min_elapsed.2);
-    println!("Max height {}us from DB address: {} read_count {}", max_height.1, max_height.0, max_height.2);
+    println!("Max {}us from DB address: {} debug_info {:?}", max_elapsed.1, max_elapsed.0, max_elapsed.2);
+    println!("Min {}us from DB address: {} debug_info {:?}", min_elapsed.1, min_elapsed.0, min_elapsed.2);
+    println!("Max height {}us from DB address: {} debug_info {:?}", max_height.1, max_height.0, max_height.2);
 
     root = toplevel_state.commit().unwrap();
     // {

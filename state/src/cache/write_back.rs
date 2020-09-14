@@ -25,6 +25,7 @@ use std::vec::Vec;
 use cmerkle::{self, Result as TrieResult, Trie, TrieDB, TrieMut};
 
 use super::CacheableItem;
+use ctypes::DebugInfo;
 
 static TOUCHED_COUNT: AtomicUsize = AtomicUsize::new(0);
 fn touched_count() -> usize {
@@ -236,13 +237,13 @@ where
 
     /// Pull item `a` in our cache from the trie DB.
     /// If it doesn't exist, make item equal the evaluation of `default`.
-    pub fn get_mut_debug(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<(RefMut<Item>, u32)> {
+    pub fn get_mut_debug(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<(RefMut<Item>, DebugInfo)> {
         let contains_key = self.cache.borrow().contains_key(a);
-        let mut read_count = 0_u32;
+        let mut debug_info = DebugInfo::empty();
         if !contains_key {
-            let (maybe_item, read_count_) = db.get_with_debug(a.as_ref(), ::rlp::decode::<Item>)?;
+            let (maybe_item, debug_info_) = db.get_with_debug(a.as_ref(), ::rlp::decode::<Item>)?;
             self.insert(a, Entry::<Item>::new_clean(maybe_item));
-            read_count = read_count_;
+            debug_info = debug_info_;
         }
         self.note(a);
 
@@ -261,7 +262,7 @@ where
                 entry.touched = touched_count();
                 entry.item.as_mut().expect("Required item must always exist; qed")
             }),
-            read_count,
+            debug_info,
         ))
     }
 

@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+extern crate codechain_types as ctypes;
 extern crate codechain_crypto as ccrypto;
 extern crate elastic_array;
 extern crate hashdb;
@@ -25,6 +26,7 @@ extern crate rlp;
 #[cfg(test)]
 extern crate trie_standardmap as standardmap;
 
+use ctypes::DebugInfo;
 use std::fmt;
 
 use ccrypto::BLAKE_NULL_RLP;
@@ -112,8 +114,8 @@ pub trait Trie {
 
     /// Search for the key with the given query parameter. See the docs of the `Query`
     /// trait for more details.
-    fn get_with_debug<Q: Query>(&self, key: &[u8], query: Q) -> Result<(Option<Q::Item>, u32)> {
-        Ok((self.get_with(key, query)?, 999))
+    fn get_with_debug<Q: Query>(&self, key: &[u8], query: Q) -> Result<(Option<Q::Item>, DebugInfo)> {
+        Ok((self.get_with(key, query)?, DebugInfo::empty()))
     }
 }
 

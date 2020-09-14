@@ -10,6 +10,7 @@ hashdb = {path = "../hashdb" }
 codechain-crypto = { git = "https://github.com/CodeChain-io/rust-codechain-crypto.git", version = "0.1" }
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 rlp = {path = "../rlp" }
+codechain-types= {path = "../../types"}
 
 [dev-dependencies]
 trie-standardmap = { path = "../trie-standardmap" }

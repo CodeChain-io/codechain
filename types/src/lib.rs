@@ -45,3 +45,20 @@ pub use common_params::CommonParams;
 pub use header::Header;
 pub use tracker::Tracker;
 pub use tx_hash::TxHash;
+
+#[derive(Debug, Copy, Clone)]
+pub struct DebugInfo {
+    pub read_count: u32,
+}
+
+impl DebugInfo {
+    pub fn empty() -> Self {
+        Self {
+            read_count: 0,
+        }
+    }
+
+    pub fn inc_read_count(&mut self) {
+        self.read_count += 1;
+    }
+}
