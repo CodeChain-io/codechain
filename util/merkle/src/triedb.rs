@@ -105,6 +105,44 @@ impl<'db> TrieDB<'db> {
             None => Ok(None),
         }
     }
+
+    /// Get auxiliary
+    fn get_aux_debug<Q: Query>(
+        &self,
+        path: &NibbleSlice,
+        cur_node_hash: Option<H256>,
+        query: Q,
+    ) -> crate::Result<(Option<Q::Item>, u32)> {
+        match cur_node_hash {
+            Some(hash) => {
+                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
+
+                match RlpNode::decoded(&node_rlp) {
+                    Some(RlpNode::Leaf(partial, value)) => {
+                        if &partial == path {
+                            Ok((Some(query.decode(value)), 0))
+                        } else {
+                            Ok((None, 0))
+                        }
+                    }
+                    Some(RlpNode::Branch(partial, children)) => {
+                        if path.starts_with(&partial) {
+                            let (result, count) = self.get_aux_debug(
+                                &path.mid(partial.len() + 1),
+                                children[path.mid(partial.len()).at(0) as usize],
+                                query,
+                            )?;
+                            Ok((result, count + 1))
+                        } else {
+                            Ok((None, 0))
+                        }
+                    }
+                    None => Ok((None, 0)),
+                }
+            }
+            None => Ok((None, 0)),
+        }
+    }
 }
 
 impl<'db> Trie for TrieDB<'db> {
@@ -117,6 +155,13 @@ impl<'db> Trie for TrieDB<'db> {
         let root = *self.root;
 
         self.get_aux(&NibbleSlice::new(&path), Some(root), query)
+    }
+
+    fn get_with_debug<Q: Query>(&self, key: &[u8], query: Q) -> crate::Result<(Option<Q::Item>, u32)>  {
+        let path = blake256(key);
+        let root = *self.root;
+
+        self.get_aux_debug(&NibbleSlice::new(&path), Some(root), query)
     }
 }
 

@@ -639,6 +639,15 @@ impl TopLevelState {
         self.top_cache.account_mut(&a, &trie)
     }
 
+    fn get_account_mut_debug(&self, a: &Address) -> TrieResult<(RefMut<Account>, u32)> {
+        debug_assert_eq!(Ok(false), self.regular_account_exists_and_not_null_by_address(a));
+
+        let db = self.db.borrow();
+        let trie = TrieFactory::readonly(db.as_hashdb(), &self.root)?;
+        self.top_cache.account_mut_debug(&a, &trie)
+    }
+
+
     fn get_regular_account_mut(&self, public: &Public) -> TrieResult<RefMut<RegularAccount>> {
         let regular_account_address = RegularAccountAddress::new(public);
         let db = self.db.borrow();
@@ -811,6 +820,16 @@ impl TopState for TopLevelState {
             self.get_account_mut(a)?.add_balance(incr);
         }
         Ok(())
+    }
+
+    fn add_balance_debug(&mut self, a: &Address, incr: u64) -> TrieResult<u32> {
+        ctrace!(STATE, "add_balance({}, {}): {}", a, incr, self.balance(a)?);
+        if incr != 0 {
+            let (mut account, read_count) = self.get_account_mut_debug(a)?;
+            account.add_balance(incr);
+            return Ok(read_count);
+        }
+        Ok(0)
     }
 
     fn sub_balance(&mut self, a: &Address, decr: u64) -> StateResult<()> {

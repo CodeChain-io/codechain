@@ -109,6 +109,12 @@ pub trait Trie {
     /// Search for the key with the given query parameter. See the docs of the `Query`
     /// trait for more details.
     fn get_with<Q: Query>(&self, key: &[u8], query: Q) -> Result<Option<Q::Item>>;
+
+    /// Search for the key with the given query parameter. See the docs of the `Query`
+    /// trait for more details.
+    fn get_with_debug<Q: Query>(&self, key: &[u8], query: Q) -> Result<(Option<Q::Item>, u32)> {
+        Ok((self.get_with(key, query)?, 999))
+    }
 }
 
 /// A key-value datastore implemented as a database-backed modified Merkle tree.

@@ -234,6 +234,38 @@ where
         }))
     }
 
+    /// Pull item `a` in our cache from the trie DB.
+    /// If it doesn't exist, make item equal the evaluation of `default`.
+    pub fn get_mut_debug(&self, a: &Item::Address, db: &TrieDB) -> cmerkle::Result<(RefMut<Item>, u32)> {
+        let contains_key = self.cache.borrow().contains_key(a);
+        let mut read_count = 0_u32;
+        if !contains_key {
+            let (maybe_item, read_count_) = db.get_with_debug(a.as_ref(), ::rlp::decode::<Item>)?;
+            self.insert(a, Entry::<Item>::new_clean(maybe_item));
+            read_count = read_count_;
+        }
+        self.note(a);
+
+        // at this point the entry is guaranteed to be in the cache.
+        Ok((
+            RefMut::map(self.cache.borrow_mut(), |c| {
+                let entry = c.get_mut(a).expect("entry known to exist in the cache; qed");
+
+                match &mut entry.item {
+                    Some(_) => {}
+                    slot @ None => *slot = Some(Item::default()),
+                }
+
+                // set the dirty flag after changing data.
+                entry.is_dirty = true;
+                entry.touched = touched_count();
+                entry.item.as_mut().expect("Required item must always exist; qed")
+            }),
+            read_count,
+        ))
+    }
+
+
     pub fn create<F: FnOnce() -> Item>(&self, a: &Item::Address, f: F) -> cmerkle::Result<Item> {
         if let Some(cached) = self.cache.borrow().get(a) {
             assert!(cached.item.is_none());

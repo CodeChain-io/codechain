@@ -98,6 +98,10 @@ impl TopCache {
         self.account.get_mut(a, db)
     }
 
+    pub fn account_mut_debug(&self, a: &Address, db: &TrieDB) -> TrieResult<(RefMut<Account>, u32)> {
+        self.account.get_mut_debug(a, db)
+    }
+
     pub fn remove_account(&self, address: &Address) {
         self.account.remove(address)
     }
