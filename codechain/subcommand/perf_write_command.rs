@@ -3,7 +3,7 @@ use ckey::Address;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 use cstate::{StateDB, StateWithCache, TopLevelState, TopState};
-use kvdb::KeyValueDB;
+use kvdb::{DBTransaction, KeyValueDB};
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use primitives::H256;
 use std::{path::Path, sync::Arc, time::Instant};
@@ -17,8 +17,10 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
     let num = matches.value_of("number").unwrap();
     let num: u32 = num.parse().unwrap();
 
+    let db_dir = matches.value_of("db-dir").unwrap();
+
     println!("start");
-    let db = open_db()?;
+    let db = open_db(db_dir)?;
     println!("open db");
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
     println!("open journal db");
@@ -27,23 +29,67 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 
     println!("before getting root");
 
-    let root = {
+    let mut root = {
         let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
         H256::from(bytes.as_ref())
     };
 
+    let mut addresses = Vec::new();
+
     let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
 
     println!("before loop");
+
+    let mut total_elapsed_micros = 0_u128;
+    let mut max_elapsed_micros = 0_u128;
+    for i in 0..10_u64.pow(num) {
+        let address = Address::random();
+        addresses.push(address);
+        let now = Instant::now();
+        toplevel_state.add_balance(&address, i).unwrap();
+        let elapsed = now.elapsed().as_micros();
+        if elapsed >= 1 * 1000 * 1000 {
+            println!("{}", elapsed);
+        }
+        total_elapsed_micros += elapsed;
+        if elapsed > max_elapsed_micros {
+            max_elapsed_micros = elapsed;
+        }
+    }
+    println!("Average {}us from DB", total_elapsed_micros / 10_u128.pow(num));
+    println!("Max {}us from DB", max_elapsed_micros);
+
+    root = toplevel_state.commit().unwrap();
+    {
+        let mut batch = DBTransaction::new();
+        let updated = toplevel_state.journal_under(&mut batch, 0).unwrap();
+        println!("write to db {}", updated);
+        db.write(batch).map_err(|err| err.to_string())?;
+        println!("flush the db");
+        db.flush().unwrap();
+    }
+
+    toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
+
+    let mut total_elapsed_micros = 0_u128;
+    let mut max_elapsed_micros = 0_u128;
     for i in 0..10_u64.pow(num) {
         // println!("loop");
         let now = Instant::now();
-        let address = Address::random();
+        let address = addresses[i as usize];
         toplevel_state.add_balance(&address, i).unwrap();
-        if now.elapsed().as_secs() >= 1 {
-            println!("{}", now.elapsed().as_secs());
+        let elapsed = now.elapsed().as_micros();
+        if elapsed >= 1 * 1000 * 1000 {
+            println!("{}", elapsed);
+        }
+        total_elapsed_micros += now.elapsed().as_micros();
+        if elapsed > max_elapsed_micros {
+            max_elapsed_micros = elapsed;
         }
     }
+    println!("Average {}us from cache", total_elapsed_micros / 10_u128.pow(num));
+    println!("Max {}us from cache", max_elapsed_micros);
+
     toplevel_state.commit().unwrap();
 
     println!("Finished");
@@ -51,13 +97,12 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
     Ok(())
 }
 
-pub const DEFAULT_DB_PATH: &str = "db_test";
+// pub const DEFAULT_DB_PATH: &str = "db_test";
 pub const NUM_COLUMNS: Option<u32> = Some(6);
 
-
-pub fn open_db() -> Result<Arc<dyn KeyValueDB>, String> {
+pub fn open_db(db_dir: &str) -> Result<Arc<dyn KeyValueDB>, String> {
     let base_path = ".".to_owned();
-    let db_path = base_path + "/" + DEFAULT_DB_PATH;
+    let db_path = base_path + "/" + db_dir;
     let client_path = Path::new(&db_path);
     let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 

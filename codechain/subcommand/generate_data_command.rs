@@ -15,14 +15,15 @@ pub const COL_STATE: Option<u32> = Some(0);
 /// Generate large trie to test update speed
 pub fn run_generate_data_command(matches: &ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(777), None).expect("Logger must be successfully initialized");
-    let db = open_db()?;
+
+    let num = matches.value_of("number").unwrap();
+    let num: u32 = num.parse().unwrap();
+
+    let db = open_db(num + 3)?;
 
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
     let state_db = StateDB::new(journal_db);
     let mut root = BLAKE_NULL_RLP;
-
-    let num = matches.value_of("number").unwrap();
-    let num: u32 = num.parse().unwrap();
 
     //for i in 0..1_000_000_000 {
     for i in 0..10_u64.pow(num) {
@@ -46,6 +47,7 @@ pub fn run_generate_data_command(matches: &ArgMatches) -> Result<(), String> {
         println!("flush the db");
         db.flush().unwrap();
         println!("updated {}", updated);
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
     Ok(())
@@ -54,9 +56,9 @@ pub fn run_generate_data_command(matches: &ArgMatches) -> Result<(), String> {
 pub const DEFAULT_DB_PATH: &str = "db_test";
 pub const NUM_COLUMNS: Option<u32> = Some(6);
 
-pub fn open_db() -> Result<Arc<dyn KeyValueDB>, String> {
+pub fn open_db(num: u32) -> Result<Arc<dyn KeyValueDB>, String> {
     let base_path = ".".to_owned();
-    let db_path = base_path + "/" + DEFAULT_DB_PATH;
+    let db_path = base_path + "/" + DEFAULT_DB_PATH + &format!("_{}", num);
     let client_path = Path::new(&db_path);
     let mut db_config = DatabaseConfig::with_columns(NUM_COLUMNS);
 

@@ -382,6 +382,11 @@ subcommands:
     - perf-write:
           about: Check the write performance
           args:
+            - db-dir:
+                  short: d
+                  long: db-dir
+                  help: The db directory
+                  takes_value: true
             - number:
                   short: n
                   long: number
