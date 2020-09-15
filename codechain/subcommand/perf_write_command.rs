@@ -6,7 +6,9 @@ use cstate::{StateDB, StateWithCache, TopLevelState, TopState};
 use ctypes::DebugInfo;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
+use parking_lot::Mutex;
 use primitives::H256;
+use rocksdb::Options;
 use std::{path::Path, sync::Arc, time::Instant, u128, u32, u64};
 
 pub const COL_STATE: Option<u32> = Some(0);
@@ -21,7 +23,7 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
     let db_dir = matches.value_of("db-dir").unwrap();
 
     println!("start");
-    let db = open_db(db_dir)?;
+    let (db, opts) = open_db(db_dir)?;
     println!("open db");
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
     println!("open journal db");
@@ -108,6 +110,7 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 
     // toplevel_state.commit().unwrap();
 
+    println!("{}", opts.lock().print_statistics());
     println!("Finished");
 
     Ok(())
@@ -116,7 +119,7 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 // pub const DEFAULT_DB_PATH: &str = "db_test";
 pub const NUM_COLUMNS: Option<u32> = Some(6);
 
-pub fn open_db(db_dir: &str) -> Result<Arc<dyn KeyValueDB>, String> {
+pub fn open_db(db_dir: &str) -> Result<(Arc<dyn KeyValueDB>, Arc<Mutex<Options>>), String> {
     let base_path = ".".to_owned();
     let db_path = base_path + "/" + db_dir;
     let client_path = Path::new(&db_path);
@@ -133,5 +136,6 @@ pub fn open_db(db_dir: &str) -> Result<Arc<dyn KeyValueDB>, String> {
             .map_err(|_e| "Low level database error. Some issue with disk?".to_string())?,
     );
 
-    Ok(db)
+    let opts = db.opts.clone();
+    Ok((db, opts))
 }

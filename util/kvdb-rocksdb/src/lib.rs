@@ -27,6 +27,7 @@ extern crate rocksdb;
 extern crate kvdb;
 extern crate rlp;
 
+use std::sync::Arc;
 use std::cmp;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -244,6 +245,7 @@ fn col_config(config: &DatabaseConfig, block_opts: &BlockBasedOptions) -> Result
 /// Key-Value database.
 pub struct Database {
     db: RwLock<Option<DBAndColumns>>,
+    pub opts: Arc<Mutex<Options>>,
     config: DatabaseConfig,
     write_opts: WriteOptions,
     read_opts: ReadOptions,
@@ -296,6 +298,7 @@ impl Database {
         opts.set_parsed_options("bytes_per_sync=1048576")?;
         opts.set_db_write_buffer_size(config.memory_budget_per_col() / 2);
         opts.increase_parallelism(cmp::max(1, ::num_cpus::get() as i32 / 2));
+        opts.enable_statistics();
 
         let mut block_opts = BlockBasedOptions::new();
 
@@ -386,6 +389,7 @@ impl Database {
                 db,
                 cfs,
             })),
+            opts: Arc::new(Mutex::new(opts)),
             config: *config,
             write_opts,
             overlay: RwLock::new((0..=num_cols).map(|_| HashMap::new()).collect()),
