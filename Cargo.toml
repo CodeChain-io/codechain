@@ -57,6 +57,9 @@ cidr = "0.0.4"
 [build-dependencies]
 vergen = "2"
 
+[patch."https://github.com/paritytech/rust-rocksdb"]
+rocksdb = { path = "./rust-rocksdb/" }
+
 [[bin]]
 path = "codechain/main.rs"
 name = "codechain"
@@ -76,4 +79,5 @@ members = [
     "sync",
     "types",
     "vm",
+    "rust-rocksdb",
 ]
