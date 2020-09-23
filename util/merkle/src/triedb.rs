@@ -17,6 +17,7 @@
 use ccrypto::blake256;
 use hashdb::HashDB;
 use primitives::H256;
+use rustc_hex::ToHex;
 
 use crate::nibbleslice::NibbleSlice;
 use crate::node::Node as RlpNode;
@@ -123,7 +124,7 @@ impl<'db> TrieDB<'db> {
                 let elapsed = read_start.elapsed().as_micros();
                 let mut empty = DebugInfo::empty();
                 read.time_us = elapsed;
-                read.key = hash.to_string();
+                read.key = (hash.as_ref() as &[u8]).to_hex();
                 empty.reads.push(read.clone());
 
                 match RlpNode::decoded(&node_rlp) {

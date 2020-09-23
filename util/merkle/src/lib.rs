@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 extern crate codechain_types as ctypes;
+extern crate rustc_hex;
 extern crate codechain_crypto as ccrypto;
 extern crate elastic_array;
 extern crate hashdb;
