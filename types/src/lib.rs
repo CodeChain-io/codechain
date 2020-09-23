@@ -57,6 +57,7 @@ pub struct DebugRead {
     pub kvrocks_flushing_us: u128,
     pub kvrocks_get_opt_us: u128,
     pub kvrocks_get_cf_opt_us: u128,
+    pub kvrocks_get_cf_opt_us_vec: Vec<u128>,
 }
 
 impl DebugRead {
@@ -69,6 +70,7 @@ impl DebugRead {
             kvrocks_flushing_us: 0,
             kvrocks_get_opt_us: 0,
             kvrocks_get_cf_opt_us: 0,
+            kvrocks_get_cf_opt_us_vec: Vec::new(),
         }
     }
 }

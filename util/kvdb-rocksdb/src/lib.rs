@@ -625,6 +625,15 @@ impl Database {
                                         .get_cf_opt(cfs[c as usize], key, &self.read_opts)
                                         .map(|r| r.map(|v| DBValue::from_slice(&v)));
                                     debug_read.kvrocks_get_cf_opt_us = now.elapsed().as_micros();
+                                    if (now.elapsed().as_micros() > 1000) {
+                                        for i in 0..10 {
+                                            db.get_cf_opt(cfs[c as usize], key, &self.read_opts)
+                                                .map(|r| r.map(|v| DBValue::from_slice(&v)));
+                                            debug_read.kvrocks_get_cf_opt_us_vec.push(now.elapsed().as_micros());
+                                        }
+                                    }
+
+
                                     ret
                                 }
                                 None => {
