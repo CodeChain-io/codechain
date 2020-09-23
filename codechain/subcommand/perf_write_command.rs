@@ -23,7 +23,7 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
     let db_dir = matches.value_of("db-dir").unwrap();
 
     println!("start");
-    let (db, opts) = open_db(db_dir)?;
+    let (db, _) = open_db(db_dir)?;
     println!("open db");
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
     println!("open journal db");
@@ -110,7 +110,6 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 
     // toplevel_state.commit().unwrap();
 
-    println!("{}", opts.lock().print_statistics());
     println!("Finished");
 
     Ok(())
