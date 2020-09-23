@@ -8,6 +8,7 @@ use rustc_hex::{FromHex, ToHex};
 use std::{path::Path, sync::Arc, time::Instant, u32};
 use rocksdb::Options;
 use parking_lot::Mutex;
+use ctypes::DebugRead;
 
 // pub const COL_EXTRA: Option<u32> = Some(3);
 pub const COL_STATE: Option<u32> = Some(0);
@@ -24,11 +25,13 @@ pub fn run_read_db_command(matches: &ArgMatches) -> Result<(), String> {
     // let state_db = StateDB::new(journal_db);
 
     let now = Instant::now();
-    let value = db.get(COL_STATE, &key).unwrap().unwrap();
+    let mut debug_read = DebugRead::empty();
+    let value = db.get_debug(COL_STATE, &key, &mut debug_read).unwrap().unwrap();
     let elapsed = now.elapsed().as_micros();
 
     println!("{}", opts.lock().print_statistics());
     println!("elapsed {}us value: {}", elapsed, value.to_hex());
+    println!("{:?}", debug_read);
 
     Ok(())
 }
