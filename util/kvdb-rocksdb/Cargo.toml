@@ -13,6 +13,7 @@ regex = "0.2"
 rlp = { path = "../rlp" }
 rocksdb = { git = "https://github.com/paritytech/rust-rocksdb", rev = "ecf06adf3148ab10f6f7686b724498382ff4f36e" }
 interleaved-ordered = "0.1.0"
+codechain-types = { path = "../../types" }
 
 [dev-dependencies]
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }

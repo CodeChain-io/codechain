@@ -24,9 +24,9 @@ extern crate rlp_derive;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate rustc_hex;
 #[cfg(test)]
 extern crate serde_json;
-extern crate rustc_hex;
 
 mod block_hash;
 mod common_params;
@@ -49,16 +49,35 @@ pub use tracker::Tracker;
 pub use tx_hash::TxHash;
 
 #[derive(Debug, Clone)]
-pub struct Read {
-    time_us: u128,
-    key: String,
+pub struct DebugRead {
+    pub time_us: u128,
+    pub key: String,
+    pub archive_db_overlay_us: u128,
+    pub kvrocks_overlay_us: u128,
+    pub kvrocks_flushing_us: u128,
+    pub kvrocks_get_opt_us: u128,
+    pub kvrocks_get_cf_opt_us: u128,
+}
+
+impl DebugRead {
+    pub fn empty() -> Self {
+        Self {
+            time_us: 0,
+            key: "".to_string(),
+            archive_db_overlay_us: 0,
+            kvrocks_overlay_us: 0,
+            kvrocks_flushing_us: 0,
+            kvrocks_get_opt_us: 0,
+            kvrocks_get_cf_opt_us: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct DebugInfo {
     pub read_count: u32,
     pub db_read_time_us: u128,
-    pub reads: Vec<Read>,
+    pub reads: Vec<DebugRead>,
 }
 
 impl DebugInfo {
@@ -74,10 +93,10 @@ impl DebugInfo {
         self.read_count += 1;
     }
 
-    pub fn add_read(&mut self, time_us: u128, key: &[u8]) {
-        self.reads.push(Read {
-            time_us,
-            key: key.to_hex(),
-        })
-    }
+    // pub fn add_read(&mut self, time_us: u128, key: &[u8]) {
+    //     self.reads.push(DebugRead {
+    //         time_us,
+    //         key: key.to_hex(),
+    //     })
+    // }
 }

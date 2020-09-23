@@ -21,7 +21,7 @@ use primitives::H256;
 use crate::nibbleslice::NibbleSlice;
 use crate::node::Node as RlpNode;
 use crate::{Query, Trie, TrieError};
-use ctypes::DebugInfo;
+use ctypes::{DebugInfo, DebugRead};
 use std::time::Instant;
 /// A `Trie` implementation using a generic `HashDB` backing database.
 ///
@@ -118,10 +118,13 @@ impl<'db> TrieDB<'db> {
         match cur_node_hash {
             Some(hash) => {
                 let read_start = Instant::now();
-                let node_rlp = self.db.get(&hash).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
+                let mut read = DebugRead::empty();
+                let node_rlp = self.db.get_debug(&hash, &mut read).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
                 let elapsed = read_start.elapsed().as_micros();
                 let mut empty = DebugInfo::empty();
-                empty.add_read(elapsed, hash.as_ref());
+                read.time_us = elapsed;
+                read.key = hash.to_string();
+                empty.reads.push(read.clone());
 
                 match RlpNode::decoded(&node_rlp) {
                     Some(RlpNode::Leaf(partial, value)) => {
@@ -139,7 +142,7 @@ impl<'db> TrieDB<'db> {
                                 query,
                             )?;
                             debug_info.inc_read_count();
-                            debug_info.add_read(elapsed, hash.as_ref());
+                            debug_info.reads.push(read);
                             Ok((result, debug_info))
                         } else {
                             Ok((None, empty))

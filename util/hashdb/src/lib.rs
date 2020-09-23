@@ -17,7 +17,9 @@
 //! Database of byte-slices keyed to their Keccak hash.
 extern crate elastic_array;
 extern crate primitives;
+extern crate codechain_types as ctypes;
 
+use ctypes::DebugRead;
 use elastic_array::ElasticArray128;
 use primitives::H256;
 use std::collections::HashMap;
@@ -33,6 +35,12 @@ pub trait HashDB: AsHashDB + Send + Sync {
     /// Look up a given hash into the bytes that hash to it, returning None if the
     /// hash is not known.
     fn get(&self, key: &H256) -> Option<DBValue>;
+
+    /// Look up a given hash into the bytes that hash to it, returning None if the
+    /// hash is not known.
+    fn get_debug(&self, key: &H256, debug_info: &mut DebugRead) -> Option<DBValue> {
+        self.get(key)
+    }
 
     /// Check for the existance of a hash-key.
     fn contains(&self, key: &H256) -> bool;

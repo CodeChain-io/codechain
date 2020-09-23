@@ -25,8 +25,9 @@ use primitives::{Bytes, H256};
 use rlp::{decode, encode};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 use traits::JournalDB;
+use ctypes::DebugRead;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -58,6 +59,10 @@ impl ArchiveDB {
     fn payload(&self, key: &H256) -> Option<DBValue> {
         self.backing.get(self.column, key).expect("Low-level database error. Some issue with your hard disk?")
     }
+
+    fn payload_debug(&self, key: &H256, debug_read: &mut DebugRead) -> Option<DBValue> {
+        self.backing.get_debug(self.column, key, debug_read).expect("Low-level database error. Some issue with your hard disk?")
+    }
 }
 
 impl HashDB for ArchiveDB {
@@ -85,6 +90,17 @@ impl HashDB for ArchiveDB {
             }
         }
         self.payload(key)
+    }
+
+    fn get_debug(&self, key: &H256, debug_read: &mut DebugRead) -> Option<DBValue> {
+        let now = Instant::now();
+        if let Some((d, rc)) = self.overlay.raw(key) {
+            debug_read.archive_db_overlay_us = now.elapsed().as_micros();
+            if rc > 0 {
+                return Some(d)
+            }
+        }
+        self.payload_debug(key, debug_read)
     }
 
     fn contains(&self, key: &H256) -> bool {

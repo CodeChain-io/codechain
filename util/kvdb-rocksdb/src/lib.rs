@@ -24,14 +24,16 @@ extern crate parking_lot;
 extern crate regex;
 extern crate rocksdb;
 
+extern crate codechain_types as ctypes;
 extern crate kvdb;
 extern crate rlp;
 
-use std::sync::Arc;
+use ctypes::DebugRead;
 use std::cmp;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::{fs, io, mem, result};
 
 use interleaved_ordered::{interleave_ordered, InterleaveOrdered};
@@ -50,7 +52,7 @@ use regex::Regex;
 #[cfg(target_os = "linux")]
 use std::fs::File;
 #[cfg(target_os = "linux")]
-use std::process::Command;
+use std::{process::Command, time::Instant};
 
 const DB_DEFAULT_MEMORY_BUDGET_MB: usize = 128;
 
@@ -584,6 +586,64 @@ impl Database {
         }
     }
 
+    pub fn get_debug(&self, col: Option<u32>, key: &[u8], debug_read: &mut DebugRead) -> Result<Option<DBValue>> {
+        match *self.db.read() {
+            Some(DBAndColumns {
+                ref db,
+                ref cfs,
+            }) => {
+                let overlay = &self.overlay.read()[col_to_overlay_column(col)];
+                let overlay_get_result = {
+                    let now = Instant::now();
+                    let ret = overlay.get(key);
+                    debug_read.kvrocks_overlay_us = now.elapsed().as_micros();
+
+                    ret
+                };
+                match overlay_get_result {
+                    Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
+                        Ok(Some(value.clone()))
+                    }
+                    Some(&KeyState::Delete) => Ok(None),
+                    None => {
+                        let flushing = &self.flushing.read()[col_to_overlay_column(col)];
+                        let flushing_get = {
+                            let now = Instant::now();
+                            let ret = flushing.get(key);
+                            debug_read.kvrocks_flushing_us = now.elapsed().as_micros();
+                            ret
+                        };
+                        match flushing_get {
+                            Some(&KeyState::Insert(ref value)) | Some(&KeyState::InsertCompressed(ref value)) => {
+                                Ok(Some(value.clone()))
+                            }
+                            Some(&KeyState::Delete) => Ok(None),
+                            None => match col {
+                                Some(c) => {
+                                    let now = Instant::now();
+                                    let ret = db
+                                        .get_cf_opt(cfs[c as usize], key, &self.read_opts)
+                                        .map(|r| r.map(|v| DBValue::from_slice(&v)));
+                                    debug_read.kvrocks_get_cf_opt_us = now.elapsed().as_micros();
+                                    ret
+                                }
+                                None => {
+                                    let now = Instant::now();
+                                    let ret =
+                                        db.get_opt(key, &self.read_opts).map(|r| r.map(|v| DBValue::from_slice(&v)));
+
+                                    debug_read.kvrocks_get_opt_us = now.elapsed().as_micros();
+                                    ret
+                                }
+                            }
+                            .map_err(Into::into),
+                        }
+                    }
+                }
+            }
+            None => Ok(None),
+        }
+    }
     /// Get value by partial key. Prefix size should match configured prefix size. Only searches flushed values.
     // TODO: support prefix seek for unflushed data
     pub fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>> {
@@ -774,6 +834,10 @@ fn col_to_overlay_column(col: Option<u32>) -> usize {
 impl KeyValueDB for Database {
     fn get(&self, col: Option<u32>, key: &[u8]) -> Result<Option<DBValue>> {
         Database::get(self, col, key)
+    }
+
+    fn get_debug(&self, col: Option<u32>, key: &[u8], debug_read: &mut DebugRead) -> Result<Option<DBValue>> {
+        Database::get_debug(self, col, key, debug_read)
     }
 
     fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>> {

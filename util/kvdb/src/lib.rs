@@ -20,7 +20,9 @@
 extern crate error_chain;
 extern crate elastic_array;
 extern crate primitives;
+extern crate codechain_types as ctypes;
 
+use ctypes::DebugRead;
 use elastic_array::{ElasticArray128, ElasticArray32};
 use primitives::Bytes;
 
@@ -157,6 +159,10 @@ pub trait KeyValueDB: Sync + Send {
 
     /// Get a value by key.
     fn get(&self, col: Option<u32>, key: &[u8]) -> Result<Option<DBValue>>;
+
+    fn get_debug(&self, col: Option<u32>, key: &[u8], debug_read: &mut DebugRead) -> Result<Option<DBValue>> {
+        self.get(col, key)
+    }
 
     /// Get a value by partial key. Only works for flushed data.
     fn get_by_prefix(&self, col: Option<u32>, prefix: &[u8]) -> Option<Box<[u8]>>;
