@@ -400,3 +400,16 @@ subcommands:
                   long: number
                   help: Set the number of db values
                   takes_value: true
+    - read-db:
+          about: Read a value from DB
+          args:
+            - db-dir:
+                  short: d
+                  long: db-dir
+                  help: The db directory
+                  takes_value: true
+            - key:
+                  short: k
+                  long: key
+                  help: The key to find a value in DB
+                  takes_value: true
