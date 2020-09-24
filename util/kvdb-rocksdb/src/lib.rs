@@ -306,7 +306,13 @@ impl Database {
 
         {
             block_opts.set_block_size(config.compaction.block_size);
-            let cache_size = cmp::max(8, config.memory_budget() / 3);
+            let mut cache_size = cmp::max(8, config.memory_budget() / 3);
+            println!("Cache size is {}", cache_size);
+            cache_size = match std::env::var("JH_CACHE") {
+                Ok(val) => val.parse().unwrap(),
+                Err(_) => cache_size,
+            };
+            println!("Cache size is {}", cache_size);
             let cache = Cache::new(cache_size);
             block_opts.set_cache(cache);
         }
