@@ -413,3 +413,20 @@ subcommands:
                   long: key
                   help: The key to find a value in DB
                   takes_value: true
+    - read-toplevel:
+          about: Read a value from Toplevel state
+          args:
+            - prepare:
+                  short: p
+                  long: prepare
+                  help: if key is n, read 0..n keys before reading the key
+            - db-dir:
+                  short: d
+                  long: db-dir
+                  help: The db directory
+                  takes_value: true
+            - key:
+                  short: k
+                  long: key
+                  help: The key to find a value in DB
+                  takes_value: true
