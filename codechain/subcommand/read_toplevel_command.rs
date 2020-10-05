@@ -27,9 +27,13 @@ pub fn run_read_toplevel_command(matches: &ArgMatches) -> Result<(), String> {
     let (db, opts) = open_db(db_dir)?;
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
     let state_db = StateDB::new(journal_db);
-    let root = {
-        let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
-        H256::from(bytes.as_ref())
+
+    let root = match std::env::var("ROOT") {
+        Ok(val) => val.parse().unwrap(),
+        Err(_) => {
+            let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
+            H256::from(bytes.as_ref())
+        }
     };
 
     let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();

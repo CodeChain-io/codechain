@@ -32,9 +32,12 @@ pub fn run_perf_write_command(matches: &ArgMatches) -> Result<(), String> {
 
     println!("before getting root");
 
-    let root = {
-        let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
-        H256::from(bytes.as_ref())
+    let root = match std::env::var("ROOT") {
+        Ok(val) => val.parse().unwrap(),
+        Err(_) => {
+            let bytes = db.get(COL_EXTRA, b"perf_data_root").unwrap().unwrap();
+            H256::from(bytes.as_ref())
+        }
     };
 
     let mut addresses = Vec::new();
