@@ -36,8 +36,12 @@ use crate::service::ClientIoMessage;
 use crate::types::BlockId;
 use crate::verification::queue::{BlockQueue, HeaderQueue};
 use crate::verification::{self, PreverifiedBlock, Verifier};
-use crate::views::{BlockView, HeaderView};
+use crate::{
+    views::{BlockView, HeaderView},
+    SignedTransaction,
+};
 use client::EngineInfo;
+use primitives::Bytes;
 
 pub struct Importer {
     /// Lock used during block import
@@ -84,6 +88,53 @@ impl Importer {
             miner,
             engine,
         })
+    }
+
+    pub fn import_block_debug(&self, client: &Client, bytes: Bytes) {
+        println!("import_block_debug");
+        let mut transactions = Vec::new();
+        {
+            let v = BlockView::new(&bytes);
+            for t in v.transactions() {
+                let signed = SignedTransaction::try_new(t).unwrap();
+                transactions.push(signed);
+            }
+        }
+
+        let header = BlockView::new(&bytes).header();
+        let block = PreverifiedBlock {
+            header: header.clone(),
+            transactions,
+            bytes,
+        };
+
+        let chain = client.block_chain();
+
+        println!("read parent header");
+        let parent = chain
+            .block_header(header.parent_hash())
+            .ok_or_else(|| {
+                cwarn!(
+                    CLIENT,
+                    "Block import failed for #{} ({}): Parent not found ({}) ",
+                    header.number(),
+                    header.hash(),
+                    header.parent_hash()
+                );
+            })
+            .unwrap();
+
+        println!("Read state root");
+
+        let db = client.state_db().read().clone(&parent.state_root());
+
+        let engine = &*self.engine;
+        println!("enact");
+        let enact_result = enact(&block.header, &block.transactions, engine, client, db, &parent);
+        match enact_result {
+            Ok(_) => cwarn!(CLIENT, "block {} is executed", header.hash()),
+            Err(err) => cwarn!(CLIENT, "executing block {} has error {}", header.hash(), err),
+        }
     }
 
     /// This is triggered by a message coming from a block queue when the block is ready for insertion

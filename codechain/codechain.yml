@@ -435,3 +435,16 @@ subcommands:
                   long: key-str
                   help: The key to find a value in DB
                   takes_value: true
+    - execute-block:
+          about: Execute a block
+          args:
+            - db-dir:
+                  short: d
+                  long: db-dir
+                  help: The db directory
+                  takes_value: true
+            - block-num:
+                  short: n
+                  long: block-num
+                  help: The number of a block
+                  takes_value: true

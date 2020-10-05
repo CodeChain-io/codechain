@@ -196,6 +196,9 @@ pub trait Shard {
 pub trait ImportBlock {
     /// Import a block into the blockchain.
     fn import_block(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;
+    fn import_block_debug(&self, bytes: Bytes) {
+        self.import_block(bytes).unwrap();
+    }
 
     /// Import a header into the blockchain
     fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError>;

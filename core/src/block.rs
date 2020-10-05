@@ -133,7 +133,9 @@ impl<'x> OpenBlock<'x> {
         author: Address,
         extra_data: Bytes,
     ) -> Result<Self, Error> {
+        println!("create state from existing");
         let state = TopLevelState::from_existing(db, *parent.state_root()).map_err(StateError::from)?;
+        println!("create open block");
         let mut r = OpenBlock {
             block: ExecutedBlock::new(state, parent),
             engine,
@@ -143,7 +145,10 @@ impl<'x> OpenBlock<'x> {
         r.block.header.set_extra_data(extra_data);
         r.block.header.note_dirty();
 
+        println!("engine.machine.populate_from_parent");
         engine.machine().populate_from_parent(&mut r.block.header, parent);
+        println!("engine.populate_from_parent");
+        // FIXME: comment the line below not to use tendermint in perf
         engine.populate_from_parent(&mut r.block.header, parent);
 
         Ok(r)
@@ -498,11 +503,15 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
     db: StateDB,
     parent: &Header,
 ) -> Result<LockedBlock, Error> {
+    println!("open block");
     let mut b = OpenBlock::try_new(engine, db, parent, Address::default(), vec![])?;
 
+    println!("populate block");
     b.populate_from(header);
+    println!("push transactions");
     b.push_transactions(transactions, client, parent.number(), parent.timestamp())?;
 
+    println!("common params");
     let parent_common_params = client.common_params((*header.parent_hash()).into()).unwrap();
     let term_common_params = {
         let block_number = client
@@ -514,6 +523,7 @@ pub fn enact<C: ChainTimeInfo + EngineInfo + FindActionHandler + TermInfo>(
             Some(client.common_params((block_number).into()).expect("Common params should exist"))
         }
     };
+    println!("close and lock");
     b.close_and_lock(parent, &parent_common_params, term_common_params.as_ref())
 }
 

@@ -654,6 +654,10 @@ impl ImportBlock for Client {
         Ok(self.importer.block_queue.import(unverified)?)
     }
 
+    fn import_block_debug(&self, bytes: Bytes) {
+        self.importer.import_block_debug(self, bytes)
+    }
+
     fn import_header(&self, bytes: Bytes) -> Result<BlockHash, BlockImportError> {
         let unverified = ::encoded::Header::new(bytes).decode();
         {
