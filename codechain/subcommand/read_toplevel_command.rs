@@ -21,8 +21,15 @@ pub fn run_read_toplevel_command(matches: &ArgMatches) -> Result<(), String> {
     clogger::init(&LoggerConfig::new(777), None).expect("Logger must be successfully initialized");
 
     let db_dir = matches.value_of("db-dir").unwrap();
-    let key: u64 = matches.value_of("key").unwrap().to_string().parse().unwrap();
-    let prepare = matches.is_present("prepare");
+    let num_address = matches.value_of("key").map(|s| {
+        let num: u64 = s.parse().unwrap();
+        Address::from(num)
+    });
+    let address = num_address.unwrap_or_else(|| {
+        let strKey = matches.value_of("key-str").unwrap();
+        strKey.parse().unwrap()
+    });
+    let prepare: Option<u64> = matches.value_of("prepare").map(|s| s.parse().unwrap());
 
     let (db, opts) = open_db(db_dir)?;
     let journal_db = journaldb::new(Arc::clone(&db), journaldb::Algorithm::Archive, COL_STATE);
@@ -38,9 +45,10 @@ pub fn run_read_toplevel_command(matches: &ArgMatches) -> Result<(), String> {
 
     let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
 
-    if prepare {
-        for key_ in (0..key) {
-            let address = Address::random();
+    if let Some(prepare_max) = prepare {
+        for key_ in (0..prepare_max) {
+            // let address = Address::random();
+            let address = Address::from(key_);
             let now = Instant::now();
             toplevel_state.add_balance_debug(&address, 7).unwrap();
             let elapsed = now.elapsed().as_micros();
@@ -50,7 +58,6 @@ pub fn run_read_toplevel_command(matches: &ArgMatches) -> Result<(), String> {
         }
     }
 
-    let address = Address::from(key);
     let now = Instant::now();
     let debug_info = toplevel_state.add_balance_debug(&address, 7).unwrap();
     let elapsed = now.elapsed().as_micros();
