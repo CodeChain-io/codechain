@@ -48,7 +48,7 @@ use ctypes::transaction::{
 use ctypes::util::unexpected::Mismatch;
 #[cfg(test)]
 use ctypes::Tracker;
-use ctypes::{BlockNumber, CommonParams, ShardId, TxHash, DebugInfo};
+use ctypes::{BlockNumber, CommonParams, DebugInfo, ShardId, TxHash};
 use cvm::ChainTimeInfo;
 use hashdb::AsHashDB;
 use kvdb::DBTransaction;
@@ -827,7 +827,7 @@ impl TopState for TopLevelState {
         if incr != 0 {
             let (mut account, debug_info) = self.get_account_mut_debug(a)?;
             account.add_balance(incr);
-            return Ok(debug_info);
+            return Ok(debug_info)
         }
         Ok(DebugInfo::empty())
     }

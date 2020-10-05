@@ -2,13 +2,13 @@ use ccore::ClientConfig;
 use clap::ArgMatches;
 use clogger::{self, LoggerConfig};
 // use cstate::StateDB;
+use ctypes::DebugRead;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
+use parking_lot::Mutex;
+use rocksdb::Options;
 use rustc_hex::{FromHex, ToHex};
 use std::{path::Path, sync::Arc, time::Instant, u32};
-use rocksdb::Options;
-use parking_lot::Mutex;
-use ctypes::DebugRead;
 
 // pub const COL_EXTRA: Option<u32> = Some(3);
 pub const COL_STATE: Option<u32> = Some(0);

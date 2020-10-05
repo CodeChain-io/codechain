@@ -15,9 +15,9 @@
 // along with Parity.  If not, see <http://www.gnu.org/licenses/>.
 
 //! Database of byte-slices keyed to their Keccak hash.
+extern crate codechain_types as ctypes;
 extern crate elastic_array;
 extern crate primitives;
-extern crate codechain_types as ctypes;
 
 use ctypes::DebugRead;
 use elastic_array::ElasticArray128;

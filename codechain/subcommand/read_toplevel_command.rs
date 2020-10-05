@@ -4,13 +4,11 @@ use clogger::{self, LoggerConfig};
 // use cstate::StateDB;
 use ckey::Address;
 use cstate::{StateDB, TopLevelState, TopState};
-use ctypes::DebugRead;
 use kvdb::KeyValueDB;
 use kvdb_rocksdb::{Database, DatabaseConfig};
 use parking_lot::Mutex;
 use primitives::H256;
 use rocksdb::Options;
-use rustc_hex::{FromHex, ToHex};
 use std::{path::Path, sync::Arc, time::Instant, u32};
 
 pub const COL_EXTRA: Option<u32> = Some(3);
@@ -26,8 +24,8 @@ pub fn run_read_toplevel_command(matches: &ArgMatches) -> Result<(), String> {
         Address::from(num)
     });
     let address = num_address.unwrap_or_else(|| {
-        let strKey = matches.value_of("key-str").unwrap();
-        strKey.parse().unwrap()
+        let str_key = matches.value_of("key-str").unwrap();
+        str_key.parse().unwrap()
     });
     let prepare: Option<u64> = matches.value_of("prepare").map(|s| s.parse().unwrap());
 
@@ -46,13 +44,13 @@ pub fn run_read_toplevel_command(matches: &ArgMatches) -> Result<(), String> {
     let mut toplevel_state = TopLevelState::from_existing(state_db.clone(&root), root).unwrap();
 
     if let Some(prepare_max) = prepare {
-        for key_ in (0..prepare_max) {
+        for key_ in 0..prepare_max {
             // let address = Address::random();
             let address = Address::from(key_);
             let now = Instant::now();
             toplevel_state.add_balance_debug(&address, 7).unwrap();
             let elapsed = now.elapsed().as_micros();
-            if (elapsed > 1000) {
+            if elapsed > 1000 {
                 println!("elapsed {}us key: {}", elapsed, key_);
             }
         }

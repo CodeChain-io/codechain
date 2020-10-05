@@ -18,6 +18,7 @@
 
 use super::memorydb::*;
 use super::{DB_PREFIX_LEN, LATEST_ERA_KEY};
+use ctypes::DebugRead;
 use error::{BaseDataError, UtilError};
 use hashdb::*;
 use kvdb::{DBTransaction, KeyValueDB};
@@ -27,7 +28,6 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::{sync::Arc, time::Instant};
 use traits::JournalDB;
-use ctypes::DebugRead;
 
 /// Implementation of the `HashDB` trait for a disk-backed database with a memory overlay
 /// and latent-removal semantics.
@@ -61,7 +61,9 @@ impl ArchiveDB {
     }
 
     fn payload_debug(&self, key: &H256, debug_read: &mut DebugRead) -> Option<DBValue> {
-        self.backing.get_debug(self.column, key, debug_read).expect("Low-level database error. Some issue with your hard disk?")
+        self.backing
+            .get_debug(self.column, key, debug_read)
+            .expect("Low-level database error. Some issue with your hard disk?")
     }
 }
 

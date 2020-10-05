@@ -17,7 +17,7 @@
 use ckey::{public_to_address, Address, Public, Signature};
 use cmerkle::Result as TrieResult;
 use ctypes::transaction::ShardTransaction;
-use ctypes::{BlockNumber, CommonParams, ShardId, Tracker, TxHash, DebugInfo};
+use ctypes::{BlockNumber, CommonParams, DebugInfo, ShardId, Tracker, TxHash};
 use cvm::ChainTimeInfo;
 use primitives::{Bytes, H160, H256};
 

@@ -120,7 +120,8 @@ impl<'db> TrieDB<'db> {
             Some(hash) => {
                 let read_start = Instant::now();
                 let mut read = DebugRead::empty();
-                let node_rlp = self.db.get_debug(&hash, &mut read).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
+                let node_rlp =
+                    self.db.get_debug(&hash, &mut read).ok_or_else(|| TrieError::IncompleteDatabase(hash))?;
                 let elapsed = read_start.elapsed().as_micros();
                 let mut empty = DebugInfo::empty();
                 read.time_us = elapsed;

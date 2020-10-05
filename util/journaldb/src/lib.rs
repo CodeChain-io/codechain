@@ -16,13 +16,13 @@
 
 //! `JournalDB` interface and implementation.
 
+extern crate codechain_types as ctypes;
 extern crate hashdb;
 extern crate kvdb;
 extern crate memorydb;
 extern crate primitives;
 extern crate rlp;
 extern crate util_error as error;
-extern crate codechain_types as ctypes;
 
 #[cfg(test)]
 extern crate codechain_crypto as crypto;
