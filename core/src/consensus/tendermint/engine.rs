@@ -155,14 +155,14 @@ impl ConsensusEngine for Tendermint {
 
         let mut distributor = stake::fee_distribute(total_min_fee, &stakes);
         for (address, share) in &mut distributor {
-            self.machine.add_balance(block, &address, share)?
+            self.machine.add_balance_debug(block, &address, share)?
         }
 
         let block_author_reward = total_reward - total_min_fee + distributor.remaining_fee();
 
         let metadata = block.state().metadata()?.expect("Metadata must exist");
         if metadata.current_term_id() == 0 {
-            self.machine.add_balance(block, &author, block_author_reward)?;
+            self.machine.add_balance_debug(block, &author, block_author_reward)?;
 
             if let Some(block_number) =
                 block_number_if_term_changed(block.header(), parent_header, parent_common_params)
@@ -231,7 +231,7 @@ impl ConsensusEngine for Tendermint {
             )?;
 
             for (address, reward) in pending_rewards {
-                self.machine.add_balance(block, &address, reward)?;
+                self.machine.add_balance_debug(block, &address, reward)?;
             }
 
             let validators = stake::Validators::load_from_state(block.state())?

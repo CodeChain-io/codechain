@@ -228,6 +228,13 @@ impl CodeChainMachine {
         Ok(())
     }
 
+    pub fn add_balance_debug(&self, live: &mut ExecutedBlock, address: &Address, amount: u64) -> Result<(), Error> {
+        let debug_info = live.state_mut().add_balance_debug(address, amount).map_err(StateError::from)?;
+        println!("add_balance {:?}", debug_info);
+        Ok(())
+    }
+
+
     pub fn increase_term_id(&self, live: &mut ExecutedBlock, last_term_finished_block_num: u64) -> Result<(), Error> {
         live.state_mut().increase_term_id(last_term_finished_block_num)?;
         Ok(())
