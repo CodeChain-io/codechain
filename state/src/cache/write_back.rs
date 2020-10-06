@@ -247,6 +247,8 @@ where
             debug_info_.db_read_time_us = elapsed;
             self.insert(a, Entry::<Item>::new_clean(maybe_item));
             debug_info = debug_info_;
+        } else {
+            debug_info.read_from_cache = true;
         }
         self.note(a);
 

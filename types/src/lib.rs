@@ -80,6 +80,7 @@ pub struct DebugInfo {
     pub read_count: u32,
     pub db_read_time_us: u128,
     pub reads: Vec<DebugRead>,
+    pub read_from_cache: bool,
 }
 
 impl DebugInfo {
@@ -88,6 +89,7 @@ impl DebugInfo {
             read_count: 0,
             db_read_time_us: 0,
             reads: Vec::new(),
+            read_from_cache: false,
         }
     }
 
