@@ -19,8 +19,10 @@ use atty;
 use colored::Colorize;
 use env_logger::filter::{Builder as FilterBuilder, Filter};
 use log::{Level, LevelFilter, Log, Metadata, Record};
+use parking_lot::Mutex;
 use std::env;
 use std::thread;
+use std::time::{Duration, Instant};
 use time;
 
 pub struct Config {
@@ -40,6 +42,7 @@ pub struct Logger {
     filter: Filter,
     stderr_is_tty: bool,
     email_alarm: Option<EmailAlarm>,
+    last_email_sent: Mutex<Option<Instant>>,
 }
 
 impl Logger {
@@ -58,6 +61,7 @@ impl Logger {
             filter: builder.build(),
             stderr_is_tty,
             email_alarm,
+            last_email_sent: Mutex::new(None),
         }
     }
 
@@ -108,7 +112,15 @@ impl Log for Logger {
 
             if log_level == Level::Error {
                 if let Some(email_alarm) = &self.email_alarm {
-                    email_alarm.send(&format!("{} {} {}", thread_name, log_target, log_message))
+                    let mut last_email_sent = self.last_email_sent.lock();
+                    let sent_recently = match *last_email_sent {
+                        Some(last_sent) => last_sent.elapsed() < Duration::from_secs(300),
+                        None => false,
+                    };
+                    if !sent_recently {
+                        email_alarm.send(&format!("{} {} {}", thread_name, log_target, log_message));
+                        *last_email_sent = Some(Instant::now());
+                    }
                 }
             }
         }
