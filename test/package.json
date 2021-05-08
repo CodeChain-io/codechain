@@ -52,7 +52,7 @@
     "codechain-stakeholder-sdk": "^2.0.0",
     "elliptic": "^6.5.3",
     "get-port": "^5.1.1",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
     "net": "^1.0.2",
