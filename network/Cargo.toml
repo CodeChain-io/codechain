@@ -11,7 +11,7 @@ codechain-key = { path = "../key" }
 codechain-logger = { path = "../util/logger" }
 codechain-timer = { path = "../util/timer" }
 codechain-types = { path = "../types" }
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 finally-block = "0.1"
 primitives = { git = "https://github.com/CodeChain-io/rust-codechain-primitives.git", version = "0.4" }
 log = "0.4.6"
